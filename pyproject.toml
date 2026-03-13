@@ -2,14 +2,23 @@
 name = "mnemos"
 version = "0.1.0"
 description = "MCP server for storing and searching memory"
-requires-python = ">=3.12"
+requires-python = "==3.12.*"
 dependencies = [
     "aiosqlite>=0.22.1",
     "alembic>=1.18.4",
+    "authlib>=1.3.0",
     "fastapi[all]>=0.135.1",
     "fastmcp>=3.1.0",
+    "onnxruntime>=1.20.0",
+    "pydantic-settings>=2.7.0",
+    "dateparser>=1.2.0",
+    "sqlite-vec>=0.1.6",
     "sqlalchemy>=2.0.48",
+    "tokenizers>=0.21.0",
 ]
+
+[project.scripts]
+mnemos = "mnemos.main:main"
 
 [dependency-groups]
 dev = [
@@ -22,3 +31,26 @@ dev = [
     "pytest-mock",
     "pytest-xdist",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mnemos"]
+
+[tool.coverage.run]
+source = ["src/payroll"]
+parallel = true
+concurrency = ["thread", "greenlet"]
+
+[tool.black]
+target-version = ['py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | .venv
+  | migrations
+)
+'''

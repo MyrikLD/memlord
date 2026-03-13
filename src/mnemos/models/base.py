@@ -1,6 +1,5 @@
-import sqlalchemy as sa
 from sqlalchemy import MetaData
-from sqlalchemy.ext.declarative import as_declarative
+from sqlalchemy.orm import DeclarativeBase
 
 convention = {
     "ix": "ix_%(column_0_label)s",
@@ -11,10 +10,8 @@ convention = {
 }
 
 
-@as_declarative(metadata=MetaData(naming_convention=convention))
-class Base:
-    metadata: MetaData
-    __table__: sa.Table
+class Base(DeclarativeBase):
+    metadata = MetaData(naming_convention=convention)
 
 
 __all__ = ["Base"]
