@@ -1,0 +1,24 @@
+[project]
+name = "mnemos"
+version = "0.1.0"
+description = "MCP server for storing and searching memory"
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "alembic>=1.18.4",
+    "fastapi[all]>=0.135.1",
+    "fastmcp>=3.1.0",
+    "sqlalchemy>=2.0.48",
+]
+
+[dependency-groups]
+dev = [
+    "alembic-autogen-check",
+    "black",
+    "httpx",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-xdist",
+]
