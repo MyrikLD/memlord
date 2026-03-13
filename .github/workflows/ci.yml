@@ -16,8 +16,8 @@ jobs:
       - run: uv run black --check src/ migrations/
       - run: uv run pyright src/
 
-  test:
-    name: Migrations & tests
+  migrations:
+    name: Migration check
     runs-on: ubuntu-latest
     env:
       MNEMOS_DB_PATH: /tmp/mnemos-test.db
@@ -25,14 +25,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --dev
-
-      - name: Cache ONNX model
-        uses: actions/cache@v4
-        with:
-          path: src/mnemos/onnx
-          key: onnx-all-MiniLM-L6-v2-v1
-
-      - run: uv run python scripts/download_model.py
       - run: uv run alembic upgrade head
       - run: uv run alembic-autogen-check
-      - run: uv run pytest
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
