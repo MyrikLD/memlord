@@ -1,4 +1,5 @@
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from mnemos.db import MCPSessionDep
 from mnemos.embeddings import embed
 from mnemos.models import Memory, MemoryTag, Tag
@@ -10,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 mcp = FastMCP()
 
 
-@mcp.tool(output_schema=StoreResult.model_json_schema())
+@mcp.tool(
+    output_schema=StoreResult.model_json_schema(),
+    annotations=ToolAnnotations(idempotentHint=True, destructiveHint=False),
+)
 async def store_memory(
     content: str,
     memory_type: str | None = None,

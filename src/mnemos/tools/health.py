@@ -1,6 +1,7 @@
 import os
 
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from mnemos.config import settings
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, SchemaVersion
@@ -11,7 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 mcp = FastMCP()
 
 
-@mcp.tool(output_schema=HealthResult.model_json_schema())
+@mcp.tool(
+    output_schema=HealthResult.model_json_schema(),
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
+)
 async def check_database_health(s: AsyncSession = MCPSessionDep) -> HealthResult:  # type: ignore[assignment]
     """Return database health status and statistics."""
     total = await s.scalar(select(func.count()).select_from(Memory)) or 0

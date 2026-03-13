@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from dateparser.search import search_dates  # type: ignore[import-untyped]
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory
 from mnemos.schemas import RecallResult
@@ -13,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 mcp = FastMCP()
 
 
-@mcp.tool
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
 async def recall_memory(
     query: str,
     n_results: int = 5,

@@ -1,4 +1,5 @@
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryResult
@@ -30,7 +31,7 @@ async def _fetch_metadata(s: AsyncSession, memory_ids: list[int]) -> dict[int, t
     return {row.id: (row.extra_data, row.created_at) for row in rows.fetchall()}
 
 
-@mcp.tool
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
 async def retrieve_memory(
     query: str,
     limit: int = 10,

@@ -1,6 +1,7 @@
 import math
 
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryListItem, MemoryPage
@@ -19,7 +20,10 @@ _COLS = (
 )
 
 
-@mcp.tool(output_schema=MemoryPage.model_json_schema())
+@mcp.tool(
+    output_schema=MemoryPage.model_json_schema(),
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
+)
 async def list_memories(
     page: int = 1,
     page_size: int = 10,

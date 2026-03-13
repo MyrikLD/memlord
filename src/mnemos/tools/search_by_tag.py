@@ -1,6 +1,7 @@
 from typing import Literal
 
 from fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryListItem
@@ -19,7 +20,7 @@ _COLS = (
 )
 
 
-@mcp.tool
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
 async def search_by_tag(
     tags: list[str],
     operation: Literal["AND", "OR"] = "AND",
