@@ -17,6 +17,14 @@ settings.db_path.parent.mkdir(parents=True, exist_ok=True)
 
 target_metadata = Base.metadata
 
+_VIRTUAL_TABLE_PREFIXES = ("memories_fts", "memories_vec")
+
+
+def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001
+    if type_ == "table" and any(name.startswith(p) for p in _VIRTUAL_TABLE_PREFIXES):
+        return False
+    return True
+
 
 def _make_engine():
     engine = create_engine(f"sqlite:///{settings.db_path}")
@@ -36,13 +44,18 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
