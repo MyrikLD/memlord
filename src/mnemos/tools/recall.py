@@ -7,16 +7,13 @@ from mnemos.models import Memory
 from mnemos.schemas import RecallResult
 from mnemos.search import hybrid_search
 from mnemos.tools.retrieve import _fetch_tags
-from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 mcp = FastMCP()
 
-_output_schema = TypeAdapter(list[RecallResult]).json_schema()
 
-
-@mcp.tool(output_schema=_output_schema)
+@mcp.tool
 async def recall_memory(
     query: str,
     n_results: int = 5,

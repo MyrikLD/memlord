@@ -3,11 +3,8 @@ from mnemos.db import SessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryResult
 from mnemos.search import hybrid_search
-from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-_output_schema = TypeAdapter(list[MemoryResult]).json_schema()
 
 mcp = FastMCP()
 
@@ -33,7 +30,7 @@ async def _fetch_metadata(s: AsyncSession, memory_ids: list[int]) -> dict[int, t
     return {row.id: (row.extra_data, row.created_at) for row in rows.fetchall()}
 
 
-@mcp.tool(output_schema=_output_schema)
+@mcp.tool
 async def retrieve_memory(
         query: str,
         limit: int = 10,

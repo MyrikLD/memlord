@@ -5,13 +5,10 @@ from mnemos.db import SessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryListItem
 from mnemos.tools.retrieve import _fetch_tags
-from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 mcp = FastMCP()
-
-_output_schema = TypeAdapter(list[MemoryListItem]).json_schema()
 
 _COLS = (
     Memory.id,
@@ -22,7 +19,7 @@ _COLS = (
 )
 
 
-@mcp.tool(output_schema=_output_schema)
+@mcp.tool
 async def search_by_tag(
     tags: list[str],
     operation: Literal["AND", "OR"] = "AND",
