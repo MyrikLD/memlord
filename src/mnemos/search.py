@@ -6,7 +6,7 @@ from mnemos.embeddings import embed
 from mnemos.schemas import SearchResult
 
 
-def _fts5_escape(query: str) -> str:
+def fts5_escape(query: str) -> str:
     """Wrap each whitespace-separated token in double quotes to suppress FTS5 operator parsing."""
     tokens = query.split()
     return " ".join('"' + t.replace('"', "") + '"' for t in tokens if t)
@@ -50,7 +50,7 @@ async def hybrid_search(
 
     bm25_rows = (
         await session.execute(
-            bm25_sql, {"query": _fts5_escape(query), "n": n, **date_params}
+            bm25_sql, {"query": fts5_escape(query), "n": n, **date_params}
         )
     ).fetchall()
 
