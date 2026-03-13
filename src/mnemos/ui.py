@@ -23,7 +23,9 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
 def _session_token() -> str:
-    return hmac.new(settings.password.encode(), b"mnemos-ui-session", hashlib.sha256).hexdigest()
+    return hmac.new(
+        settings.password.encode(), b"mnemos-ui-session", hashlib.sha256
+    ).hexdigest()
 
 
 def _require_auth(request: Request) -> None:
@@ -31,7 +33,10 @@ def _require_auth(request: Request) -> None:
         return
     token = request.cookies.get("mnemos_session")
     if not token or not hmac.compare_digest(token, _session_token()):
-        raise HTTPException(status_code=307, headers={"Location": f"/ui/login?next={request.url.path}"})
+        raise HTTPException(
+            status_code=307, headers={"Location": f"/ui/login?next={request.url.path}"}
+        )
+
 
 _COLS = (
     Memory.id,
@@ -67,12 +72,19 @@ async def login_post(
     password: str = Form(),
     next: str = Form(default="/"),
 ) -> Response:
-    if not settings.password or not secrets.compare_digest(password.encode(), settings.password.encode()):
+    if not settings.password or not secrets.compare_digest(
+        password.encode(), settings.password.encode()
+    ):
         return templates.TemplateResponse(
-            request, "login.html", {"next": next, "error": "Incorrect password."}, status_code=401
+            request,
+            "login.html",
+            {"next": next, "error": "Incorrect password."},
+            status_code=401,
         )
     response = RedirectResponse(next if next.startswith("/") else "/", status_code=303)
-    response.set_cookie("mnemos_session", _session_token(), httponly=True, samesite="lax")
+    response.set_cookie(
+        "mnemos_session", _session_token(), httponly=True, samesite="lax"
+    )
     return response
 
 
@@ -139,7 +151,9 @@ async def index(
     )
 
 
-@router.get("/search", response_class=HTMLResponse, dependencies=[Depends(_require_auth)])
+@router.get(
+    "/search", response_class=HTMLResponse, dependencies=[Depends(_require_auth)]
+)
 async def search(request: Request, s: APISessionDep, q: str = "") -> HTMLResponse:
     results = []
     if q:
@@ -176,7 +190,9 @@ async def search(request: Request, s: APISessionDep, q: str = "") -> HTMLRespons
     )
 
 
-@router.get("/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(_require_auth)])
+@router.get(
+    "/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(_require_auth)]
+)
 async def memory_detail(request: Request, id: int, s: APISessionDep) -> HTMLResponse:
     row = (
         (await s.execute(select(*_COLS).where(Memory.id == id)))
@@ -198,7 +214,9 @@ async def memory_detail(request: Request, id: int, s: APISessionDep) -> HTMLResp
     return templates.TemplateResponse(request, "memory.html", {"memory": memory})
 
 
-@router.put("/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(_require_auth)])
+@router.put(
+    "/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(_require_auth)]
+)
 async def update_memory(
     request: Request,
     id: int,
