@@ -44,6 +44,9 @@ source = ["src/payroll"]
 parallel = true
 concurrency = ["thread", "greenlet"]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [tool.black]
 target-version = ['py312']
 include = '\.pyi?$'

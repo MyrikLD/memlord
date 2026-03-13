@@ -34,7 +34,9 @@ async def recall_memory(
     )
     if found:
         dts = [dt for _, dt in found]
-        date_from = min(dts).isoformat(sep=" ")
+        # Truncate to start of day: dateparser returns "now" time for expressions like
+        # "today"/"yesterday"/"last week", making the window near-zero otherwise.
+        date_from = min(dts).replace(hour=0, minute=0, second=0, microsecond=0).isoformat(sep=" ")
         date_to = datetime.now(timezone.utc).replace(tzinfo=None).isoformat(sep=" ")
 
         remaining = query
