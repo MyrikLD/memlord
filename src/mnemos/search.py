@@ -49,7 +49,9 @@ async def hybrid_search(
     """)
 
     bm25_rows = (
-        await session.execute(bm25_sql, {"query": _fts5_escape(query), "n": n, **date_params})
+        await session.execute(
+            bm25_sql, {"query": _fts5_escape(query), "n": n, **date_params}
+        )
     ).fetchall()
 
     # Vector KNN via sqlite-vec
