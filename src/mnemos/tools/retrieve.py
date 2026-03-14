@@ -1,34 +1,12 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from mnemos.dao import MemoryDao
 from mnemos.db import MCPSessionDep
-from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryResult
 from mnemos.search import hybrid_search
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 mcp = FastMCP()
-
-
-async def _fetch_tags(s: AsyncSession, memory_ids: list[int]) -> dict[int, list[str]]:
-    rows = await s.execute(
-        select(MemoryTag.memory_id, Tag.name)
-        .join(Tag, MemoryTag.tag_id == Tag.id)
-        .where(MemoryTag.memory_id.in_(memory_ids))
-    )
-    result: dict[int, list[str]] = {i: [] for i in memory_ids}
-    for mid, name in rows.fetchall():
-        result[mid].append(name)
-    return result
-
-
-async def _fetch_metadata(s: AsyncSession, memory_ids: list[int]) -> dict[int, tuple]:
-    rows = await s.execute(
-        select(Memory.id, Memory.extra_data, Memory.created_at).where(
-            Memory.id.in_(memory_ids)
-        )
-    )
-    return {row.id: (row.extra_data, row.created_at) for row in rows.fetchall()}
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
@@ -49,9 +27,10 @@ async def retrieve_memory(
     if not results:
         return []
 
+    dao = MemoryDao(s)
     ids = [r.id for r in results]
-    tags_map = await _fetch_tags(s, ids)
-    meta_map = await _fetch_metadata(s, ids)
+    tags_map = await dao.fetch_tags(ids)
+    meta_map = await dao.fetch_metadata(ids)
 
     output = []
     for r in results:

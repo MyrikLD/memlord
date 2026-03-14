@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 import math
 import secrets
 from pathlib import Path
@@ -9,14 +8,14 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
+
 from mnemos.config import settings
+from mnemos.dao import MemoryDao
 from mnemos.db import APISessionDep
-from mnemos.embeddings import embed
 from mnemos.models import Memory, MemoryTag, Tag
+from mnemos.schemas import UpdateMemoryRequest
 from mnemos.search import hybrid_search
-from sqlalchemy import delete, select, text, update
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -45,20 +44,6 @@ _COLS = (
     Memory.extra_data,
     Memory.created_at,
 )
-
-
-async def _fetch_tags(s: AsyncSession, memory_ids: list[int]) -> dict[int, list[str]]:
-    if not memory_ids:
-        return {}
-    rows = await s.execute(
-        select(MemoryTag.memory_id, Tag.name)
-        .join(Tag, MemoryTag.tag_id == Tag.id)
-        .where(MemoryTag.memory_id.in_(memory_ids))
-    )
-    result: dict[int, list[str]] = {i: [] for i in memory_ids}
-    for mid, name in rows.fetchall():
-        result[mid].append(name)
-    return result
 
 
 @router.get("/ui/login", response_class=HTMLResponse)
@@ -123,7 +108,7 @@ async def index(
     )
     total_pages = math.ceil(total / page_size) if total else 0
     ids = [row["id"] for row in rows]
-    tags_map = await _fetch_tags(s, ids)
+    tags_map = await MemoryDao(s).fetch_tags(ids)
 
     memories = [
         {
@@ -159,29 +144,19 @@ async def search(request: Request, s: APISessionDep, q: str = "") -> HTMLRespons
     if q:
         raw = await hybrid_search(s, query=q, limit=20, similarity_threshold=0.0)
         if raw:
+            dao = MemoryDao(s)
             ids = [r.id for r in raw]
-            tags_map = await _fetch_tags(s, ids)
-            meta_rows = (
-                (
-                    await s.execute(
-                        select(Memory.id, Memory.extra_data, Memory.created_at).where(
-                            Memory.id.in_(ids)
-                        )
-                    )
-                )
-                .mappings()
-                .all()
-            )
-            meta_map = {row["id"]: row for row in meta_rows}
+            tags_map = await dao.fetch_tags(ids)
+            meta_map = await dao.fetch_metadata(ids)
             for r in raw:
-                row = meta_map.get(r.id, {})
+                extra_data, created_at = meta_map.get(r.id, (None, None))
                 results.append(
                     {
                         "id": r.id,
                         "content": r.content,
                         "memory_type": r.memory_type,
                         "tags": tags_map.get(r.id, []),
-                        "created_at": str(row.get("created_at", "")),
+                        "created_at": str(created_at) if created_at else "",
                         "rrf_score": round(r.rrf_score, 4),
                     }
                 )
@@ -202,7 +177,7 @@ async def memory_detail(request: Request, id: int, s: APISessionDep) -> HTMLResp
     if row is None:
         raise HTTPException(status_code=404, detail="Memory not found")
 
-    tags = (await _fetch_tags(s, [id])).get(id, [])
+    tags = (await MemoryDao(s).fetch_tags([id])).get(id, [])
     memory = {
         "id": row["id"],
         "content": row["content"],
@@ -221,10 +196,7 @@ async def update_memory(
     request: Request,
     id: int,
     s: APISessionDep,
-    content: str = Form(default=""),
-    memory_type: str = Form(default=""),
-    tags_str: str = Form(default=""),
-    metadata_str: str = Form(default=""),
+    body: UpdateMemoryRequest,
 ) -> HTMLResponse:
     row = (
         (await s.execute(select(*_COLS).where(Memory.id == id)))
@@ -234,87 +206,43 @@ async def update_memory(
     if row is None:
         raise HTTPException(status_code=404, detail="Memory not found")
 
-    # Parse metadata JSON
-    new_metadata: dict | None = None
-    if metadata_str.strip():
-        try:
-            new_metadata = json.loads(metadata_str.strip())
-        except json.JSONDecodeError:
-            tags_now = (await _fetch_tags(s, [id])).get(id, [])
-            return templates.TemplateResponse(
-                request,
-                "_memory_content.html",
-                {
-                    "memory": {
-                        "id": id,
-                        "content": content or row["content"],
-                        "memory_type": memory_type,
-                        "metadata": row["extra_data"],
-                        "tags": tags_now,
-                        "created_at": str(row["created_at"]),
-                    },
-                    "error": "Invalid JSON in metadata field.",
-                },
-                status_code=422,
-            )
+    dao = MemoryDao(s)
+    new_content = (body.content or "").strip() or row["content"]
+    new_type = (body.memory_type or "").strip() or None
+    new_tags = [t.lower().strip() for t in (body.tags or []) if t.strip()]
 
-    update_vals: dict = {}
-    new_content = content.strip() or row["content"]
-    if new_content != row["content"]:
-        update_vals["content"] = new_content
-        vector = embed(new_content)
-        vec_str = "[" + ",".join(str(v) for v in vector) + "]"
-        await s.execute(
-            text("DELETE FROM memories_vec WHERE memory_id = :id"), {"id": id}
-        )
-        await s.execute(
-            text("INSERT INTO memories_vec(memory_id, embedding) VALUES (:id, :vec)"),
-            {"id": id, "vec": vec_str},
-        )
-
-    new_type = memory_type.strip() or None
-    if new_type != row["memory_type"]:
-        update_vals["memory_type"] = new_type
-
-    if new_metadata != row["extra_data"]:
-        update_vals["extra_data"] = new_metadata
-
-    if update_vals:
-        await s.execute(update(Memory).where(Memory.id == id).values(**update_vals))
-
-    # Rebuild tags
-    await s.execute(delete(MemoryTag).where(MemoryTag.memory_id == id))
-    new_tags = [t.strip().lower() for t in tags_str.split(",") if t.strip()]
-    for tag_name in new_tags:
-        await s.execute(
-            sqlite_insert(Tag).values(name=tag_name).on_conflict_do_nothing()
-        )
-        tag_id = await s.scalar(select(Tag.id).where(Tag.name == tag_name))
-        await s.execute(
-            sqlite_insert(MemoryTag)
-            .values(memory_id=id, tag_id=tag_id)
-            .on_conflict_do_nothing()
-        )
-
-    updated_memory = {
+    data = {
         "id": id,
-        "content": new_content,
-        "memory_type": new_type or "",
-        "metadata": new_metadata,
+        "memory_type": new_type,
+        "metadata": body.metadata,
         "tags": new_tags,
-        "created_at": str(row["created_at"]),
     }
+    if new_content != row["content"]:
+        data["content"] = new_content
+
+    await dao.update(**data)
+
     return templates.TemplateResponse(
         request,
         "_memory_content.html",
-        {"memory": updated_memory, "success": "Saved."},
+        {
+            "memory": {
+                "id": id,
+                "content": new_content,
+                "memory_type": new_type or "",
+                "metadata": body.metadata,
+                "tags": new_tags,
+                "created_at": str(row["created_at"]),
+            },
+            "success": "Saved.",
+        },
     )
 
 
 @router.delete("/memory/{id}", dependencies=[Depends(_require_auth)])
 async def delete_memory_ui(id: int, s: APISessionDep) -> Response:
-    await s.execute(text("DELETE FROM memories_vec WHERE memory_id = :id"), {"id": id})
-    result = await s.execute(delete(Memory).where(Memory.id == id).returning(Memory.id))
-    if result.scalar_one_or_none() is None:
+    try:
+        await MemoryDao(s).delete(id)
+    except ValueError:
         raise HTTPException(status_code=404, detail="Memory not found")
     return Response(content="", status_code=200)

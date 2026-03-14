@@ -6,62 +6,88 @@
 {% endif %}
 
 <div class="detail-card">
-  <div style="margin-bottom:1.25rem">
-    <div class="detail-label">Content</div>
-    <div class="detail-content">{{ memory.content }}</div>
-  </div>
-  <div class="detail-meta">
-    {% if memory.memory_type %}<span class="badge badge-type">{{ memory.memory_type }}</span>{% endif %}
-    {% for t in memory.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
-    <span class="card-date" style="margin-left:auto">{{ memory.created_at[:19] }}</span>
-  </div>
-  {% if memory.metadata %}
-  <div style="margin-top:1.25rem">
-    <div class="detail-label">Metadata</div>
-    <pre class="meta-json">{{ memory.metadata | tojson(indent=2) }}</pre>
-  </div>
-  {% endif %}
+    <div style="margin-bottom:1.25rem">
+        <div class="detail-label">Content</div>
+        <div class="detail-content">{{ memory.content }}</div>
+    </div>
+    <div class="detail-meta">
+        {% if memory.memory_type %}<span class="badge badge-type">{{ memory.memory_type }}</span>{% endif %}
+        {% for t in memory.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
+        <span class="card-date" style="margin-left:auto">{{ memory.created_at[:19] }}</span>
+    </div>
+    {% if memory.metadata %}
+    <div style="margin-top:1.25rem">
+        <div class="detail-label">Metadata</div>
+        <pre class="meta-json">{{ memory.metadata | tojson(indent=2) }}</pre>
+    </div>
+    {% endif %}
 </div>
 
 <div class="detail-card">
-  <div class="section-title">Edit memory</div>
-  <form hx-put="/memory/{{ memory.id }}"
-        hx-target="#page-content"
-        hx-swap="innerHTML">
-    <div class="form-group">
-      <label class="form-label" for="content">Content</label>
-      <textarea class="form-textarea" name="content" id="content"
-                rows="6">{{ memory.content }}</textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="memory_type">
-        Type <span class="form-hint">— note, fact, reminder, …</span>
-      </label>
-      <input class="form-input" name="memory_type" id="memory_type"
-             value="{{ memory.memory_type }}" placeholder="optional">
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="tags_str">
-        Tags <span class="form-hint">— comma-separated</span>
-      </label>
-      <input class="form-input" name="tags_str" id="tags_str"
-             value="{{ memory.tags | join(', ') }}" placeholder="tag1, tag2">
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="metadata_str">
-        Metadata <span class="form-hint">— JSON object</span>
-      </label>
-      <textarea class="form-textarea form-mono" name="metadata_str" id="metadata_str"
-                rows="4" placeholder="{}">{{ memory.metadata | tojson(indent=2) if memory.metadata else "" }}</textarea>
-    </div>
-    <div class="form-actions">
-      <button type="submit" class="btn-primary-sm">Save changes</button>
-      <button type="button" class="btn btn-sm btn-danger"
-        hx-delete="/memory/{{ memory.id }}"
-        hx-confirm="Delete this memory?"
-        hx-on::after-request="if(event.detail.successful) window.location='/'">
-        Delete memory
-      </button>
-    </div>
-  </form>
+    <div class="section-title">Edit memory</div>
+    <form id="edit-form-{{ memory.id }}">
+        <div class="form-group">
+            <label class="form-label" for="content">Content</label>
+            <textarea class="form-textarea" id="content" rows="6">{{ memory.content }}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="memory_type">
+                Type <span class="form-hint">— note, fact, reminder, …</span>
+            </label>
+            <input class="form-input" id="memory_type"
+                   value="{{ memory.memory_type }}" placeholder="optional">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="tags_str">
+                Tags <span class="form-hint">— comma-separated</span>
+            </label>
+            <input class="form-input" id="tags_str"
+                   value="{{ memory.tags | join(', ') }}" placeholder="tag1, tag2">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="metadata_str">
+                Metadata <span class="form-hint">— JSON object</span>
+            </label>
+            <textarea class="form-textarea form-mono" id="metadata_str"
+                      rows="4"
+                      placeholder="{}">{{ memory.metadata | tojson(indent=2) if memory.metadata else "" }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary-sm">Save changes</button>
+            <button type="button" class="btn btn-sm btn-danger"
+                    hx-delete="/memory/{{ memory.id }}"
+                    hx-confirm="Delete this memory?"
+                    hx-on::after-request="if(event.detail.successful) window.location='/'">
+                Delete memory
+            </button>
+        </div>
+    </form>
+    <script>
+        document.getElementById('edit-form-{{ memory.id }}').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const metaRaw = document.getElementById('metadata_str').value.trim();
+            let metadata = null;
+            if (metaRaw) {
+                try {
+                    metadata = JSON.parse(metaRaw);
+                } catch {
+                    htmx.find('#page-content').innerHTML = '<div class="alert alert-error">Invalid JSON in metadata field.</div>' + document.getElementById('page-content').innerHTML;
+                    return;
+                }
+            }
+            const tagsRaw = document.getElementById('tags_str').value;
+            const body = {
+                content: document.getElementById('content').value,
+                memory_type: document.getElementById('memory_type').value,
+                tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
+                metadata: metadata,
+            };
+            const resp = await fetch('/memory/{{ memory.id }}', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body),
+            });
+            document.getElementById('page-content').innerHTML = await resp.text();
+        });
+    </script>
 </div>

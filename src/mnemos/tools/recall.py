@@ -3,11 +3,11 @@ from datetime import datetime, timezone
 from dateparser.search import search_dates  # type: ignore[import-untyped]
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from mnemos.dao import MemoryDao
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory
 from mnemos.schemas import RecallResult
 from mnemos.search import hybrid_search
-from mnemos.tools.retrieve import _fetch_tags
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,7 +61,7 @@ async def recall_memory(
         return []
 
     ids = [r.id for r in results]
-    tags_map = await _fetch_tags(s, ids)
+    tags_map = await MemoryDao(s).fetch_tags(ids)
 
     rows = await s.execute(
         select(Memory.id, Memory.created_at).where(Memory.id.in_(ids))

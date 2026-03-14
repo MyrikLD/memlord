@@ -2,10 +2,10 @@ import math
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from mnemos.dao import MemoryDao
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryListItem, MemoryPage
-from mnemos.tools.retrieve import _fetch_tags
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,7 +72,7 @@ async def list_memories(
         )
 
     ids: list[int] = [row["id"] for row in rows]
-    tags_map = await _fetch_tags(s, ids)
+    tags_map = await MemoryDao(s).fetch_tags(ids)
 
     return MemoryPage(
         items=[

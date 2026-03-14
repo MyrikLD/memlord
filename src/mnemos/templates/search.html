@@ -3,44 +3,44 @@
 {% block content %}
 
 <div class="page-header">
-  <h1 class="page-title">
-    {% if q %}Search results{% else %}Search{% endif %}
-  </h1>
+    <h1 class="page-title">
+        {% if q %}Search results{% else %}Search{% endif %}
+    </h1>
 </div>
 
 {% if q %}
 <p class="info-bar">
-  {{ results | length }} result{{ 's' if results | length != 1 else '' }}
-  for <strong>"{{ q }}"</strong>
+    {{ results | length }} result{{ 's' if results | length != 1 else '' }}
+    for <strong>"{{ q }}"</strong>
 </p>
 
 {% for m in results %}
 <div class="card">
-  <div class="card-header">
-    <a href="/memory/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
-      <div class="card-content">{{ m.content | truncate(280) }}</div>
-    </a>
-    <span class="score-badge">{{ m.rrf_score }}</span>
-  </div>
-  <div class="card-meta">
-    {% if m.memory_type %}<span class="badge badge-type">{{ m.memory_type }}</span>{% endif %}
-    {% for t in m.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
-    <span class="card-date">{{ m.created_at[:19] if m.created_at else '' }}</span>
-  </div>
+    <div class="card-header">
+        <a href="/memory/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
+            <div class="card-content">{{ m.content | truncate(280) }}</div>
+        </a>
+        <span class="score-badge">{{ m.rrf_score }}</span>
+    </div>
+    <div class="card-meta">
+        {% if m.memory_type %}<span class="badge badge-type">{{ m.memory_type }}</span>{% endif %}
+        {% for t in m.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
+        <span class="card-date">{{ m.created_at[:19] if m.created_at else '' }}</span>
+    </div>
 </div>
 {% else %}
 <div class="empty-state">
-  <div class="empty-state-icon">🔍</div>
-  <div class="empty-state-title">No results found</div>
-  <div class="empty-state-desc">Try different keywords or a broader query.</div>
+    <div class="empty-state-icon">🔍</div>
+    <div class="empty-state-title">No results found</div>
+    <div class="empty-state-desc">Try different keywords or a broader query.</div>
 </div>
 {% endfor %}
 
 {% else %}
 <div class="empty-state">
-  <div class="empty-state-icon">🔍</div>
-  <div class="empty-state-title">Search your memories</div>
-  <div class="empty-state-desc">Enter a query above to search using hybrid BM25 + semantic search.</div>
+    <div class="empty-state-icon">🔍</div>
+    <div class="empty-state-title">Search your memories</div>
+    <div class="empty-state-desc">Enter a query above to search using hybrid BM25 + semantic search.</div>
 </div>
 {% endif %}
 

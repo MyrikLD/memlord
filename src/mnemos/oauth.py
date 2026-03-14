@@ -128,6 +128,23 @@ class MnemosOAuthProvider(OAuthProvider):
     def get_routes(self, mcp_path: str | None = None) -> list[Route]:
         routes = super().get_routes(mcp_path)
         routes += [Route("/login", endpoint=self._login, methods=["GET", "POST"])]
+
+        # RFC 9728: clients discover metadata via path-based URL first, then fall back to
+        # root-based /.well-known/oauth-protected-resource. Alias the path-specific route
+        # at root so both work.
+        for route in list(routes):
+            if isinstance(route, Route) and route.path.startswith(
+                "/.well-known/oauth-protected-resource/"
+            ):
+                routes.append(
+                    Route(
+                        "/.well-known/oauth-protected-resource",
+                        endpoint=route.endpoint,
+                        methods=["GET", "OPTIONS"],
+                    )
+                )
+                break
+
         return routes
 
     async def _login(self, request: Request) -> Response:
