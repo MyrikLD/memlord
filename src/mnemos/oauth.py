@@ -108,13 +108,13 @@ class MnemosOAuthProvider(OAuthProvider):
         self._base_url = base_url.rstrip("/")
         self._password = password
 
-        signing_key = derive_jwt_key(
+        self._signing_key = derive_jwt_key(
             high_entropy_material=jwt_secret, salt="mnemos-oauth-jwt"
         )
         self._jwt = JWTIssuer(
             issuer=self._base_url,
             audience=self._base_url,
-            signing_key=signing_key,
+            signing_key=self._signing_key,
         )
 
         self._auth_codes: dict[str, AuthorizationCode] = {}
@@ -128,6 +128,22 @@ class MnemosOAuthProvider(OAuthProvider):
     # ------------------------------------------------------------------
     # Login page
     # ------------------------------------------------------------------
+
+    def set_mcp_path(self, mcp_path: str | None) -> None:
+        super().set_mcp_path(mcp_path)
+        # Update JWT audience to the resource URL now that the MCP path is known.
+        # Per RFC 8707, tokens must be bound to the resource they are issued for.
+        audience = (
+            str(self._resource_url).rstrip("/")
+            if self._resource_url is not None
+            else self._base_url
+        )
+        self._jwt = JWTIssuer(
+            issuer=self._base_url,
+            audience=audience,
+            signing_key=self._signing_key,
+        )
+        logger.debug("set_mcp_path: JWT audience updated to %s", audience)
 
     def get_routes(self, mcp_path: str | None = None) -> list[Route]:
         routes = super().get_routes(mcp_path)
@@ -213,6 +229,7 @@ class MnemosOAuthProvider(OAuthProvider):
             scopes=pending.scopes,
             expires_at=time.time() + AUTH_CODE_TTL,
             code_challenge=pending.params.code_challenge,
+            resource=pending.params.resource,
         )
         redirect = construct_redirect_uri(
             str(pending.params.redirect_uri), code=code, state=pending.params.state
