@@ -9,7 +9,7 @@ async def test_crud(session):
     # create
     mid, created_at, created = await dao.create(
         content="hello world",
-        memory_type="note",
+        memory_type="observation",
         metadata={"k": "v"},
         client_hostname=None,
         tags=["foo", "bar"],
