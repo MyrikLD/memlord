@@ -3,7 +3,7 @@ from logging.config import fileConfig
 import sqlite_vec  # type: ignore[import-untyped]
 from alembic import context
 from mnemos.config import settings
-from mnemos.models import Memory, MemoryTag, SchemaVersion, Tag  # noqa: F401
+from mnemos.models import Memory, MemoryTag, OAuthClient, SchemaVersion, Tag  # noqa: F401
 from mnemos.models.base import Base
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Connection

@@ -3,7 +3,12 @@ import secrets
 import time
 from urllib.parse import urlencode
 
+import sqlalchemy as sa
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from pydantic import BaseModel
+
+from mnemos.db import session
+from mnemos.models.oauth_client import OAuthClient
 
 from authlib.jose.errors import JoseError
 from mcp.server.auth.provider import (
@@ -112,7 +117,6 @@ class MnemosOAuthProvider(OAuthProvider):
             signing_key=signing_key,
         )
 
-        self._clients: dict[str, OAuthClientInformationFull] = {}
         self._auth_codes: dict[str, AuthorizationCode] = {}
         self._access_tokens: dict[str, AccessToken] = {}  # jti → AccessToken
         self._refresh_tokens: dict[str, RefreshToken] = {}  # raw token → RefreshToken
@@ -223,7 +227,15 @@ class MnemosOAuthProvider(OAuthProvider):
     # ------------------------------------------------------------------
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
-        return self._clients.get(client_id)
+        async with session() as s:
+            data = await s.scalar(
+                sa.select(OAuthClient.data).where(OAuthClient.client_id == client_id)
+            )
+
+        if data is None:
+            return None
+
+        return OAuthClientInformationFull.model_validate(data)
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         if client_info.client_id is None:
@@ -234,15 +246,24 @@ class MnemosOAuthProvider(OAuthProvider):
             client_info.redirect_uris,
             client_info.scope,
         )
-        self._clients[client_info.client_id] = client_info
+        data = client_info.model_dump(mode="json")
+        async with session() as s:
+            await s.execute(
+                sqlite_insert(OAuthClient)
+                .values(client_id=client_info.client_id, data=data)
+                .on_conflict_do_update(
+                    index_elements=[OAuthClient.client_id],
+                    set_={"data": data},
+                )
+            )
 
     async def authorize(
         self, client: OAuthClientInformationFull, params: AuthorizationParams
     ) -> str:
-        if client.client_id not in self._clients:
+        if client.client_id is None:
             raise AuthorizeError(
                 error="unauthorized_client",
-                error_description="Client not registered",
+                error_description="Missing client_id",
             )
 
         scopes = list(params.scopes or [])
@@ -301,18 +322,59 @@ class MnemosOAuthProvider(OAuthProvider):
         jti = claims.get("jti")
         if not jti:
             return None
-        return self._access_tokens.get(jti)
+        stored = self._access_tokens.get(jti)
+        if stored is not None:
+            return stored
+        # Fallback: reconstruct from JWT claims after server restart.
+        # Revocation is best-effort — revoked tokens may become valid again after restart.
+        client_id = claims.get("client_id", "")
+        scopes = claims.get("scope", "").split() if claims.get("scope") else []
+        exp = claims.get("exp")
+        logger.debug(
+            "load_access_token: reconstructing from JWT claims (post-restart) jti=%s...",
+            jti[:8],
+        )
+        return AccessToken(
+            token=token,
+            client_id=client_id,
+            scopes=scopes,
+            expires_at=int(exp) if exp else None,
+        )
 
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str
     ) -> RefreshToken | None:
         entry = self._refresh_tokens.get(refresh_token)
-        if not entry or entry.client_id != client.client_id:
+        if entry:
+            if entry.client_id != client.client_id:
+                return None
+            if entry.expires_at is not None and entry.expires_at < time.time():
+                del self._refresh_tokens[refresh_token]
+                return None
+            return entry
+        # Fallback: verify as JWT and reconstruct after server restart.
+        try:
+            claims = self._jwt.verify_token(refresh_token)
+        except JoseError as exc:
+            logger.debug("load_refresh_token JWT invalid: %s", exc)
             return None
-        if entry.expires_at is not None and entry.expires_at < time.time():
-            del self._refresh_tokens[refresh_token]
+        if claims.get("token_use") != "refresh":
             return None
-        return entry
+        token_client_id = claims.get("client_id", "")
+        if token_client_id != client.client_id:
+            return None
+        scopes = claims.get("scope", "").split() if claims.get("scope") else []
+        exp = claims.get("exp")
+        logger.debug(
+            "load_refresh_token: reconstructing from JWT claims (post-restart) client_id=%s",
+            token_client_id,
+        )
+        return RefreshToken(
+            token=refresh_token,
+            client_id=token_client_id,
+            scopes=scopes,
+            expires_at=int(exp) if exp else None,
+        )
 
     async def exchange_refresh_token(
         self,
