@@ -2,8 +2,10 @@ from enum import StrEnum
 
 
 class MemoryType(StrEnum):
-    note = "note"
+    observation = "observation"
+    feedback = "feedback"
     fact = "fact"
-    reminder = "reminder"
+    preference = "preference"
+    instruction = "instruction"
     task = "task"
-    log = "log"
+    plan = "plan"
