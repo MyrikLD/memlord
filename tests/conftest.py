@@ -1,49 +1,55 @@
-import pytest_asyncio
-import sqlite_vec
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+import asyncio
 
-from mnemos.models import (
-    Memory,
-    MemoryTag,
-    Tag,
-)  # noqa: F401 — registers tables with Base
+import pytest
+import pytest_asyncio
+from sqlalchemy import text
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+from mnemos.config import settings
 from mnemos.models.base import Base
 
 
-async def _load_sqlite_vec(async_conn) -> None:
-    """Load sqlite-vec in aiosqlite's worker thread where the sqlite3 connection lives."""
-    aio = (
-        async_conn.sync_connection.connection.driver_connection
-    )  # aiosqlite.Connection
-    await aio._execute(aio._conn.enable_load_extension, True)
-    await aio._execute(sqlite_vec.load, aio._conn)
-    await aio._execute(aio._conn.enable_load_extension, False)
+@pytest.fixture(scope="session")
+def test_db_url(worker_id):
+    url = make_url(settings.db_url)
+    root_url = url.set(database=None)
+    test_db_name = f"test_{worker_id}"
+
+    async def setup():
+        root_engine = create_async_engine(root_url)
+        async with root_engine.connect() as conn:
+            conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
+            await conn.execute(text(f"DROP DATABASE IF EXISTS {test_db_name}"))
+            await conn.execute(text(f"CREATE DATABASE {test_db_name}"))
+        await root_engine.dispose()
+
+        engine = create_async_engine(url.set(database=test_db_name))
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.run_sync(Base.metadata.create_all)
+        await engine.dispose()
+
+    asyncio.run(setup())
+    yield url.set(database=test_db_name)
+
+    async def cleanup():
+        root_engine = create_async_engine(root_url)
+        async with root_engine.connect() as conn:
+            conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
+            await conn.execute(text(f"DROP DATABASE IF EXISTS {test_db_name}"))
+        await root_engine.dispose()
+
+    try:
+        asyncio.run(cleanup())
+    except Exception as e:
+        print(f"Warning: failed to drop test database: {e}")
 
 
 @pytest_asyncio.fixture
-async def session():
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        echo=False,
-        poolclass=StaticPool,
-    )
-
-    async with engine.begin() as conn:
-        await _load_sqlite_vec(conn)
-
-        await conn.run_sync(Base.metadata.create_all)
-        for stmt in [
-            "CREATE VIRTUAL TABLE memories_fts USING fts5(content, memory_id UNINDEXED, tokenize='porter unicode61')",
-            "CREATE VIRTUAL TABLE memories_vec USING vec0(memory_id INTEGER PRIMARY KEY, embedding FLOAT[384])",
-            "CREATE TRIGGER memories_fts_ai AFTER INSERT ON memories BEGIN "
-            "INSERT INTO memories_fts(memory_id, content) VALUES (new.id, new.content); END",
-        ]:
-            await conn.execute(text(stmt))
-
-    factory = async_sessionmaker(engine, expire_on_commit=False)
-    async with factory() as s, s.begin():
-        yield s
-
+async def session(test_db_url):
+    engine = create_async_engine(test_db_url)
+    async with engine.connect() as conn:
+        async with AsyncSession(bind=conn, expire_on_commit=False) as s:
+            yield s
     await engine.dispose()

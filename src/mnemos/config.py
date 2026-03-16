@@ -9,7 +9,7 @@ class Settings(BaseSettings):
         env_prefix="MNEMOS_", env_file=".env", extra="ignore"
     )
 
-    db_path: Path = Path("/data/memory.db")
+    db_url: str = "postgresql+asyncpg://postgres:postgres@localhost/mnemos"
     model_dir: Path = Path("/app/src/mnemos/onnx")
     host: str = "0.0.0.0"
     port: int = 8000

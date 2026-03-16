@@ -1,50 +1,24 @@
-import hashlib
-import hmac
-import json
 import math
-import secrets
-from pathlib import Path
 
 import sqlalchemy as sa
 from fastapi import (
     APIRouter,
     Depends,
-    File,
-    Form,
     HTTPException,
     Request,
     Response,
-    UploadFile,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
-from mnemos.config import settings
 from mnemos.dao import MemoryDao
 from mnemos.db import APISessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import UpdateMemoryRequest
 from mnemos.search import hybrid_search
+from mnemos.ui.utils import require_auth, templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-
-
-def _session_token() -> str:
-    return hmac.new(
-        settings.password.encode(), b"mnemos-ui-session", hashlib.sha256
-    ).hexdigest()
-
-
-def _require_auth(request: Request) -> None:
-    if not settings.password:
-        return
-    token = request.cookies.get("mnemos_session")
-    if not token or not hmac.compare_digest(token, _session_token()):
-        raise HTTPException(
-            status_code=307, headers={"Location": f"/ui/login?next={request.url.path}"}
-        )
 
 
 _COLS = (
@@ -55,34 +29,7 @@ _COLS = (
 )
 
 
-@router.get("/ui/login", response_class=HTMLResponse)
-async def login_get(request: Request, next: str = "/") -> HTMLResponse:
-    return templates.TemplateResponse(request, "login.html", {"next": next})
-
-
-@router.post("/ui/login")
-async def login_post(
-    request: Request,
-    password: str = Form(),
-    next: str = Form(default="/"),
-) -> Response:
-    if not settings.password or not secrets.compare_digest(
-        password.encode(), settings.password.encode()
-    ):
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {"next": next, "error": "Incorrect password."},
-            status_code=401,
-        )
-    response = RedirectResponse(next if next.startswith("/") else "/", status_code=303)
-    response.set_cookie(
-        "mnemos_session", _session_token(), httponly=True, samesite="lax"
-    )
-    return response
-
-
-@router.get("/", response_class=HTMLResponse, dependencies=[Depends(_require_auth)])
+@router.get("/", response_class=HTMLResponse, dependencies=[Depends(require_auth)])
 async def index(
     request: Request,
     s: APISessionDep,
@@ -146,7 +93,7 @@ async def index(
 
 
 @router.get(
-    "/search", response_class=HTMLResponse, dependencies=[Depends(_require_auth)]
+    "/search", response_class=HTMLResponse, dependencies=[Depends(require_auth)]
 )
 async def search(request: Request, s: APISessionDep, q: str = "") -> HTMLResponse:
     results = []
@@ -181,7 +128,7 @@ async def search(request: Request, s: APISessionDep, q: str = "") -> HTMLRespons
 
 
 @router.get(
-    "/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(_require_auth)]
+    "/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(require_auth)]
 )
 async def memory_detail(request: Request, id: int, s: APISessionDep) -> HTMLResponse:
     memory = await MemoryDao(s).get(id)
@@ -191,7 +138,7 @@ async def memory_detail(request: Request, id: int, s: APISessionDep) -> HTMLResp
 
 
 @router.put(
-    "/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(_require_auth)]
+    "/memory/{id}", response_class=HTMLResponse, dependencies=[Depends(require_auth)]
 )
 async def update_memory(
     request: Request,
@@ -236,65 +183,10 @@ async def update_memory(
     )
 
 
-@router.delete("/memory/{id}", dependencies=[Depends(_require_auth)])
+@router.delete("/memory/{id}", dependencies=[Depends(require_auth)])
 async def delete_memory_ui(id: int, s: APISessionDep) -> Response:
     try:
         await MemoryDao(s).delete(id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Memory not found")
     return Response(content="", status_code=200)
-
-
-@router.get("/ui/export", dependencies=[Depends(_require_auth)])
-async def export_memories_ui(s: APISessionDep) -> Response:
-    rows = (
-        (await s.execute(select(*_COLS, Memory.extra_data).order_by(Memory.created_at)))
-        .mappings()
-        .all()
-    )
-    ids = [r["id"] for r in rows]
-    tags_map = await MemoryDao(s).fetch_tags(ids) if ids else {}
-    data = [
-        {
-            "content": r["content"],
-            "memory_type": r["memory_type"],
-            "tags": tags_map.get(r["id"], []),
-            "metadata": r["extra_data"],
-            "created_at": str(r["created_at"]),
-        }
-        for r in rows
-    ]
-    return Response(
-        content=json.dumps(data, ensure_ascii=False, indent=2),
-        media_type="application/json",
-        headers={"Content-Disposition": "attachment; filename=memories.json"},
-    )
-
-
-@router.post("/ui/import", dependencies=[Depends(_require_auth)])
-async def import_memories_ui(s: APISessionDep, file: UploadFile = File()) -> Response:
-    try:
-        items = json.loads(await file.read())
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-    if not isinstance(items, list):
-        raise HTTPException(status_code=400, detail="Expected a JSON array")
-
-    dao = MemoryDao(s)
-    imported = skipped = 0
-    for item in items:
-        if not isinstance(item, dict) or not item.get("content"):
-            skipped += 1
-            continue
-        _, _, created = await dao.create(
-            content=item["content"],
-            memory_type=item.get("memory_type"),
-            metadata=item.get("metadata"),
-            tags=item.get("tags") or [],
-        )
-        if created:
-            imported += 1
-        else:
-            skipped += 1
-
-    return RedirectResponse(f"/?imported={imported}&skipped={skipped}", status_code=303)

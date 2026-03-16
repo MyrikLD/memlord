@@ -4,7 +4,7 @@ import time
 from urllib.parse import urlencode
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from pydantic import BaseModel
 
 from mnemos.db import session
@@ -266,7 +266,7 @@ class MnemosOAuthProvider(OAuthProvider):
         data = client_info.model_dump(mode="json")
         async with session() as s:
             await s.execute(
-                sqlite_insert(OAuthClient)
+                pg_insert(OAuthClient)
                 .values(client_id=client_info.client_id, data=data)
                 .on_conflict_do_update(
                     index_elements=[OAuthClient.client_id],

@@ -1,29 +1,23 @@
 from datetime import datetime, timedelta, timezone
 
 from dateparser.search import search_dates
-from sqlalchemy import insert, text, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mnemos.embeddings import embed
+from mnemos.dao import MemoryDao
 from mnemos.models import Memory
-from mnemos.search import fts5_escape, hybrid_search
+from mnemos.schemas import MemoryType
+from mnemos.search import hybrid_search
 
 
 async def _store(s: AsyncSession, content: str) -> int:
-    (mid,) = (
-        await s.execute(insert(Memory).values(content=content).returning(Memory.id))
-    ).one()
-    vec = embed(content)
-    await s.execute(
-        text("INSERT INTO memories_vec(memory_id, embedding) VALUES (:id, :vec)"),
-        {"id": mid, "vec": "[" + ",".join(str(v) for v in vec) + "]"},
+    mid, new = await MemoryDao(s).create(
+        content=content,
+        memory_type=MemoryType.fact,
+        metadata={},
+        tags=[],
     )
     return mid
-
-
-def test_fts5_escape():
-    assert fts5_escape("mcp-memory foo") == '"mcp-memory" AND "foo"'
-    assert fts5_escape("hello") == '"hello"'
 
 
 async def test_empty_db(session):
@@ -50,7 +44,7 @@ async def test_vector_semantic_match(session):
 
 
 async def test_threshold_zero_includes_bm25_hit(session):
-    """Regression: with fixed similarity formula, threshold=0.0 must not filter BM25 matches."""
+    """Regression: threshold=0.0 must not filter BM25-only matches."""
     await _store(session, "The quick brown fox jumps over the lazy dog")
 
     results = await hybrid_search(session, "quick brown fox", similarity_threshold=0.0)
@@ -78,7 +72,6 @@ async def test_limit(session):
 
 async def test_date_filter_today(session):
     mid = await _store(session, "something stored today")
-    # Backdate one memory to yesterday
     yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).replace(tzinfo=None)
     await session.execute(
         update(Memory).where(Memory.id == mid).values(created_at=yesterday)

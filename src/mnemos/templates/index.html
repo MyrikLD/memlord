@@ -24,8 +24,12 @@
 {% endif %}
 
 <form method="get" class="toolbar">
-    <input class="filter-input" name="memory_type" placeholder="Filter by type…"
-           value="{{ memory_type }}" style="max-width:200px">
+    <select class="filter-input" name="memory_type" style="max-width:200px">
+        <option value="">All types</option>
+        {% for t in ["fact", "preference", "instruction", "feedback"] %}
+        <option value="{{ t }}" {% if memory_type == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
     <input class="filter-input" name="tag" placeholder="Filter by tag…"
            value="{{ tag }}" style="max-width:200px">
     <button type="submit" class="btn btn-ghost btn-sm">Apply</button>

@@ -1,15 +1,16 @@
 import pytest
 
 from mnemos.dao import MemoryDao
+from mnemos.schemas import MemoryType
 
 
 async def test_crud(session):
     dao = MemoryDao(session)
 
     # create
-    mid, created_at, created = await dao.create(
+    mid, created = await dao.create(
         content="hello world",
-        memory_type="observation",
+        memory_type=MemoryType.fact,
         metadata={"k": "v"},
         tags=["foo", "bar"],
     )
@@ -17,10 +18,10 @@ async def test_crud(session):
     assert mid > 0
 
     # idempotent create
-    mid2, _, created2 = await dao.create(
+    mid2, created2 = await dao.create(
         content="hello world",
-        memory_type=None,
-        metadata=None,
+        memory_type=MemoryType.fact,
+        metadata={},
         tags=[],
     )
     assert created2 is False

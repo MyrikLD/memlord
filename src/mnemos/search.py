@@ -1,15 +1,13 @@
-from sqlalchemy import text
+from datetime import datetime
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Float, bindparam, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.config import settings
 from mnemos.embeddings import embed
+from mnemos.models import Memory
 from mnemos.schemas import SearchResult
-
-
-def fts5_escape(query: str) -> str:
-    """Escape query for FTS5: quote each token to suppress operator parsing, join with AND."""
-    tokens = query.split()
-    return " AND ".join('"' + t.replace('"', "") + '"' for t in tokens if t)
 
 
 async def hybrid_search(
@@ -21,7 +19,7 @@ async def hybrid_search(
     date_to: str | None = None,
     memory_type: str | None = None,
 ) -> list[SearchResult]:
-    n = (limit or settings.default_limit) * 4  # over-fetch before RRF cutoff
+    n = (limit or settings.default_limit) * 4
     k = settings.rrf_k
     threshold = (
         similarity_threshold
@@ -29,53 +27,42 @@ async def hybrid_search(
         else settings.sim_threshold
     )
 
-    extra_filter = ""
-    extra_params: dict = {}
+    conditions = []
     if date_from:
-        extra_filter += " AND m.created_at >= :date_from"
-        extra_params["date_from"] = date_from
+        conditions.append(Memory.created_at >= datetime.fromisoformat(date_from))
     if date_to:
-        extra_filter += " AND m.created_at <= :date_to"
-        extra_params["date_to"] = date_to
+        conditions.append(Memory.created_at <= datetime.fromisoformat(date_to))
     if memory_type:
-        extra_filter += " AND m.memory_type = :memory_type"
-        extra_params["memory_type"] = memory_type
+        conditions.append(Memory.memory_type == memory_type)
 
-    # BM25 via FTS5
-    bm25_sql = text(f"""
-        SELECT m.id, m.content, m.memory_type,
-               ROW_NUMBER() OVER (ORDER BY bm25(memories_fts)) AS bm25_rank
-        FROM memories_fts
-        JOIN memories m ON memories_fts.memory_id = m.id
-        WHERE memories_fts MATCH :query {extra_filter}
-        ORDER BY bm25(memories_fts)
-        LIMIT :n
-    """)
+    # BM25 via PostgreSQL FTS
+    tsquery = func.websearch_to_tsquery("simple", query)
+    ts_rank_expr = func.ts_rank(Memory.search_vector, tsquery)
+    bm25_rank = func.row_number().over(order_by=ts_rank_expr.desc()).label("bm25_rank")
 
-    bm25_rows = (
-        await session.execute(
-            bm25_sql, {"query": fts5_escape(query), "n": n, **extra_params}
-        )
-    ).fetchall()
+    bm25_q = (
+        select(Memory.id, Memory.content, Memory.memory_type, bm25_rank)
+        .where(Memory.search_vector.op("@@")(tsquery), *conditions)
+        .order_by(ts_rank_expr.desc())
+        .limit(n)
+    )
+    bm25_rows = (await session.execute(bm25_q)).fetchall()
 
-    # Vector KNN via sqlite-vec
+    # Vector KNN via pgvector cosine distance
     vector = embed(query)
-    vec_str = "[" + ",".join(str(v) for v in vector) + "]"
+    vec_param = bindparam("vec", type_=Vector(384))
+    distance = Memory.embedding.op("<=>", return_type=Float)(vec_param).label(
+        "distance"
+    )
+    vec_rank = func.row_number().over(order_by=distance).label("vec_rank")
 
-    vec_sql = text(f"""
-        SELECT m.id, m.content, m.memory_type,
-               v.distance,
-               ROW_NUMBER() OVER (ORDER BY v.distance) AS vec_rank
-        FROM memories_vec v
-        JOIN memories m ON v.memory_id = m.id
-        WHERE v.embedding MATCH :vec AND k = :n {extra_filter}
-        ORDER BY v.distance
-        LIMIT :n
-    """)
-
-    vec_rows = (
-        await session.execute(vec_sql, {"vec": vec_str, "n": n, **extra_params})
-    ).fetchall()
+    vec_q = (
+        select(Memory.id, Memory.content, Memory.memory_type, distance, vec_rank)
+        .where(Memory.embedding.isnot(None), *conditions)
+        .order_by(distance)
+        .limit(n)
+    )
+    vec_rows = (await session.execute(vec_q, {"vec": vector})).fetchall()
 
     # Build rank maps
     bm25_ranks: dict[int, int] = {row.id: row.bm25_rank for row in bm25_rows}
@@ -97,8 +84,8 @@ async def hybrid_search(
             rrf += 1.0 / (k + vec_ranks[doc_id])
 
         distance = vec_distances.get(doc_id)
-        # L2 distance on unit vectors → cosine similarity = 1 - dist²/2
-        similarity = (1.0 - (distance**2) / 2) if distance is not None else None
+        # pgvector <=> is cosine distance: similarity = 1 - distance
+        similarity = (1.0 - distance) if distance is not None else None
 
         if similarity is not None and similarity < threshold:
             continue
