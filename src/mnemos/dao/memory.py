@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.embeddings import embed
 from mnemos.models import Memory, MemoryTag, Tag
-from mnemos.schemas import MemoryListItem
+from mnemos.schemas import MemoryListItem, MemoryType
 
 _UNSET = object()
 
@@ -39,33 +39,29 @@ class MemoryDao:
     async def create(
         self,
         content: str,
-        memory_type: str | None,
-        metadata: dict | None,
-        tags: list[str] | None,
-    ) -> tuple[int, str, bool]:
-        row = await self._s.execute(
-            select(Memory.id, Memory.created_at).where(Memory.content == content)
+        memory_type: MemoryType,
+        metadata: dict,
+        tags: list[str],
+    ) -> tuple[int, bool]:
+        memory_id = await self._s.scalar(
+            select(Memory.id).where(Memory.content == content)
         )
-        existing = row.one_or_none()
-        if existing is not None:
-            memory_id, created_at = existing
-            return memory_id, str(created_at), False
+        if memory_id is not None:
+            return memory_id, False
 
-        memory_id, created_at = (
-            await self._s.execute(
-                insert(Memory)
-                .values(
-                    content=content,
-                    memory_type=memory_type,
-                    extra_data=metadata,
-                    embedding=embed(content),
-                )
-                .returning(Memory.id, Memory.created_at)
+        memory_id = await self._s.scalar(
+            insert(Memory)
+            .values(
+                content=str(content),
+                memory_type=MemoryType(memory_type),
+                extra_data=dict(metadata),
+                embedding=embed(content),
             )
-        ).one()
+            .returning(Memory.id)
+        )
 
         await self._upsert_tags(memory_id, tags or [])
-        return memory_id, str(created_at), True
+        return memory_id, True
 
     async def update(
         self,

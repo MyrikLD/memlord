@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import (
     APIRouter,
@@ -71,10 +72,11 @@ async def import_memories_ui(s: APISessionDep, file: UploadFile = File()) -> Res
     for item in items:
         try:
             parsed = ImportItem.model_validate(item)
-        except Exception:
+        except Exception as e:
+            logging.warning(f"Error {e} during import: {item}")
             skipped += 1
             continue
-        _, _, created = await dao.create(
+        _, created = await dao.create(
             content=parsed.content,
             memory_type=parsed.memory_type,
             metadata=parsed.metadata,

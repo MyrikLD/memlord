@@ -1,23 +1,21 @@
 from datetime import datetime, timedelta, timezone
 
 from dateparser.search import search_dates
-from sqlalchemy import insert, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mnemos.embeddings import embed
+from mnemos.dao import MemoryDao
 from mnemos.models import Memory
+from mnemos.schemas import MemoryType
 from mnemos.search import hybrid_search
 
 
 async def _store(s: AsyncSession, content: str) -> int:
-    mid = await s.scalar(
-        insert(Memory)
-        .values(
-            content=content,
-            memory_type="observation",
-            embedding=embed(content),
-        )
-        .returning(Memory.id)
+    mid, new = await MemoryDao(s).create(
+        content=content,
+        memory_type=MemoryType.fact,
+        metadata={},
+        tags=[],
     )
     return mid
 
