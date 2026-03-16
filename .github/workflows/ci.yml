@@ -18,20 +18,50 @@ jobs:
   migrations:
     name: Migration check
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     env:
-      MNEMOS_DB_PATH: /tmp/mnemos-test.db
+      MNEMOS_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --dev
+      - run: psql postgresql://postgres:postgres@localhost -c "CREATE DATABASE postgres;"
       - run: uv run alembic upgrade head
       - run: uv run alembic-autogen-check
 
   test:
     name: Tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     env:
       MNEMOS_MODEL_DIR: src/mnemos/onnx
+      MNEMOS_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
