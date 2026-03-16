@@ -38,7 +38,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --dev
-      - run: psql postgresql://postgres:postgres@localhost -c "CREATE DATABASE postgres;"
       - run: uv run alembic upgrade head
       - run: uv run alembic-autogen-check
 
