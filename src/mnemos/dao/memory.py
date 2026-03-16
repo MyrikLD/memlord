@@ -70,16 +70,11 @@ class MemoryDao:
         memory_type: str | None = _UNSET,  # type: ignore[assignment]
         metadata: dict | None = _UNSET,  # type: ignore[assignment]
         tags: list[str] = _UNSET,  # type: ignore[assignment]
-    ) -> tuple[int, str]:
+    ) -> int:
         """Update memory fields. Pass _UNSET to leave a field unchanged; None sets it to NULL."""
-        row = await self._s.execute(
-            select(Memory.id, Memory.created_at).where(Memory.id == id)
-        )
-        existing = row.one_or_none()
-        if existing is None:
+        memory_id = await self._s.scalar(select(Memory.id).where(Memory.id == id))
+        if memory_id is None:
             raise ValueError(f"Memory with id={id} not found")
-
-        memory_id, created_at = existing
 
         values: dict = {}
         if content is not _UNSET:
@@ -98,7 +93,7 @@ class MemoryDao:
         if tags is not _UNSET:
             await self._replace_tags(memory_id, tags)  # type: ignore[arg-type]
 
-        return memory_id, str(created_at)
+        return memory_id
 
     async def delete(self, id: int) -> None:
         result = await self._s.scalar(

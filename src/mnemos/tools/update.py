@@ -37,5 +37,5 @@ async def update_memory(
     if tags is not None:
         data["tags"] = tags
 
-    memory_id, created_at = await dao.update(**data)
-    return StoreResult(id=memory_id, created_at=created_at, created=False)
+    memory_id = await dao.update(**data)
+    return StoreResult(id=memory_id, created=False)
