@@ -56,5 +56,6 @@ exclude = '''
     \.git
   | .venv
   | migrations
+  | data
 )
 '''
