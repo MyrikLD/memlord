@@ -13,7 +13,7 @@
     <div class="detail-meta">
         {% if memory.memory_type %}<span class="badge badge-type">{{ memory.memory_type }}</span>{% endif %}
         {% for t in memory.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
-        <span class="card-date" style="margin-left:auto">{{ memory.created_at[:19] }}</span>
+        <span class="card-date" style="margin-left:auto">{{ memory.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
     </div>
     {% if memory.metadata %}
     <div style="margin-top:1.25rem">

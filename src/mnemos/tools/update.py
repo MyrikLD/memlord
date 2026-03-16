@@ -27,13 +27,13 @@ async def update_memory(
     dao = MemoryDao(s)
     data: dict[str, Any] = {
         "id": id,
-        "memory_type": memory_type,
+        "memory_type": MemoryType(memory_type),
     }
 
     if content is not None:
         data["content"] = content
     if metadata is not None:
-        data["metadata"] = metadata
+        data["metadata"] = metadata or {}
     if tags is not None:
         data["tags"] = tags
 

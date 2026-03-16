@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 
 from .base import Base
 
@@ -11,7 +11,7 @@ class Memory(Base):
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     content = sa.Column(sa.Text, unique=True, nullable=False)
     memory_type = sa.Column(sa.String(50), nullable=False)
-    extra_data = sa.Column("metadata", sa.JSON, nullable=False, server_default="{}")
+    extra_data = sa.Column("metadata", JSONB, nullable=False, server_default="{}")
     created_at = sa.Column(
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )

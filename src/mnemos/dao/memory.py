@@ -54,7 +54,7 @@ class MemoryDao:
             .values(
                 content=str(content),
                 memory_type=MemoryType(memory_type),
-                extra_data=dict(metadata),
+                extra_data=metadata or {},
                 embedding=embed(content),
             )
             .returning(Memory.id)
@@ -67,8 +67,8 @@ class MemoryDao:
         self,
         id: int,
         content: str = _UNSET,  # type: ignore[assignment]
-        memory_type: str | None = _UNSET,  # type: ignore[assignment]
-        metadata: dict | None = _UNSET,  # type: ignore[assignment]
+        memory_type: MemoryType = _UNSET,  # type: ignore[assignment]
+        metadata: dict = _UNSET,  # type: ignore[assignment]
         tags: list[str] = _UNSET,  # type: ignore[assignment]
     ) -> int:
         """Update memory fields. Pass _UNSET to leave a field unchanged; None sets it to NULL."""
@@ -81,9 +81,9 @@ class MemoryDao:
             values["content"] = content
             values["embedding"] = embed(content)
         if memory_type is not _UNSET:
-            values["memory_type"] = memory_type
+            values["memory_type"] = MemoryType(memory_type)
         if metadata is not _UNSET:
-            values["extra_data"] = metadata
+            values["extra_data"] = metadata or {}
 
         if values:
             await self._s.execute(

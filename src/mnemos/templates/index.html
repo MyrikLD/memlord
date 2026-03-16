@@ -67,7 +67,7 @@
     <div class="card-meta">
         {% if m.memory_type %}<span class="badge badge-type">{{ m.memory_type }}</span>{% endif %}
         {% for t in m.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
-        <span class="card-date">{{ m.created_at[:19] }}</span>
+        <span class="card-date">{{ m.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
     </div>
 </div>
 {% else %}
