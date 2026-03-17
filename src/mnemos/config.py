@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     )
 
     db_url: str = "postgresql+asyncpg://postgres:postgres@localhost/mnemos"
+    db_echo: bool = False
     model_dir: Path = Path("/app/src/mnemos/onnx")
     host: str = "0.0.0.0"
     port: int = 8000

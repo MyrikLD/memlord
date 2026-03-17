@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.config import settings
 from mnemos.embeddings import embed
-from mnemos.models import Memory
+from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import SearchResult
 
 
@@ -40,9 +40,22 @@ async def hybrid_search(
     ts_rank_expr = func.ts_rank(Memory.search_vector, tsquery)
     bm25_rank = func.row_number().over(order_by=ts_rank_expr.desc()).label("bm25_rank")
 
+    tag_match = (
+        select(MemoryTag.memory_id)
+        .join(Tag, MemoryTag.tag_id == Tag.id)
+        .where(
+            MemoryTag.memory_id == Memory.id,
+            func.to_tsvector("simple", Tag.name).op("@@")(tsquery),
+        )
+        .exists()
+    )
+
     bm25_q = (
         select(Memory.id, Memory.content, Memory.memory_type, bm25_rank)
-        .where(Memory.search_vector.op("@@")(tsquery), *conditions)
+        .where(
+            (Memory.search_vector.op("@@")(tsquery)) | tag_match,
+            *conditions,
+        )
         .order_by(ts_rank_expr.desc())
         .limit(n)
     )
@@ -87,7 +100,13 @@ async def hybrid_search(
         # pgvector <=> is cosine distance: similarity = 1 - distance
         similarity = (1.0 - distance) if distance is not None else None
 
-        if similarity is not None and similarity < threshold:
+        # BM25 hits (content or tag match) are always included; threshold only
+        # filters pure vec matches that lack any text/tag signal.
+        if (
+            doc_id not in bm25_ranks
+            and similarity is not None
+            and similarity < threshold
+        ):
             continue
 
         content, memory_type = contents[doc_id]

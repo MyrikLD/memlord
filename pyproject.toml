@@ -13,8 +13,9 @@ dependencies = [
     "pgvector>=0.3.0",
     "pydantic-settings>=2.7.0",
     "dateparser>=1.2.0",
-    "sqlalchemy>=2.0.48",
+    "sqlalchemy[asyncio]>=2.0.48",
     "tokenizers>=0.21.0",
+    "greenlet>=3.3.2",
 ]
 
 [project.scripts]
@@ -40,7 +41,7 @@ build-backend = "hatchling.build"
 packages = ["src/mnemos"]
 
 [tool.coverage.run]
-source = ["src/payroll"]
+source = ["src/mnemos"]
 parallel = true
 concurrency = ["thread", "greenlet"]
 

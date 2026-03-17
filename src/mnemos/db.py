@@ -16,7 +16,7 @@ from mnemos.config import settings
 
 @cache
 def get_engine() -> AsyncEngine:
-    return create_async_engine(settings.db_url, echo=False)
+    return create_async_engine(settings.db_url, echo=settings.db_echo)
 
 
 @cache

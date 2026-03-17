@@ -110,6 +110,15 @@ async def test_date_filter_includes_today(session):
     assert any(r.id == mid for r in results)
 
 
+async def test_tag_search(session):
+    dao = MemoryDao(session)
+    await dao.create(
+        "Zigbee migration plan", MemoryType.fact, {}, ["matter", "zigbee2mqtt"]
+    )
+    results = await hybrid_search(session, "matter", similarity_threshold=0.0)
+    assert results
+
+
 def test_dateparser_today_truncates_before_now():
     """dateparser 'today' truncated to midnight must be before current time."""
     found = search_dates(

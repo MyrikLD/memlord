@@ -9,6 +9,10 @@ from mnemos.schemas import MemoryListItem, MemoryType
 _UNSET = object()
 
 
+def _embed_text(content: str, tags: list[str]) -> str:
+    return f"{content} {' '.join(tags)}" if tags else content
+
+
 class MemoryDao:
     def __init__(self, s: AsyncSession) -> None:
         self._s = s
@@ -27,6 +31,14 @@ class MemoryDao:
                 .values(memory_id=memory_id, tag_id=tag_id)
                 .on_conflict_do_nothing()
             )
+
+    async def _fetch_tag_names(self, memory_id: int) -> list[str]:
+        rows = await self._s.execute(
+            select(Tag.name)
+            .join(MemoryTag, MemoryTag.tag_id == Tag.id)
+            .where(MemoryTag.memory_id == memory_id)
+        )
+        return [row[0] for row in rows.fetchall()]
 
     async def _cleanup_orphan_tags(self) -> None:
         await self._s.execute(delete(Tag).where(~Tag.id.in_(select(MemoryTag.tag_id))))
@@ -55,7 +67,7 @@ class MemoryDao:
                 content=str(content),
                 memory_type=MemoryType(memory_type),
                 extra_data=metadata or {},
-                embedding=embed(content),
+                embedding=embed(_embed_text(content, tags or [])),
             )
             .returning(Memory.id)
         )
@@ -77,13 +89,27 @@ class MemoryDao:
             raise ValueError(f"Memory with id={id} not found")
 
         values: dict = {}
-        if content is not _UNSET:
-            values["content"] = content
-            values["embedding"] = embed(content)
         if memory_type is not _UNSET:
             values["memory_type"] = MemoryType(memory_type)
         if metadata is not _UNSET:
             values["extra_data"] = metadata or {}
+
+        if content is not _UNSET or tags is not _UNSET:
+            new_content = (
+                content
+                if content is not _UNSET
+                else await self._s.scalar(
+                    select(Memory.content).where(Memory.id == memory_id)
+                )
+            )
+            new_tags = (
+                list(tags)
+                if tags is not _UNSET
+                else await self._fetch_tag_names(memory_id)
+            )
+            if content is not _UNSET:
+                values["content"] = content
+            values["embedding"] = embed(_embed_text(new_content, new_tags))
 
         if values:
             await self._s.execute(

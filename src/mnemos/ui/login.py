@@ -14,12 +14,12 @@ from .utils import session_token, templates
 router = APIRouter()
 
 
-@router.get("/ui/login", response_class=HTMLResponse)
+@router.get("/login", response_class=HTMLResponse)
 async def login_get(request: Request, next: str = "/") -> HTMLResponse:
     return templates.TemplateResponse(request, "login.html", {"next": next})
 
 
-@router.post("/ui/login")
+@router.post("/login")
 async def login_post(
     request: Request,
     password: str = Form(),
