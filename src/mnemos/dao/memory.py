@@ -112,7 +112,9 @@ class MemoryDao:
                 Memory.workspace_id.in_(workspace_ids),
             )
         else:
-            access_check = and_(Memory.workspace_id.is_(None), Memory.created_by == user_id)
+            access_check = and_(
+                Memory.workspace_id.is_(None), Memory.created_by == user_id
+            )
 
         memory_id = await self._s.scalar(
             select(Memory.id).where(Memory.id == id, access_check)
@@ -156,7 +158,9 @@ class MemoryDao:
 
         return memory_id
 
-    async def delete(self, id: int, user_id: int, workspace_ids: list[int] | None = None) -> None:
+    async def delete(
+        self, id: int, user_id: int, workspace_ids: list[int] | None = None
+    ) -> None:
         """Delete a memory.
 
         workspace_ids: user's accessible workspace IDs (membership proof).
@@ -169,12 +173,12 @@ class MemoryDao:
                 Memory.workspace_id.in_(workspace_ids),
             )
         else:
-            access_check = and_(Memory.workspace_id.is_(None), Memory.created_by == user_id)
+            access_check = and_(
+                Memory.workspace_id.is_(None), Memory.created_by == user_id
+            )
 
         result = await self._s.scalar(
-            delete(Memory)
-            .where(Memory.id == id, access_check)
-            .returning(Memory.id)
+            delete(Memory).where(Memory.id == id, access_check).returning(Memory.id)
         )
         if result is None:
             raise ValueError(f"Memory with id={id} not found")
@@ -197,7 +201,9 @@ class MemoryDao:
                 Memory.workspace_id.in_(workspace_ids),
             )
         else:
-            access_check = and_(Memory.workspace_id.is_(None), Memory.created_by == user_id)
+            access_check = and_(
+                Memory.workspace_id.is_(None), Memory.created_by == user_id
+            )
 
         row = (
             (

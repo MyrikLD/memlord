@@ -60,7 +60,13 @@ async def hybrid_search(
     )
 
     bm25_q = (
-        select(Memory.id, Memory.content, Memory.memory_type, Memory.workspace_id, bm25_rank)
+        select(
+            Memory.id,
+            Memory.content,
+            Memory.memory_type,
+            Memory.workspace_id,
+            bm25_rank,
+        )
         .where(
             (Memory.search_vector.op("@@")(tsquery)) | tag_match,
             *conditions,
@@ -73,11 +79,20 @@ async def hybrid_search(
     # Vector KNN via pgvector cosine distance
     vector = embed(query)
     vec_param = bindparam("vec", type_=Vector(384))
-    distance = Memory.embedding.op("<=>", return_type=Float)(vec_param).label("distance")
+    distance = Memory.embedding.op("<=>", return_type=Float)(vec_param).label(
+        "distance"
+    )
     vec_rank = func.row_number().over(order_by=distance).label("vec_rank")
 
     vec_q = (
-        select(Memory.id, Memory.content, Memory.memory_type, Memory.workspace_id, distance, vec_rank)
+        select(
+            Memory.id,
+            Memory.content,
+            Memory.memory_type,
+            Memory.workspace_id,
+            distance,
+            vec_rank,
+        )
         .where(Memory.embedding.isnot(None), *conditions)
         .order_by(distance)
         .limit(n)

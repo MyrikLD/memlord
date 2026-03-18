@@ -97,7 +97,9 @@ async def index(
         {
             **row,
             "tags": tags_map.get(row["id"], []),
-            "workspace_name": ws_names.get(row["workspace_id"]) if row["workspace_id"] else None,
+            "workspace_name": (
+                ws_names.get(row["workspace_id"]) if row["workspace_id"] else None
+            ),
         }
         for row in rows
     ]
@@ -162,7 +164,9 @@ async def search(
                         "tags": tags_map.get(r.id, []),
                         "created_at": created_map.get(r.id, utcnow()),  # type: ignore[call-overload]
                         "rrf_score": round(r.rrf_score, 4),
-                        "workspace_name": ws_names.get(r.workspace_id) if r.workspace_id else None,
+                        "workspace_name": (
+                            ws_names.get(r.workspace_id) if r.workspace_id else None
+                        ),
                     }
                 )
     return templates.TemplateResponse(

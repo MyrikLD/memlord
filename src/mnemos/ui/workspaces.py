@@ -28,9 +28,7 @@ async def workspace_new_get(
     request: Request,
     user: User = Depends(get_current_user),
 ) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request, "workspace_new.html", {"user": user}
-    )
+    return templates.TemplateResponse(request, "workspace_new.html", {"user": user})
 
 
 @router.post("/workspaces/new")
@@ -55,7 +53,11 @@ async def workspace_new_post(
         return templates.TemplateResponse(
             request,
             "workspace_new.html",
-            {"user": user, "error": f"A workspace named '{name}' already exists.", "name": name},
+            {
+                "user": user,
+                "error": f"A workspace named '{name}' already exists.",
+                "name": name,
+            },
             status_code=400,
         )
     return RedirectResponse(f"/ui/workspaces/{ws.id}", status_code=303)

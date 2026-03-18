@@ -29,7 +29,9 @@ class WorkspaceDao:
 
     async def create(self, name: str, owner_id: int) -> WorkspaceInfo:
         workspace_id = await self._s.scalar(
-            insert(Workspace).values(name=name, created_by=owner_id).returning(Workspace.id)
+            insert(Workspace)
+            .values(name=name, created_by=owner_id)
+            .returning(Workspace.id)
         )
         assert workspace_id is not None
         await self._s.execute(
@@ -47,7 +49,9 @@ class WorkspaceDao:
             )
         )
 
-    async def add_member(self, workspace_id: int, user_id: int, role: str = "member") -> None:
+    async def add_member(
+        self, workspace_id: int, user_id: int, role: str = "member"
+    ) -> None:
         await self._s.execute(
             insert(WorkspaceMember).values(
                 workspace_id=workspace_id, user_id=user_id, role=role
@@ -77,7 +81,9 @@ class WorkspaceDao:
 
     async def get_accessible_workspace_ids(self, user_id: int) -> list[int]:
         rows = await self._s.scalars(
-            select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == user_id)
+            select(WorkspaceMember.workspace_id).where(
+                WorkspaceMember.user_id == user_id
+            )
         )
         return list(rows)
 
@@ -89,18 +95,22 @@ class WorkspaceDao:
             .scalar_subquery()
         )
         rows = (
-            await self._s.execute(
-                select(
-                    Workspace.id,
-                    Workspace.name,
-                    WorkspaceMember.role,
-                    member_count_subq.label("member_count"),
+            (
+                await self._s.execute(
+                    select(
+                        Workspace.id,
+                        Workspace.name,
+                        WorkspaceMember.role,
+                        member_count_subq.label("member_count"),
+                    )
+                    .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+                    .where(WorkspaceMember.user_id == user_id)
+                    .order_by(Workspace.name)
                 )
-                .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
-                .where(WorkspaceMember.user_id == user_id)
-                .order_by(Workspace.name)
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return [
             WorkspaceInfo(
                 id=row["id"],
@@ -120,17 +130,21 @@ class WorkspaceDao:
             .scalar_subquery()
         )
         row = (
-            await self._s.execute(
-                select(
-                    Workspace.id,
-                    Workspace.name,
-                    WorkspaceMember.role,
-                    member_count_subq.label("member_count"),
+            (
+                await self._s.execute(
+                    select(
+                        Workspace.id,
+                        Workspace.name,
+                        WorkspaceMember.role,
+                        member_count_subq.label("member_count"),
+                    )
+                    .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+                    .where(Workspace.name == name, WorkspaceMember.user_id == user_id)
                 )
-                .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
-                .where(Workspace.name == name, WorkspaceMember.user_id == user_id)
             )
-        ).mappings().one_or_none()
+            .mappings()
+            .one_or_none()
+        )
         if row is None:
             return None
         return WorkspaceInfo(
@@ -149,17 +163,23 @@ class WorkspaceDao:
             .scalar_subquery()
         )
         row = (
-            await self._s.execute(
-                select(
-                    Workspace.id,
-                    Workspace.name,
-                    WorkspaceMember.role,
-                    member_count_subq.label("member_count"),
+            (
+                await self._s.execute(
+                    select(
+                        Workspace.id,
+                        Workspace.name,
+                        WorkspaceMember.role,
+                        member_count_subq.label("member_count"),
+                    )
+                    .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+                    .where(
+                        Workspace.id == workspace_id, WorkspaceMember.user_id == user_id
+                    )
                 )
-                .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
-                .where(Workspace.id == workspace_id, WorkspaceMember.user_id == user_id)
             )
-        ).mappings().one_or_none()
+            .mappings()
+            .one_or_none()
+        )
         if row is None:
             return None
         return WorkspaceInfo(
@@ -171,19 +191,23 @@ class WorkspaceDao:
 
     async def get_members(self, workspace_id: int) -> list[WorkspaceMemberInfo]:
         rows = (
-            await self._s.execute(
-                select(
-                    WorkspaceMember.user_id,
-                    WorkspaceMember.role,
-                    WorkspaceMember.joined_at,
-                    User.display_name,
-                    User.email,
+            (
+                await self._s.execute(
+                    select(
+                        WorkspaceMember.user_id,
+                        WorkspaceMember.role,
+                        WorkspaceMember.joined_at,
+                        User.display_name,
+                        User.email,
+                    )
+                    .join(User, User.id == WorkspaceMember.user_id)
+                    .where(WorkspaceMember.workspace_id == workspace_id)
+                    .order_by(WorkspaceMember.joined_at)
                 )
-                .join(User, User.id == WorkspaceMember.user_id)
-                .where(WorkspaceMember.workspace_id == workspace_id)
-                .order_by(WorkspaceMember.joined_at)
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return [
             WorkspaceMemberInfo(
                 user_id=row["user_id"],
@@ -215,20 +239,24 @@ class WorkspaceDao:
 
     async def get_invite(self, token: str):
         return (
-            await self._s.execute(
-                select(
-                    WorkspaceInvite.id,
-                    WorkspaceInvite.workspace_id,
-                    WorkspaceInvite.expires_at,
-                    WorkspaceInvite.used_by,
-                    Workspace.name.label("workspace_name"),
-                    User.display_name.label("inviter_name"),
+            (
+                await self._s.execute(
+                    select(
+                        WorkspaceInvite.id,
+                        WorkspaceInvite.workspace_id,
+                        WorkspaceInvite.expires_at,
+                        WorkspaceInvite.used_by,
+                        Workspace.name.label("workspace_name"),
+                        User.display_name.label("inviter_name"),
+                    )
+                    .join(Workspace, Workspace.id == WorkspaceInvite.workspace_id)
+                    .join(User, User.id == WorkspaceInvite.created_by)
+                    .where(WorkspaceInvite.id == token)
                 )
-                .join(Workspace, Workspace.id == WorkspaceInvite.workspace_id)
-                .join(User, User.id == WorkspaceInvite.created_by)
-                .where(WorkspaceInvite.id == token)
             )
-        ).mappings().one_or_none()
+            .mappings()
+            .one_or_none()
+        )
 
     async def use_invite(self, token: str, user_id: int) -> WorkspaceInfo:
         row = await self.get_invite(token)
