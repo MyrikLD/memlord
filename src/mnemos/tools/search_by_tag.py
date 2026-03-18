@@ -2,6 +2,7 @@ from typing import Literal
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
@@ -25,6 +26,7 @@ async def search_by_tag(
     tags: list[str],
     operation: Literal["AND", "OR"] = "AND",
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
+    uid: int = UserDep,  # type: ignore[assignment]
 ) -> list[MemoryListItem]:
     """Search memories by tags. AND: all tags present. OR: any tag present."""
     if not tags:
@@ -45,7 +47,7 @@ async def search_by_tag(
         )
         stmt = (
             select(*_COLS)
-            .where(matching_count == len(normalized))
+            .where(matching_count == len(normalized), Memory.created_by == uid)
             .order_by(Memory.created_at.desc())
         )
     else:
@@ -53,7 +55,7 @@ async def search_by_tag(
             select(*_COLS)
             .join(MemoryTag, Memory.id == MemoryTag.memory_id)
             .join(Tag, MemoryTag.tag_id == Tag.id)
-            .where(Tag.name.in_(normalized))
+            .where(Tag.name.in_(normalized), Memory.created_by == uid)
             .distinct()
             .order_by(Memory.created_at.desc())
         )
@@ -70,7 +72,7 @@ async def search_by_tag(
             id=row["id"],
             content=row["content"],
             memory_type=row["memory_type"],
-            extra_data=row["extra_data"],
+            metadata=row["extra_data"],
             tags=tags_map.get(row["id"], []),
             created_at=row["created_at"],
         )

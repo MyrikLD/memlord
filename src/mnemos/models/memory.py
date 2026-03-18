@@ -9,7 +9,8 @@ class Memory(Base):
     __tablename__ = "memories"
 
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    content = sa.Column(sa.Text, unique=True, nullable=False)
+    content = sa.Column(sa.Text, nullable=False)
+    created_by = sa.Column(sa.Integer, sa.ForeignKey("users.id"), nullable=False)
     memory_type = sa.Column(sa.String(50), nullable=False)
     extra_data = sa.Column("metadata", JSONB, nullable=False, server_default="{}")
     created_at = sa.Column(
@@ -23,6 +24,7 @@ class Memory(Base):
     )
 
     __table_args__ = (
+        sa.UniqueConstraint("content", "created_by", name="uq_memories_content_user"),
         sa.Index("ix_memories_search_vector", "search_vector", postgresql_using="gin"),
         sa.Index(
             "ix_memories_embedding",

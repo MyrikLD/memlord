@@ -628,6 +628,42 @@
         }
 
         /* ── Responsive ───────────────────────────────────────────── */
+        /* ── User menu ────────────────────────────────────────────── */
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .nav-user-name {
+            font-size: 0.8125rem;
+            color: var(--nav-text);
+            white-space: nowrap;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn-logout {
+            padding: 0.3125rem 0.625rem;
+            background: transparent;
+            border: 1px solid var(--nav-input-bd);
+            border-radius: var(--radius-sm);
+            color: var(--nav-text-2);
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color .12s, color .12s;
+            white-space: nowrap;
+        }
+
+        .btn-logout:hover {
+            border-color: #71717a;
+            color: var(--nav-text);
+        }
+
         @media (max-width: 640px) {
             .nav-inner {
                 padding: 0 1rem;
@@ -649,6 +685,10 @@
             .search-form {
                 max-width: none;
             }
+
+            .nav-user-name {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -665,6 +705,14 @@
                    value="{{ q | default('') }}" autocomplete="off">
             <button type="submit" class="btn-search">Search</button>
         </form>
+        {% if user is defined %}
+        <div class="nav-user">
+            <span class="nav-user-name" title="{{ user.display_name }}">{{ user.display_name }}</span>
+            <form method="post" action="/ui/logout" style="margin:0">
+                <button type="submit" class="btn-logout">Sign out</button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 </nav>
 <main>

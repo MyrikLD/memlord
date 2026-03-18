@@ -5,6 +5,7 @@ from mcp.types import ToolAnnotations
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
@@ -31,12 +32,13 @@ async def list_memories(
     memory_type: MemoryType | None = None,
     tag: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
+    uid: int = UserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
     """Paginated list of memories with optional type/tag filters."""
     page_size = min(page_size, 100)
     offset = (page - 1) * page_size
 
-    q = select(*_COLS)
+    q = select(*_COLS).where(Memory.created_by == uid)
 
     if memory_type:
         q = q.where(Memory.memory_type == memory_type)

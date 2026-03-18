@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mnemos — Sign in</title>
+    <title>Mnemos — Create account</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -26,7 +26,7 @@
         .login-subheading { font-size: 0.8125rem; color: #9ca3af; margin-bottom: 1.5rem; }
         .form-group { margin-bottom: 1rem; }
         label { display: block; font-size: 0.8125rem; font-weight: 500; color: #374151; margin-bottom: 0.375rem; }
-        input[type="email"], input[type="password"] {
+        input[type="email"], input[type="password"], input[type="text"] {
             width: 100%; padding: 0.5625rem 0.75rem; border: 1px solid #e5e7eb;
             border-radius: 6px; color: #111827; font-size: 0.875rem; font-family: inherit;
             background: #fff; outline: none; transition: border-color .15s, box-shadow .15s; }
@@ -39,9 +39,9 @@
         .error { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.875rem;
             padding: 0.625rem 0.875rem; background: #fef2f2; border: 1px solid #fecaca;
             border-radius: 6px; color: #dc2626; font-size: 0.8125rem; }
-        .register-link { margin-top: 1rem; text-align: center; font-size: 0.8125rem; color: #6b7280; }
-        .register-link a { color: #6366f1; text-decoration: none; font-weight: 500; }
-        .register-link a:hover { text-decoration: underline; }
+        .signin-link { margin-top: 1rem; text-align: center; font-size: 0.8125rem; color: #6b7280; }
+        .signin-link a { color: #6366f1; text-decoration: none; font-weight: 500; }
+        .signin-link a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -51,22 +51,34 @@
         <span class="login-brand-name">Mnemos</span>
     </div>
     <div class="login-card">
-        <div class="login-heading">Sign in</div>
-        <div class="login-subheading">Enter your email and password to continue.</div>
-        <form method="post" action="/ui/login">
+        <div class="login-heading">Create account</div>
+        <div class="login-subheading">Fill in the details below to get started.</div>
+        <form method="post" action="/ui/register">
             <input type="hidden" name="next" value="{{ next }}">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" autofocus required autocomplete="email">
+                <input type="email" id="email" name="email" autofocus required
+                       autocomplete="email" value="{{ email or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="display_name">Display name</label>
+                <input type="text" id="display_name" name="display_name" required
+                       autocomplete="name" value="{{ display_name or '' }}">
             </div>
             <div class="form-group">
                 <label for="pw">Password</label>
-                <input type="password" id="pw" name="password" required autocomplete="current-password">
+                <input type="password" id="pw" name="password" required
+                       autocomplete="new-password">
             </div>
-            <button type="submit" class="btn-submit">Sign in</button>
+            <div class="form-group">
+                <label for="pw2">Confirm password</label>
+                <input type="password" id="pw2" name="password2" required
+                       autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn-submit">Create account</button>
             {% if error %}<p class="error">{{ error }}</p>{% endif %}
         </form>
-        <p class="register-link">No account? <a href="/ui/register?next={{ next }}">Create one</a></p>
+        <p class="signin-link">Already have an account? <a href="/ui/login?next={{ next }}">Sign in</a></p>
     </div>
 </div>
 </body>

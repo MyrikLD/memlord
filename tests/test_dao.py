@@ -4,7 +4,7 @@ from mnemos.dao import MemoryDao
 from mnemos.schemas import MemoryType
 
 
-async def test_crud(session):
+async def test_crud(session, user_id):
     dao = MemoryDao(session)
 
     # create
@@ -13,16 +13,18 @@ async def test_crud(session):
         memory_type=MemoryType.fact,
         metadata={"k": "v"},
         tags=["foo", "bar"],
+        user_id=user_id,
     )
     assert created is True
     assert mid > 0
 
-    # idempotent create
+    # idempotent create (same user, same content)
     mid2, created2 = await dao.create(
         content="hello world",
         memory_type=MemoryType.fact,
         metadata={},
         tags=[],
+        user_id=user_id,
     )
     assert created2 is False
     assert mid2 == mid
@@ -36,11 +38,11 @@ async def test_crud(session):
     assert meta[mid][0] == {"k": "v"}
 
     # update content + tags
-    await dao.update(id=mid, content="updated content", tags=["baz"])
+    await dao.update(id=mid, user_id=user_id, content="updated content", tags=["baz"])
     tags2 = await dao.fetch_tags([mid])
     assert tags2[mid] == ["baz"]
 
     # delete
-    await dao.delete(mid)
+    await dao.delete(mid, user_id)
     with pytest.raises(ValueError):
-        await dao.delete(mid)
+        await dao.delete(mid, user_id)

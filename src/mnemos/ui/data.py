@@ -22,8 +22,11 @@ from mnemos.ui.utils import require_auth
 router = APIRouter()
 
 
-@router.get("/export", dependencies=[Depends(require_auth)])
-async def export_memories_ui(s: APISessionDep) -> Response:
+@router.get("/export")
+async def export_memories_ui(
+    s: APISessionDep,
+    uid: int = Depends(require_auth),
+) -> Response:
     rows = (
         (
             await s.execute(
@@ -33,7 +36,9 @@ async def export_memories_ui(s: APISessionDep) -> Response:
                     Memory.memory_type,
                     Memory.created_at,
                     Memory.extra_data.label("metadata"),
-                ).order_by(Memory.created_at)
+                )
+                .where(Memory.created_by == uid)
+                .order_by(Memory.created_at)
             )
         )
         .mappings()
@@ -55,8 +60,12 @@ async def export_memories_ui(s: APISessionDep) -> Response:
     )
 
 
-@router.post("/import", dependencies=[Depends(require_auth)])
-async def import_memories_ui(s: APISessionDep, file: UploadFile = File()) -> Response:
+@router.post("/import")
+async def import_memories_ui(
+    s: APISessionDep,
+    file: UploadFile = File(),
+    uid: int = Depends(require_auth),
+) -> Response:
     try:
         items = json.loads(await file.read())
     except json.JSONDecodeError:
@@ -78,6 +87,7 @@ async def import_memories_ui(s: APISessionDep, file: UploadFile = File()) -> Res
             memory_type=parsed.memory_type,
             metadata=parsed.metadata,
             tags=parsed.tags,
+            user_id=uid,
         )
         if created:
             imported += 1

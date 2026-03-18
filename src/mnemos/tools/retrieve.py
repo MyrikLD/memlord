@@ -2,6 +2,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
 from mnemos.db import MCPSessionDep
 from mnemos.schemas import MemoryResult, MemoryType
@@ -18,11 +19,13 @@ async def retrieve_memory(
     similarity_threshold: float = 0.7,
     memory_type: MemoryType | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
+    uid: int = UserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
     """Hybrid semantic + full-text search over stored memories."""
     results = await hybrid_search(
         s,
         query=query,
+        user_id=uid,
         limit=limit,
         similarity_threshold=similarity_threshold,
         memory_type=memory_type,

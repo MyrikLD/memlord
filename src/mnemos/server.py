@@ -16,11 +16,10 @@ from mnemos.tools import (
 
 
 def _build_auth() -> AuthProvider | None:
-    if settings.oauth_jwt_secret and settings.password and settings.base_url:
+    if settings.base_url:
         return MnemosOAuthProvider(
             base_url=settings.base_url,
             jwt_secret=settings.oauth_jwt_secret,
-            password=settings.password,
         )
     return None
 

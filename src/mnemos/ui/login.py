@@ -1,17 +1,21 @@
-import secrets
-
-from fastapi import (
-    APIRouter,
-    Form,
-    Request,
-    Response,
-)
+from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from mnemos.config import settings
-from .utils import session_token, templates
+from mnemos.auth import hash_password, verify_password
+from mnemos.dao.user import UserDao
+from mnemos.db import APISessionDep
+from .utils import make_session_token, templates
 
 router = APIRouter()
+
+
+def _set_session(response: Response, user_id: int) -> None:
+    response.set_cookie(
+        "mnemos_session",
+        make_session_token(user_id),
+        httponly=True,
+        samesite="lax",
+    )
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -22,20 +26,75 @@ async def login_get(request: Request, next: str = "/") -> HTMLResponse:
 @router.post("/login")
 async def login_post(
     request: Request,
+    s: APISessionDep,
+    email: str = Form(),
     password: str = Form(),
     next: str = Form(default="/"),
 ) -> Response:
-    if not settings.password or not secrets.compare_digest(
-        password.encode(), settings.password.encode()
-    ):
+    user = await UserDao(s).get_by_email(email)
+
+    if user is None or not verify_password(password, user.hashed_password):  # type: ignore[arg-type]
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"next": next, "error": "Incorrect password."},
+            {"next": next, "error": "Incorrect email or password."},
             status_code=401,
         )
-    response = RedirectResponse(next if next.startswith("/") else "/", status_code=303)
-    response.set_cookie(
-        "mnemos_session", session_token(), httponly=True, samesite="lax"
+
+    redirect_url = next if next.startswith("/") else "/"
+    response = RedirectResponse(redirect_url, status_code=303)
+    _set_session(response, user.id)  # type: ignore[arg-type]
+    return response
+
+
+@router.post("/logout")
+async def logout() -> Response:
+    response = RedirectResponse("/ui/login", status_code=303)
+    response.delete_cookie("mnemos_session")
+    return response
+
+
+@router.get("/register", response_class=HTMLResponse)
+async def register_get(request: Request, next: str = "/") -> HTMLResponse:
+    return templates.TemplateResponse(request, "register.html", {"next": next})
+
+
+@router.post("/register")
+async def register_post(
+    request: Request,
+    s: APISessionDep,
+    email: str = Form(),
+    display_name: str = Form(),
+    password: str = Form(),
+    password2: str = Form(),
+    next: str = Form(default="/"),
+) -> Response:
+    def _err(msg: str) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            {"next": next, "email": email, "display_name": display_name, "error": msg},
+            status_code=400,
+        )
+
+    if not display_name.strip():
+        return _err("Display name is required.")
+    if not password:
+        return _err("Password is required.")
+    if password != password2:
+        return _err("Passwords do not match.")
+
+    existing = await UserDao(s).get_by_email(email)
+    if existing is not None:
+        return _err("An account with this email already exists.")
+
+    user = await UserDao(s).create(
+        email=email,
+        display_name=display_name,
+        hashed_password=hash_password(password),
     )
+
+    redirect_url = next if next.startswith("/") else "/"
+    response = RedirectResponse(redirect_url, status_code=303)
+    _set_session(response, user.id)  # type: ignore[arg-type]
     return response

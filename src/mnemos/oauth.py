@@ -7,6 +7,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from pydantic import BaseModel
 
+from mnemos.auth import hash_password, verify_password
+from mnemos.dao.user import UserDao
 from mnemos.db import session
 from mnemos.models.oauth_client import OAuthClient
 
@@ -36,6 +38,31 @@ REFRESH_TOKEN_TTL = 30 * 24 * 3600  # 30 days
 AUTH_CODE_TTL = 300  # 5 minutes
 PENDING_TTL = 600  # 10 minutes to complete login
 
+_CARD_STYLE = """\
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #111;
+       display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+        padding: 2rem; width: 100%; max-width: 380px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #111; }
+label { display: block; font-size: 0.875rem; color: #555; margin-bottom: 0.375rem; }
+input[type=email], input[type=password], input[type=text] {
+    width: 100%; padding: 0.625rem 0.75rem;
+    border: 1px solid #d1d5db; border-radius: 6px; color: #111;
+    font-size: 0.875rem; outline: none; margin-bottom: 1rem; }
+input:focus { border-color: #6366f1; }
+button { width: 100%; margin-top: 0.25rem; padding: 0.625rem;
+         background: #6366f1; border: none; border-radius: 6px;
+         color: #fff; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+button:hover { background: #4f46e5; }
+.error { margin-top: 1rem; padding: 0.5rem 0.75rem; background: #fef2f2;
+         border: 1px solid #f87171; border-radius: 6px;
+         color: #dc2626; font-size: 0.8125rem; }
+.meta { margin-top: 1rem; font-size: 0.75rem; color: #9ca3af; }
+.hint { margin-bottom: 1rem; font-size: 0.8125rem; color: #6b7280; }
+"""
+
 _LOGIN_HTML = """\
 <!DOCTYPE html>
 <html lang="en">
@@ -43,38 +70,56 @@ _LOGIN_HTML = """\
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mnemos — Sign in</title>
-  <style>
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ font-family: system-ui, sans-serif; background: #f5f5f5; color: #111;
-           display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
-    .card {{ background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
-             padding: 2rem; width: 100%; max-width: 360px;
-             box-shadow: 0 2px 8px rgba(0,0,0,.08); }}
-    h1 {{ font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #111; }}
-    label {{ display: block; font-size: 0.875rem; color: #555; margin-bottom: 0.375rem; }}
-    input[type=password] {{ width: 100%; padding: 0.625rem 0.75rem;
-                            border: 1px solid #d1d5db; border-radius: 6px; color: #111;
-                            font-size: 0.875rem; outline: none; }}
-    input[type=password]:focus {{ border-color: #6366f1; }}
-    button {{ width: 100%; margin-top: 1.25rem; padding: 0.625rem;
-              background: #6366f1; border: none; border-radius: 6px;
-              color: #fff; font-size: 0.875rem; font-weight: 500; cursor: pointer; }}
-    button:hover {{ background: #4f46e5; }}
-    .error {{ margin-top: 1rem; padding: 0.5rem 0.75rem; background: #fef2f2;
-              border: 1px solid #f87171; border-radius: 6px;
-              color: #dc2626; font-size: 0.8125rem; }}
-    .meta {{ margin-top: 1rem; font-size: 0.75rem; color: #9ca3af; }}
-  </style>
+  <style>{style}</style>
 </head>
 <body>
   <div class="card">
     <h1>Mnemos</h1>
     <form method="post">
       <input type="hidden" name="id" value="{pending_id}">
+      <input type="hidden" name="action" value="login">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autofocus required
+             autocomplete="email" value="{email}">
       <label for="pw">Password</label>
-      <input type="password" id="pw" name="password" autofocus required
+      <input type="password" id="pw" name="password" required
              autocomplete="current-password">
       <button type="submit">Sign in</button>
+      {error_block}
+    </form>
+    <p class="meta">Client: {client_id}</p>
+  </div>
+</body>
+</html>
+"""
+
+_REGISTER_HTML = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mnemos — Create account</title>
+  <style>{style}</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Create account</h1>
+    <p class="hint">No account found for <strong>{email}</strong>. Create one to continue.</p>
+    <form method="post">
+      <input type="hidden" name="id" value="{pending_id}">
+      <input type="hidden" name="action" value="register">
+      <input type="hidden" name="email" value="{email}">
+      <label for="display_name">Display name</label>
+      <input type="text" id="display_name" name="display_name" autofocus required
+             autocomplete="name">
+      <label for="pw">Password</label>
+      <input type="password" id="pw" name="password" required
+             autocomplete="new-password">
+      <label for="pw2">Confirm password</label>
+      <input type="password" id="pw2" name="password2" required
+             autocomplete="new-password">
+      <button type="submit">Create account</button>
       {error_block}
     </form>
     <p class="meta">Client: {client_id}</p>
@@ -92,9 +137,9 @@ class _PendingAuth(BaseModel):
 
 
 class MnemosOAuthProvider(OAuthProvider):
-    """Full in-process OAuth 2.1 authorization server with password login page."""
+    """Full in-process OAuth 2.1 authorization server with email+password login."""
 
-    def __init__(self, base_url: str, jwt_secret: str, password: str) -> None:
+    def __init__(self, base_url: str, jwt_secret: str) -> None:
         super().__init__(
             base_url=base_url,
             client_registration_options=ClientRegistrationOptions(
@@ -106,7 +151,6 @@ class MnemosOAuthProvider(OAuthProvider):
             required_scopes=["mcp"],
         )
         self._base_url = base_url.rstrip("/")
-        self._password = password
 
         self._signing_key = derive_jwt_key(
             high_entropy_material=jwt_secret, salt="mnemos-oauth-jwt"
@@ -149,9 +193,7 @@ class MnemosOAuthProvider(OAuthProvider):
         routes = super().get_routes(mcp_path)
         routes += [Route("/login", endpoint=self._login, methods=["GET", "POST"])]
 
-        # RFC 9728: clients discover metadata via path-based URL first, then fall back to
-        # root-based /.well-known/oauth-protected-resource. Alias the path-specific route
-        # at root so both work.
+        # RFC 9728: alias path-specific well-known at root so both work.
         for route in list(routes):
             if isinstance(route, Route) and route.path.startswith(
                 "/.well-known/oauth-protected-resource/"
@@ -185,8 +227,10 @@ class MnemosOAuthProvider(OAuthProvider):
             )
         return HTMLResponse(
             _LOGIN_HTML.format(
+                style=_CARD_STYLE,
                 pending_id=pending_id,
                 client_id=pending.client_id,
+                email="",
                 error_block="",
             )
         )
@@ -194,7 +238,7 @@ class MnemosOAuthProvider(OAuthProvider):
     async def _login_post(self, request: Request) -> Response:
         form = await request.form()
         pending_id = str(form.get("id", ""))
-        password = str(form.get("password", ""))
+        action = str(form.get("action", "login"))
 
         pending = self._pending.get(pending_id)
         if not pending or pending.expires_at < time.time():
@@ -207,18 +251,101 @@ class MnemosOAuthProvider(OAuthProvider):
                 status_code=400,
             )
 
-        if not secrets.compare_digest(password.encode(), self._password.encode()):
-            logger.warning("login POST: wrong password client_id=%s", pending.client_id)
+        if action == "register":
+            return await self._handle_register(request, form, pending_id, pending)
+        return await self._handle_login(request, form, pending_id, pending)
+
+    async def _handle_login(
+        self, request: Request, form, pending_id: str, pending: "_PendingAuth"
+    ) -> Response:
+        email = str(form.get("email", "")).strip().lower()
+        password = str(form.get("password", ""))
+
+        async with session() as s:
+            user = await UserDao(s).get_by_email(email)
+
+        if user is None:
+            # No account → show registration form
+            logger.info("login: email not found, showing register form email=%s", email)
             return HTMLResponse(
-                _LOGIN_HTML.format(
+                _REGISTER_HTML.format(
+                    style=_CARD_STYLE,
                     pending_id=pending_id,
                     client_id=pending.client_id,
+                    email=email,
+                    error_block="",
+                )
+            )
+
+        if not verify_password(password, user.hashed_password):  # type: ignore[arg-type]
+            logger.warning(
+                "login: wrong password email=%s client_id=%s", email, pending.client_id
+            )
+            return HTMLResponse(
+                _LOGIN_HTML.format(
+                    style=_CARD_STYLE,
+                    pending_id=pending_id,
+                    client_id=pending.client_id,
+                    email=email,
                     error_block='<p class="error">Incorrect password.</p>',
                 ),
                 status_code=401,
             )
 
+        return await self._issue_code(pending_id, pending, user.id)  # type: ignore[arg-type]
+
+    async def _handle_register(
+        self, request: Request, form, pending_id: str, pending: "_PendingAuth"
+    ) -> Response:
+        email = str(form.get("email", "")).strip().lower()
+        display_name = str(form.get("display_name", "")).strip()
+        password = str(form.get("password", ""))
+        password2 = str(form.get("password2", ""))
+
+        def _reg_error(msg: str) -> Response:
+            return HTMLResponse(
+                _REGISTER_HTML.format(
+                    style=_CARD_STYLE,
+                    pending_id=pending_id,
+                    client_id=pending.client_id,
+                    email=email,
+                    error_block=f'<p class="error">{msg}</p>',
+                ),
+                status_code=400,
+            )
+
+        if not display_name:
+            return _reg_error("Display name is required.")
+        if not password:
+            return _reg_error("Password is required.")
+        if password != password2:
+            return _reg_error("Passwords do not match.")
+
+        async with session() as s:
+            existing = await UserDao(s).get_by_email(email)
+            if existing is not None:
+                return _reg_error("An account with this email already exists.")
+            user = await UserDao(s).create(
+                email=email,
+                display_name=display_name,
+                hashed_password=hash_password(password),
+            )
+
+        logger.info("register: created user id=%d email=%s", user.id, email)  # type: ignore[str-format]
+        return await self._issue_code(pending_id, pending, user.id)  # type: ignore[arg-type]
+
+    async def _issue_code(
+        self, pending_id: str, pending: "_PendingAuth", user_id: int
+    ) -> Response:
         del self._pending[pending_id]
+
+        # Link this OAuth client to the authenticated user
+        async with session() as s:
+            await s.execute(
+                sa.update(OAuthClient)
+                .where(OAuthClient.client_id == pending.client_id)
+                .values(user_id=user_id)
+            )
 
         code = secrets.token_urlsafe(32)
         self._auth_codes[code] = AuthorizationCode(
@@ -235,7 +362,10 @@ class MnemosOAuthProvider(OAuthProvider):
             str(pending.params.redirect_uri), code=code, state=pending.params.state
         )
         logger.info(
-            "login POST: success client_id=%s code=%s...", pending.client_id, code[:8]
+            "issue_code: success client_id=%s user_id=%d code=%s...",
+            pending.client_id,
+            user_id,
+            code[:8],
         )
         return RedirectResponse(redirect, status_code=302)
 
@@ -343,7 +473,6 @@ class MnemosOAuthProvider(OAuthProvider):
         if stored is not None:
             return stored
         # Fallback: reconstruct from JWT claims after server restart.
-        # Revocation is best-effort — revoked tokens may become valid again after restart.
         client_id = claims.get("client_id", "")
         scopes = claims.get("scope", "").split() if claims.get("scope") else []
         exp = claims.get("exp")

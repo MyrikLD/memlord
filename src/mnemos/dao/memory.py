@@ -54,9 +54,12 @@ class MemoryDao:
         memory_type: MemoryType,
         metadata: dict,
         tags: list[str],
+        user_id: int,
     ) -> tuple[int, bool]:
         memory_id = await self._s.scalar(
-            select(Memory.id).where(Memory.content == content)
+            select(Memory.id).where(
+                Memory.content == content, Memory.created_by == user_id
+            )
         )
         if memory_id is not None:
             return memory_id, False
@@ -68,9 +71,11 @@ class MemoryDao:
                 memory_type=MemoryType(memory_type),
                 extra_data=metadata or {},
                 embedding=embed(_embed_text(content, tags or [])),
+                created_by=user_id,
             )
             .returning(Memory.id)
         )
+        assert memory_id is not None
 
         await self._upsert_tags(memory_id, tags or [])
         return memory_id, True
@@ -78,13 +83,16 @@ class MemoryDao:
     async def update(
         self,
         id: int,
+        user_id: int,
         content: str = _UNSET,  # type: ignore[assignment]
         memory_type: MemoryType = _UNSET,  # type: ignore[assignment]
         metadata: dict = _UNSET,  # type: ignore[assignment]
         tags: list[str] = _UNSET,  # type: ignore[assignment]
     ) -> int:
         """Update memory fields. Pass _UNSET to leave a field unchanged; None sets it to NULL."""
-        memory_id = await self._s.scalar(select(Memory.id).where(Memory.id == id))
+        memory_id = await self._s.scalar(
+            select(Memory.id).where(Memory.id == id, Memory.created_by == user_id)
+        )
         if memory_id is None:
             raise ValueError(f"Memory with id={id} not found")
 
@@ -98,8 +106,11 @@ class MemoryDao:
             new_content = (
                 content
                 if content is not _UNSET
-                else await self._s.scalar(
-                    select(Memory.content).where(Memory.id == memory_id)
+                else (
+                    await self._s.scalar(
+                        select(Memory.content).where(Memory.id == memory_id)
+                    )
+                    or ""
                 )
             )
             new_tags = (
@@ -121,15 +132,17 @@ class MemoryDao:
 
         return memory_id
 
-    async def delete(self, id: int) -> None:
+    async def delete(self, id: int, user_id: int) -> None:
         result = await self._s.scalar(
-            delete(Memory).where(Memory.id == id).returning(Memory.id)
+            delete(Memory)
+            .where(Memory.id == id, Memory.created_by == user_id)
+            .returning(Memory.id)
         )
         if result is None:
             raise ValueError(f"Memory with id={id} not found")
         await self._cleanup_orphan_tags()
 
-    async def get(self, id: int) -> MemoryListItem | None:
+    async def get(self, id: int, user_id: int) -> MemoryListItem | None:
         row = (
             (
                 await self._s.execute(
@@ -139,7 +152,7 @@ class MemoryDao:
                         Memory.memory_type,
                         Memory.extra_data.label("metadata"),
                         Memory.created_at,
-                    ).where(Memory.id == id)
+                    ).where(Memory.id == id, Memory.created_by == user_id)
                 )
             )
             .mappings()

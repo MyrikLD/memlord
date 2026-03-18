@@ -29,7 +29,6 @@ def provider():
     return MnemosOAuthProvider(
         base_url=BASE_URL,
         jwt_secret="test-only-secret",
-        password="hunter2",
     )
 
 

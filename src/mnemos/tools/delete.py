@@ -1,5 +1,6 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
 from mnemos.db import MCPSessionDep
 from mnemos.schemas import DeleteResult
@@ -12,8 +13,12 @@ mcp = FastMCP()
     output_schema=DeleteResult.model_json_schema(),
     annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False),
 )
-async def delete_memory(id: int, s: AsyncSession = MCPSessionDep) -> DeleteResult:  # type: ignore[assignment]
+async def delete_memory(
+    id: int,
+    s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
+    uid: int = UserDep,  # type: ignore[assignment]
+) -> DeleteResult:
     """Delete a memory by ID. Removes from vec index and FTS (via trigger)."""
     dao = MemoryDao(s)
-    await dao.delete(id)
+    await dao.delete(id, uid)
     return DeleteResult(success=True, id=id)

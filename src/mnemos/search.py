@@ -13,6 +13,7 @@ from mnemos.schemas import SearchResult
 async def hybrid_search(
     session: AsyncSession,
     query: str,
+    user_id: int,
     limit: int | None = None,
     similarity_threshold: float | None = None,
     date_from: datetime | None = None,
@@ -27,7 +28,7 @@ async def hybrid_search(
         else settings.sim_threshold
     )
 
-    conditions = []
+    conditions = [Memory.created_by == user_id]
     if date_from:
         conditions.append(Memory.created_at >= date_from)
     if date_to:
@@ -114,7 +115,7 @@ async def hybrid_search(
             SearchResult(
                 id=doc_id,
                 content=content,
-                memory_type=memory_type,
+                memory_type=memory_type,  # type: ignore[arg-type]
                 rrf_score=rrf,
                 vec_similarity=similarity,
             )

@@ -2,12 +2,14 @@ import asyncio
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import text
+from sqlalchemy import insert, text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
+from mnemos.auth import hash_password
 from mnemos.config import settings
 from mnemos.models.base import Base
+from mnemos.models.user import User
 
 
 @pytest.fixture(scope="session")
@@ -53,3 +55,20 @@ async def session(test_db_url):
         async with AsyncSession(bind=conn, expire_on_commit=False) as s:
             yield s
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def user_id(session: AsyncSession) -> int:
+    """Create a test user and return its id."""
+    uid = await session.scalar(
+        insert(User)
+        .values(
+            email="test@example.com",
+            display_name="Test User",
+            hashed_password=hash_password("test-password"),
+        )
+        .returning(User.id)
+    )
+    assert uid is not None
+    await session.flush()
+    return uid
