@@ -225,7 +225,7 @@ Save a memory entry.
 | Field         | Type     | Required | Description                                                                          |
 |---------------|----------|----------|--------------------------------------------------------------------------------------|
 | `content`     | string   | ✅        | Memory text                                                                          |
-| `memory_type` | string   | ✅        | Type: `observation`, `feedback`, `fact`, `preference`, `instruction`, `task`, `plan` |
+| `memory_type` | string   | ✅        | Type: `fact`, `preference`, `instruction`, `feedback` |
 | `tags`        | string[] | ❌        | Tags                                                                                 |
 | `metadata`    | object   | ❌        | Arbitrary metadata (JSON)                                                            |
 | `workspace`   | string   | ❌        | Workspace name (must have write access). `null` → personal workspace                 |
