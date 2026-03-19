@@ -7,27 +7,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.models.user import User
 from memlord.models.workspace import Workspace, WorkspaceInvite, WorkspaceMember
-from memlord.schemas.workspace import WorkspaceInfo, WorkspaceMemberInfo
+from memlord.schemas.workspace import WorkspaceInfo, WorkspaceMemberInfo, WorkspaceRole
+
+_WS_COLS = (
+    Workspace.id,
+    Workspace.name,
+    Workspace.description,
+    Workspace.is_personal,
+    WorkspaceMember.role,
+)
 
 
 class WorkspaceDao:
     def __init__(self, s: AsyncSession) -> None:
         self._s = s
 
-    async def create(self, name: str, owner_id: int) -> WorkspaceInfo:
+    async def create(
+        self, name: str, owner_id: int, description: str | None = None
+    ) -> WorkspaceInfo:
         workspace_id = await self._s.scalar(
             insert(Workspace)
-            .values(name=name, created_by=owner_id, is_personal=False)
+            .values(name=name, description=description, created_by=owner_id, is_personal=False)
             .returning(Workspace.id)
         )
         assert workspace_id is not None
         await self._s.execute(
             insert(WorkspaceMember).values(
-                workspace_id=workspace_id, user_id=owner_id, role="owner"
+                workspace_id=workspace_id, user_id=owner_id, role=WorkspaceRole.owner
             )
         )
         return WorkspaceInfo(
-            id=workspace_id, name=name, role="owner", member_count=1, is_personal=False
+            id=workspace_id, name=name, description=description,
+            role=WorkspaceRole.owner, member_count=1, is_personal=False,
         )
 
     async def create_personal(self, user_id: int) -> WorkspaceInfo:
@@ -41,11 +52,12 @@ class WorkspaceDao:
         assert workspace_id is not None
         await self._s.execute(
             insert(WorkspaceMember).values(
-                workspace_id=workspace_id, user_id=user_id, role="owner"
+                workspace_id=workspace_id, user_id=user_id, role=WorkspaceRole.owner
             )
         )
         return WorkspaceInfo(
-            id=workspace_id, name=name, role="owner", member_count=1, is_personal=True
+            id=workspace_id, name=name, description=None,
+            role=WorkspaceRole.owner, member_count=1, is_personal=True,
         )
 
     async def get_personal(self, user_id: int) -> WorkspaceInfo:
@@ -62,6 +74,7 @@ class WorkspaceDao:
                     select(
                         Workspace.id,
                         Workspace.name,
+                        Workspace.description,
                         Workspace.is_personal,
                         WorkspaceMember.role,
                         member_count_subq.label("member_count"),
@@ -82,6 +95,7 @@ class WorkspaceDao:
         return WorkspaceInfo(
             id=row["id"],
             name=row["name"],
+            description=row["description"],
             role=row["role"],
             member_count=row["member_count"],
             is_personal=True,
@@ -90,23 +104,24 @@ class WorkspaceDao:
     async def can_write(self, workspace_id: int, user_id: int) -> bool:
         """True if user has owner or editor role in the workspace."""
         role = await self.get_role(workspace_id, user_id)
-        return role in ("owner", "editor")
+        return role in (WorkspaceRole.owner, WorkspaceRole.editor)
 
     async def can_read(self, workspace_id: int, user_id: int) -> bool:
         """True if user is any member of the workspace."""
         role = await self.get_role(workspace_id, user_id)
         return role is not None
 
-    async def get_role(self, workspace_id: int, user_id: int) -> str | None:
-        return await self._s.scalar(
+    async def get_role(self, workspace_id: int, user_id: int) -> WorkspaceRole | None:
+        value = await self._s.scalar(
             select(WorkspaceMember.role).where(
                 WorkspaceMember.workspace_id == workspace_id,
                 WorkspaceMember.user_id == user_id,
             )
         )
+        return WorkspaceRole(value) if value is not None else None
 
     async def add_member(
-        self, workspace_id: int, user_id: int, role: str = "member"
+        self, workspace_id: int, user_id: int, role: WorkspaceRole = WorkspaceRole.member
     ) -> None:
         await self._s.execute(
             insert(WorkspaceMember).values(
@@ -118,7 +133,7 @@ class WorkspaceDao:
         role = await self.get_role(workspace_id, user_id)
         if role is None:
             raise ValueError(f"Not a member of workspace {workspace_id}")
-        if role == "owner":
+        if role == WorkspaceRole.owner:
             raise ValueError(
                 "Owners cannot leave a workspace. Delete the workspace instead."
             )
@@ -131,7 +146,7 @@ class WorkspaceDao:
 
     async def delete_workspace(self, workspace_id: int, owner_id: int) -> None:
         role = await self.get_role(workspace_id, owner_id)
-        if role != "owner":
+        if role != WorkspaceRole.owner:
             raise ValueError("Only the owner can delete a workspace")
         await self._s.execute(delete(Workspace).where(Workspace.id == workspace_id))
 
@@ -156,6 +171,7 @@ class WorkspaceDao:
                     select(
                         Workspace.id,
                         Workspace.name,
+                        Workspace.description,
                         Workspace.is_personal,
                         WorkspaceMember.role,
                         member_count_subq.label("member_count"),
@@ -172,6 +188,7 @@ class WorkspaceDao:
             WorkspaceInfo(
                 id=row["id"],
                 name=row["name"],
+                description=row["description"],
                 role=row["role"],
                 member_count=row["member_count"],
                 is_personal=row["is_personal"],
@@ -193,6 +210,7 @@ class WorkspaceDao:
                     select(
                         Workspace.id,
                         Workspace.name,
+                        Workspace.description,
                         Workspace.is_personal,
                         WorkspaceMember.role,
                         member_count_subq.label("member_count"),
@@ -209,6 +227,7 @@ class WorkspaceDao:
         return WorkspaceInfo(
             id=row["id"],
             name=row["name"],
+            description=row["description"],
             role=row["role"],
             member_count=row["member_count"],
             is_personal=row["is_personal"],
@@ -228,6 +247,7 @@ class WorkspaceDao:
                     select(
                         Workspace.id,
                         Workspace.name,
+                        Workspace.description,
                         Workspace.is_personal,
                         WorkspaceMember.role,
                         member_count_subq.label("member_count"),
@@ -246,9 +266,22 @@ class WorkspaceDao:
         return WorkspaceInfo(
             id=row["id"],
             name=row["name"],
+            description=row["description"],
             role=row["role"],
             member_count=row["member_count"],
             is_personal=row["is_personal"],
+        )
+
+    async def update_description(
+        self, workspace_id: int, owner_id: int, description: str | None
+    ) -> None:
+        role = await self.get_role(workspace_id, owner_id)
+        if role != WorkspaceRole.owner:
+            raise ValueError("Only the owner can update the workspace description")
+        await self._s.execute(
+            update(Workspace)
+            .where(Workspace.id == workspace_id)
+            .values(description=description)
         )
 
     async def get_members(self, workspace_id: int) -> list[WorkspaceMemberInfo]:
@@ -339,7 +372,7 @@ class WorkspaceDao:
             .where(WorkspaceInvite.id == token)
             .values(used_by=user_id, used_at=datetime.utcnow())
         )
-        await self.add_member(workspace_id, user_id, role="member")
+        await self.add_member(workspace_id, user_id, role=WorkspaceRole.member)
 
         ws_info = await self.get_by_id_for_user(workspace_id, user_id)
         assert ws_info is not None

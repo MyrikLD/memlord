@@ -12,6 +12,22 @@
 </div>
 
 <div class="detail-card">
+    <div class="section-title">Description</div>
+    {% if workspace.role == 'owner' %}
+    <form method="post" action="/ui/workspaces/{{ workspace.id }}/description">
+        <textarea class="form-input" name="description" rows="3"
+                  placeholder="What is this workspace for? What kind of memories go here?"
+                  style="margin-bottom:.75rem">{{ workspace.description or '' }}</textarea>
+        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+    </form>
+    {% else %}
+    <p style="font-size:.875rem;color:var(--text-3);margin:0">
+        {{ workspace.description or 'No description.' }}
+    </p>
+    {% endif %}
+</div>
+
+<div class="detail-card">
     <div class="section-title">Members ({{ workspace.member_count }})</div>
     {% for m in members %}
     <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border)">

@@ -36,8 +36,10 @@ async def workspace_new_post(
     s: APISessionDep,
     user: UserDep,
     name: str = Form(),
+    description: str = Form(default=""),
 ) -> Response:
     name = name.strip()
+    description_val = description.strip() or None
     if not name:
         return templates.TemplateResponse(
             request,
@@ -46,7 +48,9 @@ async def workspace_new_post(
             status_code=400,
         )
     try:
-        ws = await WorkspaceDao(s).create(name=name, owner_id=user.id)
+        ws = await WorkspaceDao(s).create(
+            name=name, owner_id=user.id, description=description_val
+        )
     except IntegrityError:
         return templates.TemplateResponse(
             request,
@@ -55,6 +59,7 @@ async def workspace_new_post(
                 "user": user,
                 "error": f"A workspace named '{name}' already exists.",
                 "name": name,
+                "description": description,
             },
             status_code=400,
         )
@@ -78,6 +83,27 @@ async def workspace_detail(
         "workspace_detail.html",
         {"user": user, "workspace": ws, "members": members},
     )
+
+
+@router.post("/workspaces/{workspace_id}/description")
+async def workspace_description_post(
+    workspace_id: int,
+    s: APISessionDep,
+    user: UserDep,
+    description: str = Form(default=""),
+) -> Response:
+    ws = await WorkspaceDao(s).get_by_id_for_user(workspace_id, user.id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    try:
+        await WorkspaceDao(s).update_description(
+            workspace_id=workspace_id,
+            owner_id=user.id,
+            description=description.strip() or None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    return RedirectResponse(f"/ui/workspaces/{workspace_id}", status_code=303)
 
 
 @router.post("/workspaces/{workspace_id}/invite", response_class=HTMLResponse)

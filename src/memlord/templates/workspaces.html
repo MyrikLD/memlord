@@ -17,6 +17,9 @@
         <span class="badge badge-type">{{ ws.role }}</span>
     </div>
     <div class="card-meta">
+        {% if ws.description %}
+        <span style="font-size:.8125rem;color:var(--text-3)">{{ ws.description }}</span>
+        {% endif %}
         <span style="font-size:.75rem;color:var(--text-4)">{{ ws.member_count }} member{{ 's' if ws.member_count != 1 else '' }}</span>
     </div>
 </div>

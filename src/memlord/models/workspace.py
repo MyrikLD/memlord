@@ -13,6 +13,7 @@ class Workspace(Base):
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )
     is_personal = sa.Column(sa.Boolean, nullable=False, server_default="false")
+    description = sa.Column(sa.Text, nullable=True)
 
     __table_args__ = (
         sa.Index(
