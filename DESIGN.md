@@ -1,4 +1,4 @@
-# Mnemos — Design Document
+# Memlord — Design Document
 
 ## Overview
 
@@ -35,11 +35,11 @@ Reciprocal Rank Fusion.
 ## Project Structure
 
 ```
-src/mnemos/
+src/memlord/
 ├── __init__.py
 ├── main.py                # entrypoint: FastAPI app + uvicorn
-├── server.py              # FastMCP("Mnemos") + mcp.mount() per tool
-├── config.py              # pydantic-settings (MNEMOS_* prefix)
+├── server.py              # FastMCP("Memlord") + mcp.mount() per tool
+├── config.py              # pydantic-settings (MEMLORD_* prefix)
 ├── db.py                  # async SQLAlchemy engine (asyncpg) + SessionDep
 ├── embeddings.py          # ONNX session, tokenization, mean pooling, L2 norm
 ├── search.py              # hybrid BM25 + vector KNN + RRF fusion
@@ -112,20 +112,20 @@ docker-compose.yml
 
 ## Configuration
 
-Via `pydantic-settings`. Sources in priority order: environment variables (prefix `MNEMOS_`) → `.env` file → defaults.
+Via `pydantic-settings`. Sources in priority order: environment variables (prefix `MEMLORD_`) → `.env` file → defaults.
 
 | Variable                  | Default                                                   | Description                         |
 |---------------------------|-----------------------------------------------------------|-------------------------------------|
-| `MNEMOS_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/mnemos` | PostgreSQL connection URL           |
-| `MNEMOS_DB_ECHO`          | `false`                                                   | SQLAlchemy query logging            |
-| `MNEMOS_MODEL_DIR`        | `/app/src/mnemos/onnx`                                    | Directory containing ONNX model     |
-| `MNEMOS_HOST`             | `0.0.0.0`                                                 | uvicorn host                        |
-| `MNEMOS_PORT`             | `8000`                                                    | uvicorn port                        |
-| `MNEMOS_BASE_URL`         | —                                                         | Public server URL (enables OAuth)   |
-| `MNEMOS_RRF_K`            | `60`                                                      | RRF fusion k parameter              |
-| `MNEMOS_DEFAULT_LIMIT`    | `10`                                                      | Default result limit                |
-| `MNEMOS_SIM_THRESHOLD`    | `0.7`                                                     | Default cosine similarity threshold |
-| `MNEMOS_OAUTH_JWT_SECRET` | `mnemos-dev-secret-please-change`                         | JWT signing secret                  |
+| `MEMLORD_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/memlord` | PostgreSQL connection URL           |
+| `MEMLORD_DB_ECHO`          | `false`                                                   | SQLAlchemy query logging            |
+| `MEMLORD_MODEL_DIR`        | `/app/src/memlord/onnx`                                    | Directory containing ONNX model     |
+| `MEMLORD_HOST`             | `0.0.0.0`                                                 | uvicorn host                        |
+| `MEMLORD_PORT`             | `8000`                                                    | uvicorn port                        |
+| `MEMLORD_BASE_URL`         | —                                                         | Public server URL (enables OAuth)   |
+| `MEMLORD_RRF_K`            | `60`                                                      | RRF fusion k parameter              |
+| `MEMLORD_DEFAULT_LIMIT`    | `10`                                                      | Default result limit                |
+| `MEMLORD_SIM_THRESHOLD`    | `0.7`                                                     | Default cosine similarity threshold |
+| `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret                  |
 
 ---
 
@@ -134,7 +134,7 @@ Via `pydantic-settings`. Sources in priority order: environment variables (prefi
 `content` → tokenization (`tokenizer.json`) → ONNX inference → mean pooling (with attention mask) → L2 normalize →
 `float32[384]` → `memories.embedding` (`vector(384)`, pgvector)
 
-Model files: `src/mnemos/onnx/model.onnx`, `src/mnemos/onnx/tokenizer.json` — excluded from git. Download before
+Model files: `src/memlord/onnx/model.onnx`, `src/memlord/onnx/tokenizer.json` — excluded from git. Download before
 running: `uv run python scripts/download_model.py` (source: HuggingFace `sentence-transformers/all-MiniLM-L6-v2`).
 
 ---
@@ -196,8 +196,8 @@ composite PK; `role` (default `member`), `joined_at`
 | Parameter               | Description                                                      |
 |-------------------------|------------------------------------------------------------------|
 | `workspace_ids`         | List of accessible workspace IDs                                 |
-| `limit`                 | Max results (default: `MNEMOS_DEFAULT_LIMIT`)                    |
-| `similarity_threshold`  | Threshold for pure vector hits (default: `MNEMOS_SIM_THRESHOLD`) |
+| `limit`                 | Max results (default: `MEMLORD_DEFAULT_LIMIT`)                    |
+| `similarity_threshold`  | Threshold for pure vector hits (default: `MEMLORD_SIM_THRESHOLD`) |
 | `date_from` / `date_to` | Filter by `created_at`                                           |
 | `memory_type`           | Filter by type                                                   |
 
@@ -367,7 +367,7 @@ No parameters.
 
 ## Deployment
 
-Two containers: PostgreSQL + Mnemos server. Start with `docker compose up`.
+Two containers: PostgreSQL + Memlord server. Start with `docker compose up`.
 
 **Architecture:** FastAPI is the main ASGI app. UI routers are registered first (`app.include_router`), then the MCP app
 is mounted at `/` (`app.mount("/", mcp_app)`). Single port, single uvicorn process.
@@ -387,11 +387,11 @@ FastAPI (/)
 
 **Dockerfile:** multi-stage build (`python:3.12-slim`, uv). Stage 1: dependencies + ONNX model download (
 `scripts/download_model.py`). Stage 2: runtime with `libgomp1` (required by onnxruntime). Entrypoint:
-`alembic upgrade head && mnemos`.
+`alembic upgrade head && memlord`.
 
 ## Authentication
 
-OAuth 2.1 — `MnemosOAuthProvider(OAuthProvider)` in `oauth.py`, full in-process Authorization Server.
+OAuth 2.1 — `MemlordOAuthProvider(OAuthProvider)` in `oauth.py`, full in-process Authorization Server.
 
 **Mechanism:**
 
@@ -408,7 +408,7 @@ OAuth 2.1 — `MnemosOAuthProvider(OAuthProvider)` in `oauth.py`, full in-proces
 - Dynamic Client Registration enabled (scope: `mcp`)
 - Revocation: `_revoke_pair` removes both sides of the access ↔ refresh pair
 
-**Enabled** when `MNEMOS_BASE_URL` is set in config (JWT secret always has a default). Without `MNEMOS_BASE_URL` —
+**Enabled** when `MEMLORD_BASE_URL` is set in config (JWT secret always has a default). Without `MEMLORD_BASE_URL` —
 server starts without authentication.
 
 ---
@@ -442,9 +442,9 @@ authentication via session cookie (`get_current_user`).
 
 - Each tool file has its own `mcp = FastMCP()`, tool registered via `@mcp.tool`
 - `server.py` mounts all sub-servers via `mcp.mount()`
-- Sessions: `MCPSessionDep` (MCP tools) and `APISessionDep` (FastAPI routes) from `mnemos.db`; typed as
+- Sessions: `MCPSessionDep` (MCP tools) and `APISessionDep` (FastAPI routes) from `memlord.db`; typed as
   `s: AsyncSession = MCPSessionDep  # type: ignore[assignment]`
-- `UserDep` from `mnemos.auth` — resolves `user_id` from OAuth access token:
+- `UserDep` from `memlord.auth` — resolves `user_id` from OAuth access token:
   `uid: int = UserDep  # type: ignore[assignment]`
 - Commit/rollback managed by `session_dep` — never call manually
 - DB access via DAO (`MemoryDao`, `WorkspaceDao`, `UserDao`) — tools do not execute queries directly; `hybrid_search` is

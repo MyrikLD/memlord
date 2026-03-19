@@ -34,7 +34,7 @@ jobs:
         ports:
           - 5432:5432
     env:
-      MNEMOS_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
+      MEMLORD_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -60,8 +60,8 @@ jobs:
         ports:
           - 5432:5432
     env:
-      MNEMOS_MODEL_DIR: src/mnemos/onnx
-      MNEMOS_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
+      MEMLORD_MODEL_DIR: src/memlord/onnx
+      MEMLORD_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

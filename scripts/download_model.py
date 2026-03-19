@@ -8,7 +8,7 @@ FILES = {
     "tokenizer.json": "tokenizer.json",
 }
 
-dest_dir = Path(__file__).parent.parent / "src" / "mnemos" / "onnx"
+dest_dir = Path(__file__).parent.parent / "src" / "memlord" / "onnx"
 dest_dir.mkdir(parents=True, exist_ok=True)
 
 for repo_filename, local_name in FILES.items():

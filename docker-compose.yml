@@ -1,5 +1,5 @@
 services:
-  mnemos:
+  memlord:
     build: .
     ports:
       - "8000:8000"
@@ -16,13 +16,13 @@ services:
       - PGDATA=/var/lib/postgresql/data/pgdata
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=memlord
     ports:
       - "5432:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data/pgdata
     healthcheck:
-      test: [ "CMD", "pg_isready", "-d", "postgres", "-U", "postgres" ]
+      test: [ "CMD", "pg_isready", "-d", "memlord", "-U", "postgres" ]
       interval: 10s
       timeout: 5s
       retries: 3

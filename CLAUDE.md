@@ -18,7 +18,7 @@ alembic revision --autogenerate -m "description"
 alembic-autogen-check
 
 # Run the server
-mnemos
+memlord
 
 # Type check
 pyright src/
@@ -35,9 +35,9 @@ pytest tests/path/test_file.py::test_name -x
 
 ## Architecture
 
-**Mnemos** is an MCP memory server with hybrid BM25 + vector search, backed by PostgreSQL + pgvector.
+**Memlord** is an MCP memory server with hybrid BM25 + vector search, backed by PostgreSQL + pgvector.
 
-**Request path:** FastAPI app (root `/`) mounts FastMCP at `/mcp`. Single uvicorn process, single port. OAuth 2.1 is optional — enabled only when all three are set: `MNEMOS_OAUTH_JWT_SECRET`, `MNEMOS_OAUTH_PASSWORD`, `MNEMOS_BASE_URL`.
+**Request path:** FastAPI app (root `/`) mounts FastMCP at `/mcp`. Single uvicorn process, single port. OAuth 2.1 is optional — enabled only when all three are set: `MEMLORD_OAUTH_JWT_SECRET`, `MEMLORD_OAUTH_PASSWORD`, `MEMLORD_BASE_URL`.
 
 **Search pipeline:** query → parallel BM25 (`search_vector @@ websearch_to_tsquery`) + vector KNN (`embedding <=>`, cosine distance) → Reciprocal Rank Fusion (`rrf = 1/(k+rank_bm25) + 1/(k+rank_vec)`, k=60) → top-N.
 
@@ -61,15 +61,15 @@ pytest tests/path/test_file.py::test_name -x
 
 **No logic in `__init__.py`:** All logic lives in dedicated modules. `__init__.py` files are re-exports only.
 
-**Config prefix:** All env vars use `MNEMOS_` prefix. `.env` file is supported.
+**Config prefix:** All env vars use `MEMLORD_` prefix. `.env` file is supported.
 
-**ONNX model files** (`src/mnemos/onnx/model.onnx`, `tokenizer.json`) are excluded from git. Download before running: `uv run python scripts/download_model.py`. Downloaded from `sentence-transformers/all-MiniLM-L6-v2` on HuggingFace.
+**ONNX model files** (`src/memlord/onnx/model.onnx`, `tokenizer.json`) are excluded from git. Download before running: `uv run python scripts/download_model.py`. Downloaded from `sentence-transformers/all-MiniLM-L6-v2` on HuggingFace.
 
 ## Project Layout
 
 ```
-src/mnemos/
-├── config.py          # pydantic-settings, MNEMOS_* env vars
+src/memlord/
+├── config.py          # pydantic-settings, MEMLORD_* env vars
 ├── db.py              # async SQLAlchemy engine (asyncpg)
 ├── embeddings.py      # ONNX session, tokenize, mean pool, L2 norm
 ├── search.py          # BM25 + vector KNN + RRF fusion (PostgreSQL Core queries)

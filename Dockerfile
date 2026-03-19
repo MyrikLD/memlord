@@ -33,4 +33,4 @@ RUN printf '#!/bin/sh\nset -e\nalembic upgrade head\nexec "$@"\n' \
 ENV PATH="/app/.venv/bin:$PATH"
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["mnemos"]
+CMD ["memlord"]

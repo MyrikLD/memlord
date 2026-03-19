@@ -1,4 +1,4 @@
-# Mnemos
+# Memlord
 
 Self-hosted MCP memory server with hybrid BM25 + semantic search, backed by PostgreSQL + pgvector.
 
@@ -24,7 +24,7 @@ uv run python scripts/download_model.py
 alembic upgrade head
 
 # Start the server
-mnemos
+memlord
 ```
 
 Open **http://localhost:8000** for the Web UI. The MCP endpoint is at `/mcp`.
@@ -38,16 +38,16 @@ docker compose up
 
 ## Configuration
 
-All settings use the `MNEMOS_` prefix. See [`.env.example`](.env.example) for the full list.
+All settings use the `MEMLORD_` prefix. See [`.env.example`](.env.example) for the full list.
 
 | Variable                  | Default                                                   | Description                |
 |---------------------------|-----------------------------------------------------------|----------------------------|
-| `MNEMOS_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/mnemos` | PostgreSQL connection URL  |
-| `MNEMOS_PORT`             | `8000`                                                    | Server port                |
-| `MNEMOS_BASE_URL`         | —                                                         | Public URL (enables OAuth) |
-| `MNEMOS_OAUTH_JWT_SECRET` | `mnemos-dev-secret-please-change`                         | JWT signing secret         |
+| `MEMLORD_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/memlord` | PostgreSQL connection URL  |
+| `MEMLORD_PORT`             | `8000`                                                    | Server port                |
+| `MEMLORD_BASE_URL`         | —                                                         | Public URL (enables OAuth) |
+| `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret         |
 
-OAuth is enabled when `MNEMOS_BASE_URL` is set. Without it, the server starts without authentication.
+OAuth is enabled when `MEMLORD_BASE_URL` is set. Without it, the server starts without authentication.
 
 ## MCP Tools
 
@@ -76,7 +76,7 @@ alembic-autogen-check  # verify migrations are up to date
 
 ## License
 
-Mnemos is dual-licensed:
+Memlord is dual-licensed:
 
 - **[AGPL-3.0](LICENSE)** — free for open-source use. If you run a modified version as a network service, you must publish your source code.
 - **[Commercial License](LICENSE-COMMERCIAL)** — for proprietary or closed-source deployments. Contact myrik260138@gmail.com or 5783354@gmail.com to purchase.

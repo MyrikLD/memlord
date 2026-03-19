@@ -17,7 +17,7 @@ from mcp.server.auth.provider import AuthorizationCode, AuthorizationParams
 from mcp.shared.auth import OAuthClientInformationFull
 from pydantic import AnyHttpUrl, AnyUrl
 
-from mnemos.oauth import MnemosOAuthProvider
+from memlord.oauth import MemlordOAuthProvider
 
 BASE_URL = "https://mcp.example.com"
 MCP_PATH = "/mcp"
@@ -26,7 +26,7 @@ RESOURCE_URL = f"{BASE_URL}{MCP_PATH}"
 
 @pytest.fixture
 def provider():
-    return MnemosOAuthProvider(
+    return MemlordOAuthProvider(
         base_url=BASE_URL,
         jwt_secret="test-only-secret",
     )

@@ -6,11 +6,11 @@ from sqlalchemy import text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from mnemos.auth import hash_password
-from mnemos.config import settings
-from mnemos.dao.user import UserDao
-from mnemos.dao.workspace import WorkspaceDao
-from mnemos.models.base import Base
+from memlord.auth import hash_password
+from memlord.config import settings
+from memlord.dao.user import UserDao
+from memlord.dao.workspace import WorkspaceDao
+from memlord.models.base import Base
 
 
 @pytest.fixture(scope="session")

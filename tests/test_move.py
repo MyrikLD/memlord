@@ -1,10 +1,10 @@
 import pytest
 
-from mnemos.auth import hash_password
-from mnemos.dao import MemoryDao
-from mnemos.dao.user import UserDao
-from mnemos.dao.workspace import WorkspaceDao
-from mnemos.schemas import MemoryType
+from memlord.auth import hash_password
+from memlord.dao import MemoryDao
+from memlord.dao.user import UserDao
+from memlord.dao.workspace import WorkspaceDao
+from memlord.schemas import MemoryType
 
 
 @pytest.fixture

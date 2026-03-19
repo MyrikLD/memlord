@@ -4,10 +4,10 @@ from dateparser.search import search_dates
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mnemos.dao import MemoryDao
-from mnemos.models import Memory
-from mnemos.schemas import MemoryType
-from mnemos.search import hybrid_search
+from memlord.dao import MemoryDao
+from memlord.models import Memory
+from memlord.schemas import MemoryType
+from memlord.search import hybrid_search
 
 
 async def _store(s: AsyncSession, content: str, uid: int, workspace_id: int) -> int:

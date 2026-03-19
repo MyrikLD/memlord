@@ -1,7 +1,7 @@
 import pytest
 
-from mnemos.dao import MemoryDao
-from mnemos.schemas import MemoryType
+from memlord.dao import MemoryDao
+from memlord.schemas import MemoryType
 
 
 async def test_crud(session, user_id, workspace_id):
