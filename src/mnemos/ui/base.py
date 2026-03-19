@@ -18,7 +18,7 @@ from mnemos.db import APISessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryType, UpdateMemoryRequest
 from mnemos.search import hybrid_search
-from mnemos.ui.utils import get_current_user, templates
+from mnemos.ui.utils import get_current_user, templates, UserDep
 from mnemos.utils.dt import utcnow
 
 router = APIRouter()
@@ -37,7 +37,7 @@ _COLS = (
 async def index(
     request: Request,
     s: APISessionDep,
-    user = Depends(get_current_user),
+    user: UserDep,
     page: int = 1,
     page_size: int = 20,
     memory_type: str | None = None,
@@ -56,7 +56,9 @@ async def index(
     if workspace == "__personal__":
         personal = next((ws for ws in workspaces if ws.is_personal), None)
         access_filter = (
-            Memory.workspace_id == personal.id if personal else Memory.workspace_id.in_([])
+            Memory.workspace_id == personal.id
+            if personal
+            else Memory.workspace_id.in_([])
         )
     elif workspace:
         ws_obj = next((ws for ws in workspaces if ws.name == workspace), None)
@@ -94,13 +96,17 @@ async def index(
     ids = [row["id"] for row in rows]
     tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
-    ws_display = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
+    ws_display = {
+        ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
+    }
 
     memories = [
         {
             **row,
             "tags": tags_map.get(row["id"], []),
-            "workspace_name": ws_display.get(row["workspace_id"]) if row["workspace_id"] else None,
+            "workspace_name": (
+                ws_display.get(row["workspace_id"]) if row["workspace_id"] else None
+            ),
         }
         for row in rows
     ]
@@ -127,7 +133,7 @@ async def index(
 async def search(
     request: Request,
     s: APISessionDep,
-    user = Depends(get_current_user),
+    user: UserDep,
     q: str = "",
 ) -> HTMLResponse:
     uid: int = user.id
@@ -180,7 +186,7 @@ async def memory_detail(
     request: Request,
     id: int,
     s: APISessionDep,
-    user = Depends(get_current_user),
+    user: UserDep,
 ) -> HTMLResponse:
     uid: int = user.id
     memory = await MemoryDao(s, uid).get(id)
@@ -190,12 +196,21 @@ async def memory_detail(
     workspaces = await WorkspaceDao(s).list_workspaces(uid)
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
-    writable = [ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != memory.workspace_id]
+    writable = [
+        ws
+        for ws in workspaces
+        if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
+    ]
 
     return templates.TemplateResponse(
         request,
         "memory.html",
-        {"user": user, "memory": memory, "workspace_name": ws_name, "writable_workspaces": writable},
+        {
+            "user": user,
+            "memory": memory,
+            "workspace_name": ws_name,
+            "writable_workspaces": writable,
+        },
     )
 
 
@@ -205,7 +220,7 @@ async def update_memory(
     id: int,
     s: APISessionDep,
     body: UpdateMemoryRequest,
-    user = Depends(get_current_user),
+    user: UserDep,
 ) -> HTMLResponse:
     uid: int = user.id
     dao = MemoryDao(s, uid)
@@ -231,7 +246,11 @@ async def update_memory(
     workspaces = await WorkspaceDao(s).list_workspaces(uid)
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(existing.workspace_id) if existing.workspace_id else None
-    writable = [ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != existing.workspace_id]
+    writable = [
+        ws
+        for ws in workspaces
+        if ws.role in ("owner", "editor") and ws.id != existing.workspace_id
+    ]
 
     return templates.TemplateResponse(
         request,
@@ -258,13 +277,15 @@ async def move_memory(
     request: Request,
     id: int,
     s: APISessionDep,
-    user = Depends(get_current_user),
+    user: UserDep,
     target_workspace_id: int = Form(...),
 ) -> HTMLResponse:
     uid: int = user.id
     ws_dao = WorkspaceDao(s)
     if not await ws_dao.can_write(target_workspace_id, uid):
-        raise HTTPException(status_code=403, detail="No write access to target workspace")
+        raise HTTPException(
+            status_code=403, detail="No write access to target workspace"
+        )
 
     dao = MemoryDao(s, uid)
     try:
@@ -274,13 +295,25 @@ async def move_memory(
         if memory is None:
             raise HTTPException(status_code=404, detail="Memory not found")
         workspaces = await ws_dao.list_workspaces(uid)
-        ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
+        ws_map = {
+            ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
+        }
         ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
-        writable = [ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != memory.workspace_id]
+        writable = [
+            ws
+            for ws in workspaces
+            if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
+        ]
         return templates.TemplateResponse(
             request,
             "_memory_content.html",
-            {"user": user, "memory": memory, "workspace_name": ws_name, "writable_workspaces": writable, "error": str(e)},
+            {
+                "user": user,
+                "memory": memory,
+                "workspace_name": ws_name,
+                "writable_workspaces": writable,
+                "error": str(e),
+            },
         )
 
     memory = await dao.get(id)
@@ -289,11 +322,21 @@ async def move_memory(
     workspaces = await ws_dao.list_workspaces(uid)
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
-    writable = [ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != memory.workspace_id]
+    writable = [
+        ws
+        for ws in workspaces
+        if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
+    ]
     return templates.TemplateResponse(
         request,
         "_memory_content.html",
-        {"user": user, "memory": memory, "workspace_name": ws_name, "writable_workspaces": writable, "success": "Moved."},
+        {
+            "user": user,
+            "memory": memory,
+            "workspace_name": ws_name,
+            "writable_workspaces": writable,
+            "success": "Moved.",
+        },
     )
 
 
@@ -301,7 +344,7 @@ async def move_memory(
 async def delete_memory_ui(
     id: int,
     s: APISessionDep,
-    user = Depends(get_current_user),
+    user: UserDep,
 ) -> Response:
     uid: int = user.id
     try:

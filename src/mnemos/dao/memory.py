@@ -162,7 +162,9 @@ class MemoryDao:
             raise ValueError(f"Memory with id={id} not found")
         await self._cleanup_orphan_tags()
 
-    async def get(self, id: int, workspace_ids: list[int] | None = None) -> MemoryListItem | None:
+    async def get(
+        self, id: int, workspace_ids: list[int] | None = None
+    ) -> MemoryListItem | None:
         if workspace_ids is None:
             workspace_ids = await self._accessible_workspace_ids()
         access_check = Memory.workspace_id.in_(workspace_ids)
@@ -215,9 +217,13 @@ class MemoryDao:
             )
         )
         if duplicate is not None:
-            raise ValueError("A memory with the same content already exists in the target workspace")
+            raise ValueError(
+                "A memory with the same content already exists in the target workspace"
+            )
         await self._s.execute(
-            update(Memory).where(Memory.id == id).values(workspace_id=target_workspace_id)
+            update(Memory)
+            .where(Memory.id == id)
+            .values(workspace_id=target_workspace_id)
         )
 
     async def fetch_tags(self, memory_ids: list[int]) -> dict[int, list[str]]:
