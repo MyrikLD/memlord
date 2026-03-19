@@ -282,11 +282,6 @@ async def move_memory(
 ) -> HTMLResponse:
     uid: int = user.id
     ws_dao = WorkspaceDao(s)
-    if not await ws_dao.can_write(target_workspace_id, uid):
-        raise HTTPException(
-            status_code=403, detail="No write access to target workspace"
-        )
-
     dao = MemoryDao(s, uid)
     try:
         await dao.move(id, target_workspace_id)
