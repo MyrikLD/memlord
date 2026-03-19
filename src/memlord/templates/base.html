@@ -200,6 +200,7 @@
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
+            border-left: 3px solid transparent;
             border-radius: var(--radius);
             padding: 1.125rem 1.25rem;
             margin-bottom: 0.625rem;
@@ -211,6 +212,14 @@
             border-color: var(--border-hover);
             box-shadow: var(--shadow);
         }
+
+        .card--feedback    { border-left-color: #8b5cf6; }
+        .card--fact        { border-left-color: #10b981; }
+        .card--preference  { border-left-color: #f59e0b; }
+        .card--instruction { border-left-color: #3b82f6; }
+
+        .card-actions { opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+        .card:hover .card-actions { opacity: 1; }
 
         .card-header {
             display: flex;
@@ -275,6 +284,11 @@
             color: var(--accent-text);
             border: 1px solid #c7d2fe;
         }
+
+        .badge-type--feedback    { background: #ede9fe; color: #6d28d9; border-color: #ddd6fe; }
+        .badge-type--fact        { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+        .badge-type--preference  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+        .badge-type--instruction { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
 
         .tag {
             display: inline-flex;

@@ -15,7 +15,7 @@
 </p>
 
 {% for m in results %}
-<div class="card">
+<div class="card{% if m.memory_type %} card--{{ m.memory_type }}{% endif %}">
     <div class="card-header">
         <a href="/memory/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
             <div class="card-content">{{ m.content | truncate(280) }}</div>
@@ -23,7 +23,7 @@
         <span class="score-badge">{{ m.rrf_score }}</span>
     </div>
     <div class="card-meta">
-        {% if m.memory_type %}<span class="badge badge-type">{{ m.memory_type }}</span>{% endif %}
+        {% if m.memory_type %}<span class="badge badge-type badge-type--{{ m.memory_type }}">{{ m.memory_type }}</span>{% endif %}
         {% if m.workspace_name %}<span class="badge" style="background:#f0f4ff;color:#3730a3;border:1px solid #c7d2fe">{{ m.workspace_name }}</span>{% endif %}
         {% for t in m.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
         <span class="card-date">{{ m.created_at.strftime('%Y-%m-%d %H:%M:%S') if m.created_at else '' }}</span>
