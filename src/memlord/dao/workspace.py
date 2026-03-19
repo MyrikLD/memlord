@@ -27,7 +27,12 @@ class WorkspaceDao:
     ) -> WorkspaceInfo:
         workspace_id = await self._s.scalar(
             insert(Workspace)
-            .values(name=name, description=description, created_by=owner_id, is_personal=False)
+            .values(
+                name=name,
+                description=description,
+                created_by=owner_id,
+                is_personal=False,
+            )
             .returning(Workspace.id)
         )
         assert workspace_id is not None
@@ -37,8 +42,12 @@ class WorkspaceDao:
             )
         )
         return WorkspaceInfo(
-            id=workspace_id, name=name, description=description,
-            role=WorkspaceRole.owner, member_count=1, is_personal=False,
+            id=workspace_id,
+            name=name,
+            description=description,
+            role=WorkspaceRole.owner,
+            member_count=1,
+            is_personal=False,
         )
 
     async def create_personal(self, user_id: int) -> WorkspaceInfo:
@@ -56,8 +65,12 @@ class WorkspaceDao:
             )
         )
         return WorkspaceInfo(
-            id=workspace_id, name=name, description=None,
-            role=WorkspaceRole.owner, member_count=1, is_personal=True,
+            id=workspace_id,
+            name=name,
+            description=None,
+            role=WorkspaceRole.owner,
+            member_count=1,
+            is_personal=True,
         )
 
     async def get_personal(self, user_id: int) -> WorkspaceInfo:
@@ -121,7 +134,10 @@ class WorkspaceDao:
         return WorkspaceRole(value) if value is not None else None
 
     async def add_member(
-        self, workspace_id: int, user_id: int, role: WorkspaceRole = WorkspaceRole.member
+        self,
+        workspace_id: int,
+        user_id: int,
+        role: WorkspaceRole = WorkspaceRole.member,
     ) -> None:
         await self._s.execute(
             insert(WorkspaceMember).values(
