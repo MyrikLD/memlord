@@ -16,6 +16,11 @@ class Memory(Base):
     created_at = sa.Column(
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )
+    workspace_id = sa.Column(
+        sa.Integer,
+        sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     embedding = sa.Column(Vector(384), nullable=True)
     search_vector = sa.Column(
         TSVECTOR,
@@ -24,7 +29,9 @@ class Memory(Base):
     )
 
     __table_args__ = (
-        sa.UniqueConstraint("content", "created_by", name="uq_memories_content_user"),
+        sa.UniqueConstraint(
+            "content", "workspace_id", name="uq_memories_content_workspace"
+        ),
         sa.Index("ix_memories_search_vector", "search_vector", postgresql_using="gin"),
         sa.Index(
             "ix_memories_embedding",

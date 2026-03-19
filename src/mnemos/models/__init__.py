@@ -4,3 +4,4 @@ from .oauth_client import OAuthClient
 from .schema_version import SchemaVersion
 from .tag import Tag
 from .user import User
+from .workspace import Workspace, WorkspaceInvite, WorkspaceMember

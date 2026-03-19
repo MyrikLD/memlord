@@ -9,6 +9,7 @@ class SearchResult(BaseModel):
     memory_type: MemoryType
     rrf_score: float
     vec_similarity: float | None
+    workspace_id: int | None = None
 
 
 class MemoryResult(BaseModel):
@@ -19,3 +20,4 @@ class MemoryResult(BaseModel):
     metadata: dict
     created_at: str
     rrf_score: float
+    workspace_id: int | None = None

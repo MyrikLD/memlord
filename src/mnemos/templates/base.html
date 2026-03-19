@@ -700,6 +700,8 @@
             Mnemos
         </a>
         <div class="nav-divider"></div>
+        <a href="/ui/workspaces" style="font-size:.8125rem;color:var(--nav-text-2);white-space:nowrap;flex-shrink:0;transition:color .12s" onmouseover="this.style.color='var(--nav-text)'" onmouseout="this.style.color='var(--nav-text-2)'">Workspaces</a>
+        <div class="nav-divider"></div>
         <form action="/search" method="get" class="search-form">
             <input class="search-input" name="q" placeholder="Search memories…"
                    value="{{ q | default('') }}" autocomplete="off">

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
+from mnemos.dao.workspace import WorkspaceDao
 from mnemos.db import MCPSessionDep
 from mnemos.schemas import MemoryResult, MemoryType
 from mnemos.search import hybrid_search
@@ -22,10 +23,11 @@ async def retrieve_memory(
     uid: int = UserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
     """Hybrid semantic + full-text search over stored memories."""
+    workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
     results = await hybrid_search(
         s,
         query=query,
-        user_id=uid,
+        workspace_ids=workspace_ids,
         limit=limit,
         similarity_threshold=similarity_threshold,
         memory_type=memory_type,
@@ -34,7 +36,7 @@ async def retrieve_memory(
     if not results:
         return []
 
-    dao = MemoryDao(s)
+    dao = MemoryDao(s, uid)
     ids = [r.id for r in results]
     tags_map = await dao.fetch_tags(ids)
     meta_map = await dao.fetch_metadata(ids)
@@ -51,6 +53,7 @@ async def retrieve_memory(
                 metadata=metadata,
                 created_at=created_at,
                 rrf_score=r.rrf_score,
+                workspace_id=r.workspace_id,
             )
         )
     return output

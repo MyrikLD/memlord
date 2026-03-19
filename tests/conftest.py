@@ -2,14 +2,15 @@ import asyncio
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import insert, text
+from sqlalchemy import text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from mnemos.auth import hash_password
 from mnemos.config import settings
+from mnemos.dao.user import UserDao
+from mnemos.dao.workspace import WorkspaceDao
 from mnemos.models.base import Base
-from mnemos.models.user import User
 
 
 @pytest.fixture(scope="session")
@@ -59,16 +60,17 @@ async def session(test_db_url):
 
 @pytest_asyncio.fixture
 async def user_id(session: AsyncSession) -> int:
-    """Create a test user and return its id."""
-    uid = await session.scalar(
-        insert(User)
-        .values(
-            email="test@example.com",
-            display_name="Test User",
-            hashed_password=hash_password("test-password"),
-        )
-        .returning(User.id)
+    """Create a test user (with personal workspace) and return its id."""
+    user = await UserDao(session).create(
+        email="test@example.com",
+        display_name="Test User",
+        hashed_password=hash_password("test-password"),
     )
-    assert uid is not None
-    await session.flush()
-    return uid
+    return user.id  # type: ignore[return-value]
+
+
+@pytest_asyncio.fixture
+async def workspace_id(session: AsyncSession, user_id: int) -> int:
+    """Return the personal workspace id for the test user."""
+    ws = await WorkspaceDao(session).get_personal(user_id)
+    return ws.id

@@ -12,6 +12,7 @@ class MemoryListItem(BaseModel):
     metadata: dict = Field(default_factory=dict)
     tags: list[str]
     created_at: datetime
+    workspace_id: int | None = None
 
 
 class MemoryPage(BaseModel):

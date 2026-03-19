@@ -9,3 +9,4 @@ class RecallResult(BaseModel):
     memory_type: MemoryType | None
     tags: list[str]
     created_at: str
+    workspace_id: int | None = None

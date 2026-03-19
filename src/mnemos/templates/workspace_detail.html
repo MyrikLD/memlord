@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Personal' if workspace.is_personal else workspace.name }} — Mnemos{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/ui/workspaces" class="btn btn-ghost btn-sm">← Workspaces</a>
+</div>
+
+<div class="page-header">
+    <h1 class="page-title">
+        {% if workspace.is_personal %}Personal{% else %}{{ workspace.name }}{% endif %}
+    </h1>
+    <span class="badge badge-type">{{ workspace.role }}</span>
+    {% if workspace.is_personal %}
+    <span class="badge" style="background:var(--bg-3);color:var(--text-3)">personal</span>
+    {% endif %}
+</div>
+
+<div class="detail-card">
+    <div class="section-title">Members ({{ workspace.member_count }})</div>
+    {% for m in members %}
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+            <div style="font-size:.875rem;font-weight:500">{{ m.display_name }}</div>
+            <div style="font-size:.75rem;color:var(--text-4)">{{ m.email }}</div>
+        </div>
+        <span class="badge badge-type">{{ m.role }}</span>
+        <span style="font-size:.6875rem;color:var(--text-4)">{{ m.joined_at.strftime('%Y-%m-%d') }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not workspace.is_personal %}
+<div class="detail-card">
+    <div class="section-title">Invite link</div>
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem">
+        Generate a one-time invite link (valid for 72 hours) and share it with someone to join this workspace.
+    </p>
+    <div id="invite-result"></div>
+    <form hx-post="/ui/workspaces/{{ workspace.id }}/invite"
+          hx-target="#invite-result"
+          hx-swap="innerHTML">
+        <button type="submit" class="btn btn-primary btn-sm">Generate invite link</button>
+    </form>
+</div>
+
+{% if workspace.role == 'owner' %}
+<div class="detail-card" style="border-color:var(--danger-border)">
+    <div class="section-title" style="color:var(--danger-text)">Danger zone</div>
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem">
+        Deleting this workspace is permanent. All memories in this workspace will be deleted.
+    </p>
+    <form method="post" action="/ui/workspaces/{{ workspace.id }}/delete"
+          onsubmit="return confirm('Delete workspace &quot;{{ workspace.name }}&quot;? This cannot be undone.')">
+        <button type="submit" class="btn btn-danger btn-sm">Delete workspace</button>
+    </form>
+</div>
+{% else %}
+<div class="detail-card">
+    <div class="section-title">Leave workspace</div>
+    <form method="post" action="/ui/workspaces/{{ workspace.id }}/leave"
+          onsubmit="return confirm('Leave this workspace?')">
+        <button type="submit" class="btn btn-danger btn-sm">Leave workspace</button>
+    </form>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

@@ -24,6 +24,7 @@
     </div>
     <div class="card-meta">
         {% if m.memory_type %}<span class="badge badge-type">{{ m.memory_type }}</span>{% endif %}
+        {% if m.workspace_name %}<span class="badge" style="background:#f0f4ff;color:#3730a3;border:1px solid #c7d2fe">{{ m.workspace_name }}</span>{% endif %}
         {% for t in m.tags %}<a href="/?tag={{ t }}" class="tag">#{{ t }}</a>{% endfor %}
         <span class="card-date">{{ m.created_at.strftime('%Y-%m-%d %H:%M:%S') if m.created_at else '' }}</span>
     </div>

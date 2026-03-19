@@ -2,13 +2,15 @@ from typing import Literal
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
+from mnemos.dao.workspace import WorkspaceDao
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryListItem
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 mcp = FastMCP()
 
@@ -18,6 +20,7 @@ _COLS = (
     Memory.memory_type,
     Memory.extra_data,
     Memory.created_at,
+    Memory.workspace_id,
 )
 
 
@@ -36,6 +39,9 @@ async def search_by_tag(
     if not normalized:
         return []
 
+    workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
+    access_filter = Memory.workspace_id.in_(workspace_ids)
+
     if operation == "AND":
         matching_count = (
             select(func.count(Tag.id.distinct()))
@@ -47,7 +53,7 @@ async def search_by_tag(
         )
         stmt = (
             select(*_COLS)
-            .where(matching_count == len(normalized), Memory.created_by == uid)
+            .where(matching_count == len(normalized), access_filter)
             .order_by(Memory.created_at.desc())
         )
     else:
@@ -55,7 +61,7 @@ async def search_by_tag(
             select(*_COLS)
             .join(MemoryTag, Memory.id == MemoryTag.memory_id)
             .join(Tag, MemoryTag.tag_id == Tag.id)
-            .where(Tag.name.in_(normalized), Memory.created_by == uid)
+            .where(Tag.name.in_(normalized), access_filter)
             .distinct()
             .order_by(Memory.created_at.desc())
         )
@@ -65,7 +71,7 @@ async def search_by_tag(
         return []
 
     ids: list[int] = [row["id"] for row in rows]
-    tags_map = await MemoryDao(s).fetch_tags(ids)
+    tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
     return [
         MemoryListItem(
@@ -75,6 +81,7 @@ async def search_by_tag(
             metadata=row["extra_data"],
             tags=tags_map.get(row["id"], []),
             created_at=row["created_at"],
+            workspace_id=row["workspace_id"],
         )
         for row in rows
     ]

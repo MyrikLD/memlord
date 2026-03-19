@@ -5,13 +5,13 @@ from mnemos.oauth import MnemosOAuthProvider
 from mnemos.tools import (
     delete,
     get_memory,
-    health,
     list_memories,
     recall,
     retrieve,
     search_by_tag,
     store,
     update,
+    workspaces,
 )
 
 
@@ -34,4 +34,4 @@ mcp.mount(list_memories)
 mcp.mount(search_by_tag)
 mcp.mount(delete)
 mcp.mount(update)
-mcp.mount(health)
+mcp.mount(workspaces)

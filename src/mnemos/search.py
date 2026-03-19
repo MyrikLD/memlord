@@ -13,7 +13,7 @@ from mnemos.schemas import SearchResult
 async def hybrid_search(
     session: AsyncSession,
     query: str,
-    user_id: int,
+    workspace_ids: list[int] | None = None,
     limit: int | None = None,
     similarity_threshold: float | None = None,
     date_from: datetime | None = None,
@@ -28,7 +28,10 @@ async def hybrid_search(
         else settings.sim_threshold
     )
 
-    conditions = [Memory.created_by == user_id]
+    # Build access filter: all workspaces the user is a member of
+    access = Memory.workspace_id.in_(workspace_ids or [])
+
+    conditions = [access]
     if date_from:
         conditions.append(Memory.created_at >= date_from)
     if date_to:
@@ -52,7 +55,13 @@ async def hybrid_search(
     )
 
     bm25_q = (
-        select(Memory.id, Memory.content, Memory.memory_type, bm25_rank)
+        select(
+            Memory.id,
+            Memory.content,
+            Memory.memory_type,
+            Memory.workspace_id,
+            bm25_rank,
+        )
         .where(
             (Memory.search_vector.op("@@")(tsquery)) | tag_match,
             *conditions,
@@ -71,7 +80,14 @@ async def hybrid_search(
     vec_rank = func.row_number().over(order_by=distance).label("vec_rank")
 
     vec_q = (
-        select(Memory.id, Memory.content, Memory.memory_type, distance, vec_rank)
+        select(
+            Memory.id,
+            Memory.content,
+            Memory.memory_type,
+            Memory.workspace_id,
+            distance,
+            vec_rank,
+        )
         .where(Memory.embedding.isnot(None), *conditions)
         .order_by(distance)
         .limit(n)
@@ -83,9 +99,11 @@ async def hybrid_search(
     vec_ranks: dict[int, int] = {row.id: row.vec_rank for row in vec_rows}
     vec_distances: dict[int, float] = {row.id: row.distance for row in vec_rows}
     contents: dict[int, tuple] = {
-        row.id: (row.content, row.memory_type) for row in bm25_rows
+        row.id: (row.content, row.memory_type, row.workspace_id) for row in bm25_rows
     }
-    contents.update({row.id: (row.content, row.memory_type) for row in vec_rows})
+    contents.update(
+        {row.id: (row.content, row.memory_type, row.workspace_id) for row in vec_rows}
+    )
 
     # RRF fusion
     all_ids = set(bm25_ranks) | set(vec_ranks)
@@ -110,12 +128,13 @@ async def hybrid_search(
         ):
             continue
 
-        content, memory_type = contents[doc_id]
+        content, memory_type, workspace_id = contents[doc_id]
         scored.append(
             SearchResult(
                 id=doc_id,
                 content=content,
                 memory_type=memory_type,  # type: ignore[arg-type]
+                workspace_id=workspace_id,
                 rrf_score=rrf,
                 vec_similarity=similarity,
             )

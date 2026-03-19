@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}New Workspace — Mnemos{% endblock %}
+{% block content %}
+
+<div class="breadcrumb">
+    <a href="/ui/workspaces" class="btn btn-ghost btn-sm">← Workspaces</a>
+</div>
+
+<div class="detail-card" style="max-width:480px">
+    <h1 class="page-title" style="margin-bottom:1.25rem">New workspace</h1>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/ui/workspaces/new">
+        <div class="form-group">
+            <label class="form-label" for="name">Name</label>
+            <input class="form-input" id="name" name="name" type="text"
+                   placeholder="e.g. Team Shared Notes" autofocus
+                   value="{{ name | default('') }}">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create</button>
+            <a href="/ui/workspaces" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

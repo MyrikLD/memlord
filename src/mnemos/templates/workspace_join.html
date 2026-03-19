@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Join Workspace — Mnemos{% endblock %}
+{% block content %}
+
+<div class="detail-card" style="max-width:480px;margin:2rem auto">
+    <h1 class="page-title" style="margin-bottom:.5rem">Join workspace</h1>
+
+    {% if used %}
+    <div class="alert alert-error" style="margin-top:1rem">
+        This invite link has already been used.
+    </div>
+    <a href="/ui/workspaces" class="btn btn-ghost btn-sm" style="margin-top:.75rem">My workspaces</a>
+    {% else %}
+    <p style="font-size:.875rem;color:var(--text-3);margin:1rem 0">
+        <strong>{{ inviter_name }}</strong> invited you to join
+        <strong>{{ workspace_name }}</strong>.
+    </p>
+    <form method="post" action="/ui/join/{{ token }}">
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Accept invitation</button>
+            <a href="/" class="btn btn-ghost">Decline</a>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+{% endblock %}

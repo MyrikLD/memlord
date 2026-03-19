@@ -5,7 +5,8 @@ Self-hosted MCP memory server with hybrid BM25 + semantic search, backed by Post
 ## Features
 
 - **Hybrid search** — BM25 (full-text) + vector KNN (pgvector) fused via Reciprocal Rank Fusion
-- **7 MCP tools** — store, retrieve, recall, list, search by tag, delete, health check
+- **Multi-user** — each user sees only their own memories; workspaces for shared team knowledge
+- **8 MCP tools** — store, retrieve, recall, list, search by tag, get, update, delete
 - **Web UI** — browse, search, edit and delete memories in the browser; export/import JSON
 - **OAuth 2.1** — optional, full in-process authorization server
 - **PostgreSQL** — pgvector for embeddings, tsvector for full-text search
@@ -39,27 +40,30 @@ docker compose up
 
 All settings use the `MNEMOS_` prefix. See [`.env.example`](.env.example) for the full list.
 
-| Variable                  | Default                                              | Description                     |
-|---------------------------|------------------------------------------------------|---------------------------------|
+| Variable                  | Default                                                   | Description                |
+|---------------------------|-----------------------------------------------------------|----------------------------|
 | `MNEMOS_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/mnemos` | PostgreSQL connection URL  |
-| `MNEMOS_PORT`             | `8000`                                               | Server port                     |
-| `MNEMOS_BASE_URL`         | —                                                    | Public URL (required for OAuth) |
-| `MNEMOS_OAUTH_JWT_SECRET` | —                                                    | Enables OAuth when set          |
-| `MNEMOS_PASSWORD`         | —                                                    | Web UI login password           |
+| `MNEMOS_PORT`             | `8000`                                                    | Server port                |
+| `MNEMOS_BASE_URL`         | —                                                         | Public URL (enables OAuth) |
+| `MNEMOS_OAUTH_JWT_SECRET` | `mnemos-dev-secret-please-change`                         | JWT signing secret         |
 
-OAuth is enabled only when `MNEMOS_BASE_URL`, `MNEMOS_OAUTH_JWT_SECRET`, and `MNEMOS_PASSWORD` are all set.
+OAuth is enabled when `MNEMOS_BASE_URL` is set. Without it, the server starts without authentication.
 
 ## MCP Tools
 
-| Tool                    | Description                                    |
-|-------------------------|------------------------------------------------|
-| `store_memory`          | Save a memory (idempotent by content)          |
-| `retrieve_memory`       | Hybrid semantic + full-text search             |
-| `recall_memory`         | Search by natural-language time expression     |
-| `list_memories`         | Paginated list with type/tag filters           |
-| `search_by_tag`         | AND/OR tag search                              |
-| `delete_memory`         | Delete by ID                                   |
-| `check_database_health` | DB stats and extension status                  |
+| Tool              | Description                                              |
+|-------------------|----------------------------------------------------------|
+| `store_memory`    | Save a memory (idempotent per workspace by content)      |
+| `retrieve_memory` | Hybrid semantic + full-text search                       |
+| `recall_memory`   | Search by natural-language time expression               |
+| `list_memories`   | Paginated list with type/tag filters                     |
+| `search_by_tag`   | AND/OR tag search                                        |
+| `get_memory`      | Fetch a single memory by ID                              |
+| `update_memory`   | Update content, type, tags, or metadata by ID            |
+| `delete_memory`   | Delete by ID                                             |
+| `list_workspaces` | List workspaces you are a member of (including personal) |
+
+Workspace management (create, invite, join, leave) is handled via the Web UI.
 
 ## Development
 

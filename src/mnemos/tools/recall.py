@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
+from mnemos.dao.workspace import WorkspaceDao
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory
 from mnemos.schemas import MemoryType, RecallResult
@@ -48,10 +49,11 @@ async def recall_memory(
             remaining = remaining.replace(date_str, "")
         semantic_query = remaining.strip() or query
 
+    workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
     results = await hybrid_search(
         s,
         query=semantic_query,
-        user_id=uid,
+        workspace_ids=workspace_ids,
         limit=n_results,
         similarity_threshold=0.0,
         date_from=date_from,
@@ -63,7 +65,7 @@ async def recall_memory(
         return []
 
     ids = [r.id for r in results]
-    tags_map = await MemoryDao(s).fetch_tags(ids)
+    tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
     rows = await s.execute(
         select(Memory.id, Memory.created_at).where(Memory.id.in_(ids))
@@ -77,6 +79,7 @@ async def recall_memory(
             memory_type=r.memory_type,
             tags=tags_map.get(r.id, []),
             created_at=str(created_map.get(r.id, "")),
+            workspace_id=r.workspace_id,
         )
         for r in results
     ]

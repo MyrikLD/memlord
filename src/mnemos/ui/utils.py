@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import time
 from pathlib import Path
-from typing import NoReturn
+from typing import Annotated, NoReturn
 
 from fastapi import Depends, HTTPException, Request
 from starlette.templating import Jinja2Templates
@@ -10,7 +10,7 @@ from starlette.templating import Jinja2Templates
 from mnemos.config import settings
 from mnemos.dao.user import UserDao
 from mnemos.db import APISessionDep
-from mnemos.models.user import User
+from mnemos.schemas import UserInfo
 
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
@@ -71,8 +71,11 @@ async def get_current_user(
     request: Request,
     s: APISessionDep,
     uid: int = Depends(require_auth),
-) -> User:
+):
     user = await UserDao(s).get_by_id(uid)
     if user is None:
         _redirect(request)
-    return user  # type: ignore[return-value]
+    return user
+
+
+UserDep = Annotated[UserInfo, Depends(get_current_user)]

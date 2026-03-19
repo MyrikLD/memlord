@@ -24,6 +24,18 @@
 {% endif %}
 
 <form method="get" class="toolbar">
+    {% if workspaces %}
+    <select class="filter-input" name="workspace" style="max-width:200px">
+        <option value="">All sources</option>
+        {% for ws in workspaces | sort(attribute='is_personal', reverse=true) %}
+        {% if ws.is_personal %}
+        <option value="__personal__" {% if workspace == "__personal__" %}selected{% endif %}>Personal</option>
+        {% else %}
+        <option value="{{ ws.name }}" {% if workspace == ws.name %}selected{% endif %}>{{ ws.name }}</option>
+        {% endif %}
+        {% endfor %}
+    </select>
+    {% endif %}
     <select class="filter-input" name="memory_type" style="max-width:200px">
         <option value="">All types</option>
         {% for t in ["fact", "preference", "instruction", "feedback"] %}
@@ -33,13 +45,20 @@
     <input class="filter-input" name="tag" placeholder="Filter by tag…"
            value="{{ tag }}" style="max-width:200px">
     <button type="submit" class="btn btn-ghost btn-sm">Apply</button>
-    {% if memory_type or tag %}
+    {% if memory_type or tag or workspace %}
     <a href="/" class="btn btn-ghost btn-sm">Clear filters</a>
     {% endif %}
 </form>
 
 <p class="info-bar">
     <span>{{ total }} memor{{ 'y' if total == 1 else 'ies' }}</span>
+    {% if workspace == "__personal__" %}
+    <span style="color:var(--text-4)">·</span>
+    <span>source: <strong>Personal</strong></span>
+    {% elif workspace %}
+    <span style="color:var(--text-4)">·</span>
+    <span>workspace: <strong>{{ workspace }}</strong></span>
+    {% endif %}
     {% if memory_type %}
     <span style="color:var(--text-4)">·</span>
     <span>type: <strong>{{ memory_type }}</strong></span>
@@ -51,7 +70,13 @@
 </p>
 
 {% for m in memories %}
-<div id="mem-{{ m.id }}" class="card">
+<div id="mem-{{ m.id }}" class="card" {% if m.workspace_name %}style="border-left:3px solid #6366f1"{% endif %}>
+    {% if m.workspace_name %}
+    <div style="font-size:.75rem;font-weight:600;color:#6366f1;padding:.25rem 0 .1rem;letter-spacing:.03em">
+        <a href="/?workspace={{ '__personal__' if m.workspace_name == 'Personal' else m.workspace_name }}"
+           style="color:inherit;text-decoration:none">⬡ {{ m.workspace_name }}</a>
+    </div>
+    {% endif %}
     <div class="card-header">
         <a href="/memory/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
             <div class="card-content">{{ m.content | truncate(280) }}</div>
@@ -81,12 +106,12 @@
 {% if total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?page={{ page - 1 }}&memory_type={{ memory_type }}&tag={{ tag }}"
+    <a href="?page={{ page - 1 }}&memory_type={{ memory_type }}&tag={{ tag }}&workspace={{ workspace }}"
        class="btn btn-ghost btn-sm">← Prev</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
-    <a href="?page={{ page + 1 }}&memory_type={{ memory_type }}&tag={{ tag }}"
+    <a href="?page={{ page + 1 }}&memory_type={{ memory_type }}&tag={{ tag }}&workspace={{ workspace }}"
        class="btn btn-ghost btn-sm">Next →</a>
     {% endif %}
 </div>
