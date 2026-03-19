@@ -70,6 +70,7 @@
         }
 
         /* ── Nav ──────────────────────────────────────────────────── */
+
         nav {
             background: var(--nav-bg);
             border-bottom: 1px solid var(--nav-border);
@@ -666,6 +667,18 @@
             text-overflow: ellipsis;
         }
 
+        .btn-nav {
+            background: transparent;
+            color: var(--nav-text);
+            border-color: var(--nav-input-bd);
+        }
+
+        .btn-nav:hover {
+            background: var(--nav-input-bg);
+            color: #fff;
+            border-color: #71717a;
+        }
+
         .btn-logout {
             padding: 0.3125rem 0.625rem;
             background: transparent;
@@ -720,7 +733,7 @@
             Memlord
         </a>
         <div class="nav-divider"></div>
-        <a href="/ui/workspaces" style="font-size:.8125rem;color:var(--nav-text-2);white-space:nowrap;flex-shrink:0;transition:color .12s" onmouseover="this.style.color='var(--nav-text)'" onmouseout="this.style.color='var(--nav-text-2)'">Workspaces</a>
+        <a href="/ui/workspaces" class="btn btn-nav btn-sm">Workspaces</a>
         <div class="nav-divider"></div>
         <form action="/search" method="get" class="search-form">
             <input class="search-input" name="q" placeholder="Search memories…"
