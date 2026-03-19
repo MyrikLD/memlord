@@ -147,10 +147,10 @@ running: `uv run python scripts/download_model.py` (source: HuggingFace `sentenc
 `created_at`
 
 **memories** — main table: `id` (PK), `content` (TEXT), `created_by` (FK → `users.id`), `memory_type`, `metadata` (
-JSONB), `workspace_id` (FK → `workspaces.id`, nullable — `null` = personal memory), `embedding` (`vector(384)` —
+JSONB), `workspace_id` (FK → `workspaces.id` NOT NULL, ON DELETE CASCADE), `embedding` (`vector(384)` —
 pgvector), `search_vector` (`TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED`), `created_at`
 
-Unique constraint: `(content, created_by)` — idempotency per user.
+Unique constraint: `uq_memories_content_workspace (content, workspace_id)` — idempotency per workspace.
 
 Indexes: GIN on `search_vector`, HNSW on `embedding` (cosine ops, m=16, ef_construction=64).
 
@@ -158,7 +158,11 @@ Indexes: GIN on `search_vector`, HNSW on `embedding` (cosine ops, m=16, ef_const
 
 **memory_tags** — M2M: `memory_id` → `memories.id` (CASCADE), `tag_id` → `tags.id` (CASCADE)
 
-**workspaces** — `id` (PK), `name` (UNIQUE), `created_by` (FK → `users.id`), `created_at`
+**workspaces** — `id` (PK), `name` (UNIQUE), `created_by` (FK → `users.id`), `is_personal` (BOOLEAN NOT NULL DEFAULT
+FALSE), `created_at`
+
+Partial unique index: `uq_workspaces_personal_per_user ON workspaces (created_by) WHERE is_personal = TRUE` — enforces
+one personal workspace per user.
 
 **workspace_members** — `workspace_id` (FK → `workspaces.id`, CASCADE) + `user_id` (FK → `users.id`, CASCADE) —
 composite PK; `role` (default `member`), `joined_at`
@@ -172,10 +176,9 @@ composite PK; `role` (default `member`), `joined_at`
 
 ### Algorithm
 
-`hybrid_search(session, query, user_id, workspace_ids, ...)` in `search.py`:
+`hybrid_search(session, query, workspace_ids, ...)` in `search.py`:
 
-1. Build **access filter**: personal memories (`workspace_id IS NULL AND created_by = user_id`) OR memories from
-   `workspace_ids`.
+1. Build **access filter**: `Memory.workspace_id.in_(workspace_ids)`.
 2. Two sequential queries:
     - **BM25**: `Memory.search_vector @@ websearch_to_tsquery('simple', query)` + tag match (
       `to_tsvector('simple', tag.name) @@ tsquery`). Ranked via `row_number() OVER (ORDER BY ts_rank DESC)`. Fetches
@@ -192,8 +195,7 @@ composite PK; `role` (default `member`), `joined_at`
 
 | Parameter               | Description                                                      |
 |-------------------------|------------------------------------------------------------------|
-| `user_id`               | Owner — filters personal memories                                |
-| `workspace_ids`         | List of accessible workspaces (optional)                         |
+| `workspace_ids`         | List of accessible workspace IDs                                 |
 | `limit`                 | Max results (default: `MNEMOS_DEFAULT_LIMIT`)                    |
 | `similarity_threshold`  | Threshold for pure vector hits (default: `MNEMOS_SIM_THRESHOLD`) |
 | `date_from` / `date_to` | Filter by `created_at`                                           |
@@ -226,10 +228,11 @@ Save a memory entry.
 | `memory_type` | string   | ✅        | Type: `observation`, `feedback`, `fact`, `preference`, `instruction`, `task`, `plan` |
 | `tags`        | string[] | ❌        | Tags                                                                                 |
 | `metadata`    | object   | ❌        | Arbitrary metadata (JSON)                                                            |
-| `workspace`   | string   | ❌        | Workspace name (must be a member). `null` = personal memory                          |
+| `workspace`   | string   | ❌        | Workspace name (must have write access). `null` → personal workspace                 |
 
-**Logic:** if `workspace` is provided — name lookup, membership check → `workspace_id`. Unique constraint
-`(content, created_by)` — idempotent per user. `MemoryDao.create` → embedding → tags.
+**Logic:** if `workspace` is provided — name lookup, `can_write` check → `workspace_id`. If `null` → personal
+workspace resolved via `get_personal(uid)`. Unique constraint `(content, workspace_id)` — idempotent per workspace.
+`MemoryDao.create` → embedding → tags.
 
 **Returns:** `StoreResult` — `id`, `created` (bool).
 
@@ -349,25 +352,16 @@ with the row.
 
 ---
 
-### `check_database_health`
+### `list_workspaces`
 
-Database status. No parameters.
+List all workspaces the user is a member of, including the personal workspace (`is_personal=true`).
 
-**Returns:** `HealthResult` — `status`, `total_memories`, `schema_version`, `vec_extension`, `fts_ok`.
+No parameters.
 
----
+**Returns:** `list[WorkspaceInfo]` — `id`, `name`, `role`, `member_count`, `is_personal`.
 
-### Workspace tools
-
-| Tool               | Description                                                                             |
-|--------------------|-----------------------------------------------------------------------------------------|
-| `create_workspace` | Create a workspace and become its owner. Parameter: `name`.                             |
-| `list_workspaces`  | List all workspaces the user is a member of.                                            |
-| `create_invite`    | Create an invite token. Parameters: `workspace_id`, `expires_in_hours` (default 72).    |
-| `join_workspace`   | Join via token. Parameter: `invite_token`.                                              |
-| `leave_workspace`  | Leave a workspace. Parameter: `workspace_id`. Owners must delete the workspace instead. |
-
-**Returns:** `WorkspaceInfo` (for create/join/list) or `None` (for leave).
+> Workspace management (create shared workspace, generate invite link, join via token, leave, delete) is handled
+> exclusively through the Web UI.
 
 ---
 
@@ -424,22 +418,23 @@ server starts without authentication.
 Web interface over the same database. Stack: FastAPI + Jinja2 (SSR) + HTMX. All routes under `/ui` prefix, require
 authentication via session cookie (`get_current_user`).
 
-| Section    | Description                                                                |
-|------------|----------------------------------------------------------------------------|
-| List       | `GET /` — paginated list, filter by type, tag, workspace                   |
-| Search     | `GET /search?q=...` — hybrid search (BM25 + vector)                        |
-| View       | `GET /memory/{id}` — detail card: content, tags, metadata, workspace, date |
-| Edit       | `PUT /memory/{id}` — update content, memory_type, tags, metadata           |
-| Delete     | `DELETE /memory/{id}` — delete entry                                       |
-| Workspaces | `GET /ui/workspaces` — list user's workspaces                              |
-|            | `GET/POST /ui/workspaces/new` — create workspace                           |
-|            | `GET /ui/workspaces/{id}` — workspace detail, member list                  |
-|            | `POST /ui/workspaces/{id}/invite` — generate invite link                   |
-|            | `POST /ui/workspaces/{id}/leave` — leave workspace                         |
-|            | `POST /ui/workspaces/{id}/delete` — delete workspace (owner only)          |
-|            | `GET/POST /ui/join/{token}` — accept invite via token                      |
-| Login      | `GET/POST /ui/login` — web UI login                                        |
-| Data       | `GET /ui/export` / `POST /ui/import` — export/import JSON                  |
+| Section    | Description                                                                                   |
+|------------|-----------------------------------------------------------------------------------------------|
+| List       | `GET /` — paginated list, filter by type, tag, workspace                                      |
+| Search     | `GET /search?q=...` — hybrid search (BM25 + vector)                                           |
+| View       | `GET /memory/{id}` — detail card: content, tags, metadata, workspace, date                    |
+| Edit       | `PUT /memory/{id}` — update content, memory_type, tags, metadata                              |
+| Move       | `POST /memory/{id}/move` — move memory to another workspace (write access required on target) |
+| Delete     | `DELETE /memory/{id}` — delete entry                                                          |
+| Workspaces | `GET /ui/workspaces` — list user's workspaces (personal shown first)                          |
+|            | `GET/POST /ui/workspaces/new` — create shared workspace                                       |
+|            | `GET /ui/workspaces/{id}` — workspace detail, member list                                     |
+|            | `POST /ui/workspaces/{id}/invite` — generate invite link (non-personal only)                  |
+|            | `POST /ui/workspaces/{id}/leave` — leave workspace (non-personal only)                        |
+|            | `POST /ui/workspaces/{id}/delete` — delete workspace (owner, non-personal only)               |
+|            | `GET/POST /ui/join/{token}` — accept invite via token                                         |
+| Login      | `GET/POST /ui/login` — web UI login                                                           |
+| Data       | `GET /ui/export` / `POST /ui/import` — export/import JSON                                     |
 
 ---
 

@@ -27,9 +27,12 @@
     {% if workspaces %}
     <select class="filter-input" name="workspace" style="max-width:200px">
         <option value="">All sources</option>
+        {% for ws in workspaces | sort(attribute='is_personal', reverse=true) %}
+        {% if ws.is_personal %}
         <option value="__personal__" {% if workspace == "__personal__" %}selected{% endif %}>Personal</option>
-        {% for ws in workspaces %}
+        {% else %}
         <option value="{{ ws.name }}" {% if workspace == ws.name %}selected{% endif %}>{{ ws.name }}</option>
+        {% endif %}
         {% endfor %}
     </select>
     {% endif %}
@@ -70,7 +73,8 @@
 <div id="mem-{{ m.id }}" class="card" {% if m.workspace_name %}style="border-left:3px solid #6366f1"{% endif %}>
     {% if m.workspace_name %}
     <div style="font-size:.75rem;font-weight:600;color:#6366f1;padding:.25rem 0 .1rem;letter-spacing:.03em">
-        <a href="/?workspace={{ m.workspace_name }}" style="color:inherit;text-decoration:none">⬡ {{ m.workspace_name }}</a>
+        <a href="/?workspace={{ '__personal__' if m.workspace_name == 'Personal' else m.workspace_name }}"
+           style="color:inherit;text-decoration:none">⬡ {{ m.workspace_name }}</a>
     </div>
     {% endif %}
     <div class="card-header">

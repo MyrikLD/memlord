@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
-from mnemos.dao.workspace import WorkspaceDao, accessible_memories_filter
+from mnemos.dao.workspace import WorkspaceDao
 from mnemos.db import MCPSessionDep
 from mnemos.models import Memory, MemoryTag, Tag
 from mnemos.schemas import MemoryListItem
@@ -40,7 +40,7 @@ async def search_by_tag(
         return []
 
     workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
-    access_filter = accessible_memories_filter(uid, workspace_ids)
+    access_filter = Memory.workspace_id.in_(workspace_ids)
 
     if operation == "AND":
         matching_count = (
@@ -71,7 +71,7 @@ async def search_by_tag(
         return []
 
     ids: list[int] = [row["id"] for row in rows]
-    tags_map = await MemoryDao(s).fetch_tags(ids)
+    tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
     return [
         MemoryListItem(

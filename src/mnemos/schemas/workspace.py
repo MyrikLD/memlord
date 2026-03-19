@@ -8,6 +8,7 @@ class WorkspaceInfo(BaseModel):
     name: str
     role: str  # caller's role: 'owner' | 'editor' | 'member' | 'viewer'
     member_count: int
+    is_personal: bool
 
 
 class WorkspaceMemberInfo(BaseModel):

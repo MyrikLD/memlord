@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Float, and_, bindparam, func, or_, select
+from sqlalchemy import Float, bindparam, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.config import settings
@@ -13,7 +13,6 @@ from mnemos.schemas import SearchResult
 async def hybrid_search(
     session: AsyncSession,
     query: str,
-    user_id: int,
     workspace_ids: list[int] | None = None,
     limit: int | None = None,
     similarity_threshold: float | None = None,
@@ -29,12 +28,8 @@ async def hybrid_search(
         else settings.sim_threshold
     )
 
-    # Build access filter: personal memories + any joined workspaces
-    personal = and_(Memory.workspace_id.is_(None), Memory.created_by == user_id)
-    if workspace_ids:
-        access = or_(personal, Memory.workspace_id.in_(workspace_ids))
-    else:
-        access = personal
+    # Build access filter: all workspaces the user is a member of
+    access = Memory.workspace_id.in_(workspace_ids or [])
 
     conditions = [access]
     if date_from:

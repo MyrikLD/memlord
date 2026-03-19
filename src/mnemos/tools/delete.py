@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
-from mnemos.dao.workspace import WorkspaceDao
 from mnemos.db import MCPSessionDep
 from mnemos.schemas import DeleteResult
 
@@ -21,7 +20,6 @@ async def delete_memory(
     uid: int = UserDep,  # type: ignore[assignment]
 ) -> DeleteResult:
     """Delete a memory by ID. Removes from vec index and FTS (via trigger)."""
-    workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
-    dao = MemoryDao(s)
-    await dao.delete(id, uid, workspace_ids=workspace_ids)
+    dao = MemoryDao(s, uid)
+    await dao.delete(id)
     return DeleteResult(success=True, id=id)

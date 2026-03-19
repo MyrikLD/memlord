@@ -29,23 +29,26 @@ async def store_memory(
     workspace: name of the workspace to store into (must be a member).
                Omit or pass None to store as a personal memory.
     """
-    workspace_id: int | None = None
+    ws_dao = WorkspaceDao(s)
     if workspace is not None:
-        ws = await WorkspaceDao(s).get_by_name(workspace, uid)
+        ws = await ws_dao.get_by_name(workspace, uid)
         if ws is None:
             raise ValueError(
                 f"Workspace '{workspace}' not found or you are not a member. "
                 "Use list_workspaces() to see available workspaces."
             )
-        workspace_id = ws.id
+        if not await ws_dao.can_write(ws.id, uid):
+            raise ValueError(f"You don't have write access to workspace '{workspace}'.")
+    else:
+        ws = await ws_dao.get_personal(uid)
+    workspace_id = ws.id
 
-    dao = MemoryDao(s)
+    dao = MemoryDao(s, uid)
     memory_id, created = await dao.create(
         content=content,
         memory_type=memory_type,
         metadata=metadata or {},
         tags=tags or [],
-        user_id=uid,
         workspace_id=workspace_id,
     )
     return StoreResult(id=memory_id, created=created)

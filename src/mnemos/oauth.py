@@ -4,32 +4,30 @@ import time
 from urllib.parse import urlencode
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from pydantic import BaseModel
-
-from mnemos.auth import hash_password, verify_password
-from mnemos.dao.user import UserDao
-from mnemos.db import session
-from mnemos.models.oauth_client import OAuthClient
-
 from authlib.jose.errors import JoseError
+from fastmcp.server.auth import OAuthProvider
+from fastmcp.server.auth.auth import AccessToken
+from fastmcp.server.auth.jwt_issuer import derive_jwt_key, JWTIssuer
 from mcp.server.auth.provider import (
     AuthorizationCode,
     AuthorizationParams,
     AuthorizeError,
+    construct_redirect_uri,
     RefreshToken,
     TokenError,
-    construct_redirect_uri,
 )
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
+from pydantic import BaseModel
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route
 
-from fastmcp.server.auth import OAuthProvider
-from fastmcp.server.auth.auth import AccessToken
-from fastmcp.server.auth.jwt_issuer import JWTIssuer, derive_jwt_key
+from mnemos.auth import hash_password
+from mnemos.dao.user import UserDao
+from mnemos.db import session
+from mnemos.models.oauth_client import OAuthClient
 
 logger = logging.getLogger(__name__)
 
@@ -252,32 +250,33 @@ class MnemosOAuthProvider(OAuthProvider):
             )
 
         if action == "register":
-            return await self._handle_register(request, form, pending_id, pending)
-        return await self._handle_login(request, form, pending_id, pending)
+            return await self._handle_register(form, pending_id, pending)
+        return await self._handle_login(form, pending_id, pending)
 
     async def _handle_login(
-        self, request: Request, form, pending_id: str, pending: "_PendingAuth"
+        self, form, pending_id: str, pending: "_PendingAuth"
     ) -> Response:
         email = str(form.get("email", "")).strip().lower()
         password = str(form.get("password", ""))
 
         async with session() as s:
-            user = await UserDao(s).get_by_email(email)
+            exists = await UserDao(s).exists_by_email(email)
+            if not exists:
+                logger.info(
+                    "login: email not found, showing register form email=%s", email
+                )
+                return HTMLResponse(
+                    _REGISTER_HTML.format(
+                        style=_CARD_STYLE,
+                        pending_id=pending_id,
+                        client_id=pending.client_id,
+                        email=email,
+                        error_block="",
+                    )
+                )
+            user = await UserDao(s).authenticate(email, password)
 
         if user is None:
-            # No account → show registration form
-            logger.info("login: email not found, showing register form email=%s", email)
-            return HTMLResponse(
-                _REGISTER_HTML.format(
-                    style=_CARD_STYLE,
-                    pending_id=pending_id,
-                    client_id=pending.client_id,
-                    email=email,
-                    error_block="",
-                )
-            )
-
-        if not verify_password(password, user.hashed_password):  # type: ignore[arg-type]
             logger.warning(
                 "login: wrong password email=%s client_id=%s", email, pending.client_id
             )
@@ -292,10 +291,10 @@ class MnemosOAuthProvider(OAuthProvider):
                 status_code=401,
             )
 
-        return await self._issue_code(pending_id, pending, user.id)  # type: ignore[arg-type]
+        return await self._issue_code(pending_id, pending, user.id)
 
     async def _handle_register(
-        self, request: Request, form, pending_id: str, pending: "_PendingAuth"
+        self, form, pending_id: str, pending: "_PendingAuth"
     ) -> Response:
         email = str(form.get("email", "")).strip().lower()
         display_name = str(form.get("display_name", "")).strip()
@@ -322,8 +321,7 @@ class MnemosOAuthProvider(OAuthProvider):
             return _reg_error("Passwords do not match.")
 
         async with session() as s:
-            existing = await UserDao(s).get_by_email(email)
-            if existing is not None:
+            if await UserDao(s).exists_by_email(email):
                 return _reg_error("An account with this email already exists.")
             user = await UserDao(s).create(
                 email=email,
@@ -331,8 +329,8 @@ class MnemosOAuthProvider(OAuthProvider):
                 hashed_password=hash_password(password),
             )
 
-        logger.info("register: created user id=%d email=%s", user.id, email)  # type: ignore[str-format]
-        return await self._issue_code(pending_id, pending, user.id)  # type: ignore[arg-type]
+        logger.info("register: created user id=%d email=%s", user.id, email)
+        return await self._issue_code(pending_id, pending, user.id)
 
     async def _issue_code(
         self, pending_id: str, pending: "_PendingAuth", user_id: int

@@ -45,7 +45,7 @@ async def export_memories_ui(
         .all()
     )
     ids = [r["id"] for r in rows]
-    tags_map = await MemoryDao(s).fetch_tags(ids) if ids else {}
+    tags_map = await MemoryDao(s, uid).fetch_tags(ids) if ids else {}
     data = [
         ImportItem(
             **r,
@@ -73,7 +73,10 @@ async def import_memories_ui(
     if not isinstance(items, list):
         raise HTTPException(status_code=400, detail="Expected a JSON array")
 
-    dao = MemoryDao(s)
+    from mnemos.dao.workspace import WorkspaceDao
+
+    personal_ws = await WorkspaceDao(s).get_personal(uid)
+    dao = MemoryDao(s, uid)
     imported = skipped = 0
     for item in items:
         try:
@@ -87,7 +90,7 @@ async def import_memories_ui(
             memory_type=parsed.memory_type,
             metadata=parsed.metadata,
             tags=parsed.tags,
-            user_id=uid,
+            workspace_id=personal_ws.id,
         )
         if created:
             imported += 1

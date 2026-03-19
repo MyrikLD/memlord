@@ -12,6 +12,16 @@ class Workspace(Base):
     created_at = sa.Column(
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )
+    is_personal = sa.Column(sa.Boolean, nullable=False, server_default="false")
+
+    __table_args__ = (
+        sa.Index(
+            "uq_workspaces_personal_per_user",
+            "created_by",
+            unique=True,
+            postgresql_where=sa.text("is_personal = TRUE"),
+        ),
+    )
 
 
 class WorkspaceMember(Base):

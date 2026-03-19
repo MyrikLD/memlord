@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mnemos.auth import UserDep
 from mnemos.dao import MemoryDao
-from mnemos.dao.workspace import WorkspaceDao
 from mnemos.db import MCPSessionDep
 from mnemos.schemas import MemoryType, StoreResult
 
@@ -27,12 +26,9 @@ async def update_memory(
     uid: int = UserDep,  # type: ignore[assignment]
 ) -> StoreResult:
     """Update an existing memory by ID. Only provided fields are changed."""
-    workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
-    dao = MemoryDao(s)
+    dao = MemoryDao(s, uid)
     data: dict[str, Any] = {
         "id": id,
-        "user_id": uid,
-        "workspace_ids": workspace_ids,
         "memory_type": MemoryType(memory_type),
     }
 

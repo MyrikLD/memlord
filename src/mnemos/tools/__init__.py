@@ -1,6 +1,5 @@
 from .delete import mcp as delete
 from .get_memory import mcp as get_memory
-from .health import mcp as health
 from .list_memories import mcp as list_memories
 from .recall import mcp as recall
 from .retrieve import mcp as retrieve

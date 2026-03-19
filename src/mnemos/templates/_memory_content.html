@@ -6,6 +6,11 @@
 {% endif %}
 
 <div class="detail-card">
+    {% if workspace_name %}
+    <div style="font-size:.75rem;font-weight:600;color:#6366f1;margin-bottom:.75rem;letter-spacing:.03em">
+        ⬡ {{ workspace_name }}
+    </div>
+    {% endif %}
     <div style="margin-bottom:1.25rem">
         <div class="detail-label">Content</div>
         <div class="detail-content">{{ memory.content }}</div>
@@ -22,6 +27,23 @@
     </div>
     {% endif %}
 </div>
+
+{% if writable_workspaces %}
+<div class="detail-card">
+    <div class="section-title">Move to workspace</div>
+    <form hx-post="/memory/{{ memory.id }}/move"
+          hx-target="#page-content"
+          hx-swap="innerHTML"
+          style="display:flex;gap:.5rem;align-items:center">
+        <select class="form-input" name="target_workspace_id" style="flex:1">
+            {% for ws in writable_workspaces %}
+            <option value="{{ ws.id }}">{{ 'Personal' if ws.is_personal else ws.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn-primary-sm">Move</button>
+    </form>
+</div>
+{% endif %}
 
 <div class="detail-card">
     <div class="section-title">Edit memory</div>

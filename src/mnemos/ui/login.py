@@ -2,7 +2,7 @@ from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import EmailStr
 
-from mnemos.auth import hash_password, verify_password
+from mnemos.auth import hash_password
 from mnemos.dao.user import UserDao
 from mnemos.db import APISessionDep
 from .utils import make_session_token, templates
@@ -32,9 +32,9 @@ async def login_post(
     password: str = Form(),
     next: str = Form(default="/"),
 ) -> Response:
-    user = await UserDao(s).get_by_email(email)
+    user = await UserDao(s).authenticate(email, password)
 
-    if user is None or not verify_password(password, user.hashed_password):  # type: ignore[arg-type]
+    if user is None:
         return templates.TemplateResponse(
             request,
             "login.html",
@@ -44,7 +44,7 @@ async def login_post(
 
     redirect_url = next if next.startswith("/") else "/"
     response = RedirectResponse(redirect_url, status_code=303)
-    _set_session(response, user.id)  # type: ignore[arg-type]
+    _set_session(response, user.id)
     return response
 
 
@@ -85,17 +85,16 @@ async def register_post(
     if password != password2:
         return _err("Passwords do not match.")
 
-    existing = await UserDao(s).get_by_email(email)
-    if existing is not None:
+    if await UserDao(s).exists_by_email(email):
         return _err("An account with this email already exists.")
 
     user = await UserDao(s).create(
-        email=email,
+        email=str(email),
         display_name=display_name,
         hashed_password=hash_password(password),
     )
 
     redirect_url = next if next.startswith("/") else "/"
     response = RedirectResponse(redirect_url, status_code=303)
-    _set_session(response, user.id)  # type: ignore[arg-type]
+    _set_session(response, user.id)
     return response

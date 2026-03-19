@@ -2,25 +2,12 @@ import uuid
 from datetime import datetime, timedelta
 
 import sqlalchemy as sa
-from sqlalchemy import and_, delete, insert, or_, select, update
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mnemos.models.memory import Memory
 from mnemos.models.user import User
 from mnemos.models.workspace import Workspace, WorkspaceInvite, WorkspaceMember
 from mnemos.schemas.workspace import WorkspaceInfo, WorkspaceMemberInfo
-
-
-def accessible_memories_filter(uid: int, workspace_ids: list[int]):
-    """Return a SQLAlchemy WHERE expression for memories accessible to uid.
-
-    Covers personal memories (workspace_id IS NULL, created_by = uid)
-    plus any workspace the user is a member of.
-    """
-    personal = and_(Memory.workspace_id.is_(None), Memory.created_by == uid)
-    if workspace_ids:
-        return or_(personal, Memory.workspace_id.in_(workspace_ids))
-    return personal
 
 
 class WorkspaceDao:
@@ -30,7 +17,7 @@ class WorkspaceDao:
     async def create(self, name: str, owner_id: int) -> WorkspaceInfo:
         workspace_id = await self._s.scalar(
             insert(Workspace)
-            .values(name=name, created_by=owner_id)
+            .values(name=name, created_by=owner_id, is_personal=False)
             .returning(Workspace.id)
         )
         assert workspace_id is not None
@@ -39,7 +26,76 @@ class WorkspaceDao:
                 workspace_id=workspace_id, user_id=owner_id, role="owner"
             )
         )
-        return WorkspaceInfo(id=workspace_id, name=name, role="owner", member_count=1)
+        return WorkspaceInfo(
+            id=workspace_id, name=name, role="owner", member_count=1, is_personal=False
+        )
+
+    async def create_personal(self, user_id: int) -> WorkspaceInfo:
+        """Create a personal workspace for user_id and add them as owner."""
+        name = f"__personal_{user_id}__"
+        workspace_id = await self._s.scalar(
+            insert(Workspace)
+            .values(name=name, created_by=user_id, is_personal=True)
+            .returning(Workspace.id)
+        )
+        assert workspace_id is not None
+        await self._s.execute(
+            insert(WorkspaceMember).values(
+                workspace_id=workspace_id, user_id=user_id, role="owner"
+            )
+        )
+        return WorkspaceInfo(
+            id=workspace_id, name=name, role="owner", member_count=1, is_personal=True
+        )
+
+    async def get_personal(self, user_id: int) -> WorkspaceInfo:
+        """Return the personal workspace for user_id. Raises if not found."""
+        member_count_subq = (
+            select(sa.func.count())
+            .where(WorkspaceMember.workspace_id == Workspace.id)
+            .correlate(Workspace)
+            .scalar_subquery()
+        )
+        row = (
+            (
+                await self._s.execute(
+                    select(
+                        Workspace.id,
+                        Workspace.name,
+                        Workspace.is_personal,
+                        WorkspaceMember.role,
+                        member_count_subq.label("member_count"),
+                    )
+                    .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+                    .where(
+                        Workspace.created_by == user_id,
+                        Workspace.is_personal.is_(True),
+                        WorkspaceMember.user_id == user_id,
+                    )
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            raise ValueError(f"Personal workspace not found for user {user_id}")
+        return WorkspaceInfo(
+            id=row["id"],
+            name=row["name"],
+            role=row["role"],
+            member_count=row["member_count"],
+            is_personal=True,
+        )
+
+    async def can_write(self, workspace_id: int, user_id: int) -> bool:
+        """True if user has owner or editor role in the workspace."""
+        role = await self.get_role(workspace_id, user_id)
+        return role in ("owner", "editor")
+
+    async def can_read(self, workspace_id: int, user_id: int) -> bool:
+        """True if user is any member of the workspace."""
+        role = await self.get_role(workspace_id, user_id)
+        return role is not None
 
     async def get_role(self, workspace_id: int, user_id: int) -> str | None:
         return await self._s.scalar(
@@ -100,6 +156,7 @@ class WorkspaceDao:
                     select(
                         Workspace.id,
                         Workspace.name,
+                        Workspace.is_personal,
                         WorkspaceMember.role,
                         member_count_subq.label("member_count"),
                     )
@@ -117,6 +174,7 @@ class WorkspaceDao:
                 name=row["name"],
                 role=row["role"],
                 member_count=row["member_count"],
+                is_personal=row["is_personal"],
             )
             for row in rows
         ]
@@ -135,6 +193,7 @@ class WorkspaceDao:
                     select(
                         Workspace.id,
                         Workspace.name,
+                        Workspace.is_personal,
                         WorkspaceMember.role,
                         member_count_subq.label("member_count"),
                     )
@@ -152,6 +211,7 @@ class WorkspaceDao:
             name=row["name"],
             role=row["role"],
             member_count=row["member_count"],
+            is_personal=row["is_personal"],
         )
 
     async def get_by_id_for_user(
@@ -168,6 +228,7 @@ class WorkspaceDao:
                     select(
                         Workspace.id,
                         Workspace.name,
+                        Workspace.is_personal,
                         WorkspaceMember.role,
                         member_count_subq.label("member_count"),
                     )
@@ -187,6 +248,7 @@ class WorkspaceDao:
             name=row["name"],
             role=row["role"],
             member_count=row["member_count"],
+            is_personal=row["is_personal"],
         )
 
     async def get_members(self, workspace_id: int) -> list[WorkspaceMemberInfo]:

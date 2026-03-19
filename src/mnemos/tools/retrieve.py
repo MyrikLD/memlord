@@ -27,7 +27,6 @@ async def retrieve_memory(
     results = await hybrid_search(
         s,
         query=query,
-        user_id=uid,
         workspace_ids=workspace_ids,
         limit=limit,
         similarity_threshold=similarity_threshold,
@@ -37,7 +36,7 @@ async def retrieve_memory(
     if not results:
         return []
 
-    dao = MemoryDao(s)
+    dao = MemoryDao(s, uid)
     ids = [r.id for r in results]
     tags_map = await dao.fetch_tags(ids)
     meta_map = await dao.fetch_metadata(ids)

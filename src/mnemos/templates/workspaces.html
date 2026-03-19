@@ -8,13 +8,18 @@
 </div>
 
 {% if workspaces %}
-{% for ws in workspaces %}
+{% for ws in workspaces | sort(attribute='is_personal', reverse=true) %}
 <div class="card">
     <div class="card-header">
         <a href="/ui/workspaces/{{ ws.id }}" style="flex:1;min-width:0;color:inherit;text-decoration:none;">
-            <div style="font-weight:600;font-size:.9375rem">{{ ws.name }}</div>
+            <div style="font-weight:600;font-size:.9375rem">
+                {% if ws.is_personal %}Personal{% else %}{{ ws.name }}{% endif %}
+            </div>
         </a>
         <span class="badge badge-type">{{ ws.role }}</span>
+        {% if ws.is_personal %}
+        <span class="badge" style="background:var(--bg-3);color:var(--text-3)">personal</span>
+        {% endif %}
     </div>
     <div class="card-meta">
         <span style="font-size:.75rem;color:var(--text-4)">{{ ws.member_count }} member{{ 's' if ws.member_count != 1 else '' }}</span>

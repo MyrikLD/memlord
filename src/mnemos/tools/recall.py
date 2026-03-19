@@ -53,7 +53,6 @@ async def recall_memory(
     results = await hybrid_search(
         s,
         query=semantic_query,
-        user_id=uid,
         workspace_ids=workspace_ids,
         limit=n_results,
         similarity_threshold=0.0,
@@ -66,7 +65,7 @@ async def recall_memory(
         return []
 
     ids = [r.id for r in results]
-    tags_map = await MemoryDao(s).fetch_tags(ids)
+    tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
     rows = await s.execute(
         select(Memory.id, Memory.created_at).where(Memory.id.in_(ids))
