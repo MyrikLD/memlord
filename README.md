@@ -44,10 +44,10 @@ All settings use the `MEMLORD_` prefix. See [`.env.example`](.env.example) for t
 |---------------------------|-----------------------------------------------------------|----------------------------|
 | `MEMLORD_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/memlord` | PostgreSQL connection URL  |
 | `MEMLORD_PORT`             | `8000`                                                    | Server port                |
-| `MEMLORD_BASE_URL`         | —                                                         | Public URL (enables OAuth) |
+| `MEMLORD_BASE_URL`         | `http://localhost:8000`                                   | Public URL for OAuth       |
 | `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret         |
 
-OAuth is enabled when `MEMLORD_BASE_URL` is set. Without it, the server starts without authentication.
+OAuth is always enabled. Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` before deploying.
 
 ## MCP Tools
 

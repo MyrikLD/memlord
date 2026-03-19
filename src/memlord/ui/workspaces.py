@@ -15,8 +15,7 @@ async def workspaces_list(
     s: APISessionDep,
     user: UserDep,
 ) -> HTMLResponse:
-    uid: int = user.id
-    workspaces = await WorkspaceDao(s).list_workspaces(user_id=uid)
+    workspaces = await WorkspaceDao(s).list_workspaces(user_id=user.id)
     return templates.TemplateResponse(
         request, "workspaces.html", {"user": user, "workspaces": workspaces}
     )
@@ -37,7 +36,6 @@ async def workspace_new_post(
     user: UserDep,
     name: str = Form(),
 ) -> Response:
-    uid: int = user.id
     name = name.strip()
     if not name:
         return templates.TemplateResponse(
@@ -47,7 +45,7 @@ async def workspace_new_post(
             status_code=400,
         )
     try:
-        ws = await WorkspaceDao(s).create(name=name, owner_id=uid)
+        ws = await WorkspaceDao(s).create(name=name, owner_id=user.id)
     except IntegrityError:
         return templates.TemplateResponse(
             request,
@@ -69,9 +67,8 @@ async def workspace_detail(
     s: APISessionDep,
     user: UserDep,
 ) -> HTMLResponse:
-    uid: int = user.id
     dao = WorkspaceDao(s)
-    ws = await dao.get_by_id_for_user(workspace_id, uid)
+    ws = await dao.get_by_id_for_user(workspace_id, user.id)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     members = await dao.get_members(workspace_id)
@@ -90,8 +87,7 @@ async def workspace_invite(
     user: UserDep,
     expires_in_hours: int = Form(default=72),
 ) -> HTMLResponse:
-    uid: int = user.id
-    ws = await WorkspaceDao(s).get_by_id_for_user(workspace_id, uid)
+    ws = await WorkspaceDao(s).get_by_id_for_user(workspace_id, user.id)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
@@ -101,7 +97,7 @@ async def workspace_invite(
     try:
         token = await WorkspaceDao(s).create_invite(
             workspace_id=workspace_id,
-            created_by=uid,
+            created_by=user.id,
             expires_in_hours=expires_in_hours,
         )
     except ValueError as e:
@@ -123,15 +119,14 @@ async def workspace_leave(
     s: APISessionDep,
     user: UserDep,
 ) -> Response:
-    uid: int = user.id
     dao = WorkspaceDao(s)
-    ws = await dao.get_by_id_for_user(workspace_id, uid)
+    ws = await dao.get_by_id_for_user(workspace_id, user.id)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
         raise HTTPException(status_code=400, detail="Cannot leave a personal workspace")
     try:
-        await dao.remove_member(workspace_id=workspace_id, user_id=uid)
+        await dao.remove_member(workspace_id=workspace_id, user_id=user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse("/ui/workspaces", status_code=303)
@@ -143,9 +138,8 @@ async def workspace_delete(
     s: APISessionDep,
     user: UserDep,
 ) -> Response:
-    uid: int = user.id
     dao = WorkspaceDao(s)
-    ws = await dao.get_by_id_for_user(workspace_id, uid)
+    ws = await dao.get_by_id_for_user(workspace_id, user.id)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
@@ -153,7 +147,7 @@ async def workspace_delete(
             status_code=400, detail="Cannot delete a personal workspace"
         )
     try:
-        await dao.delete_workspace(workspace_id=workspace_id, owner_id=uid)
+        await dao.delete_workspace(workspace_id=workspace_id, owner_id=user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse("/ui/workspaces", status_code=303)
@@ -188,9 +182,8 @@ async def join_post(
     s: APISessionDep,
     user: UserDep,
 ) -> Response:
-    uid: int = user.id
     try:
-        ws = await WorkspaceDao(s).use_invite(token=token, user_id=uid)
+        ws = await WorkspaceDao(s).use_invite(token=token, user_id=user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return RedirectResponse(f"/ui/workspaces/{ws.id}", status_code=303)
