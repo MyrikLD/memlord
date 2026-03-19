@@ -6,9 +6,9 @@ Self-hosted MCP memory server with hybrid BM25 + semantic search, backed by Post
 
 - **Hybrid search** — BM25 (full-text) + vector KNN (pgvector) fused via Reciprocal Rank Fusion
 - **Multi-user** — each user sees only their own memories; workspaces for shared team knowledge
-- **8 MCP tools** — store, retrieve, recall, list, search by tag, get, update, delete
+- **10 MCP tools** — store, retrieve, recall, list, search by tag, get, update, delete, move, list workspaces
 - **Web UI** — browse, search, edit and delete memories in the browser; export/import JSON
-- **OAuth 2.1** — optional, full in-process authorization server
+- **OAuth 2.1** — full in-process authorization server, always enabled
 - **PostgreSQL** — pgvector for embeddings, tsvector for full-text search
 
 ## Quickstart
@@ -61,6 +61,7 @@ OAuth is always enabled. Set `MEMLORD_BASE_URL` to your public URL and change `M
 | `get_memory`      | Fetch a single memory by ID                              |
 | `update_memory`   | Update content, type, tags, or metadata by ID            |
 | `delete_memory`   | Delete by ID                                             |
+| `move_memory`     | Move a memory to a different workspace                   |
 | `list_workspaces` | List workspaces you are a member of (including personal) |
 
 Workspace management (create, invite, join, leave) is handled via the Web UI.
