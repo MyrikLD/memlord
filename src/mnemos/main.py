@@ -20,7 +20,9 @@ app = FastAPI(title="Mnemos", lifespan=lifespan)
 
 
 @app.exception_handler(PermissionError)
-async def permission_error_handler(request: Request, exc: PermissionError) -> JSONResponse:
+async def permission_error_handler(
+    request: Request, exc: PermissionError
+) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 

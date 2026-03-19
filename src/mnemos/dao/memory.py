@@ -210,7 +210,9 @@ class MemoryDao:
         if row is None:
             raise ValueError(f"Memory with id={id} not found")
         if target_workspace_id not in workspace_ids:
-            raise PermissionError(f"No access to target workspace {target_workspace_id}")
+            raise PermissionError(
+                f"No access to target workspace {target_workspace_id}"
+            )
         duplicate = await self._s.scalar(
             select(Memory.id).where(
                 Memory.content == row["content"],
