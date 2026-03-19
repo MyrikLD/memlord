@@ -2,6 +2,7 @@
 name = "mnemos"
 version = "0.1.0"
 description = "MCP server for storing and searching memory"
+license = "AGPL-3.0-only"
 requires-python = "==3.12.*"
 dependencies = [
     "asyncpg>=0.29.0",

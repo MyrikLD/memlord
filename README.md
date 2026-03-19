@@ -73,3 +73,10 @@ black .                # format
 pytest                 # run tests
 alembic-autogen-check  # verify migrations are up to date
 ```
+
+## License
+
+Mnemos is dual-licensed:
+
+- **[AGPL-3.0](LICENSE)** — free for open-source use. If you run a modified version as a network service, you must publish your source code.
+- **[Commercial License](LICENSE-COMMERCIAL)** — for proprietary or closed-source deployments. Contact myrik260138@gmail.com to purchase.
