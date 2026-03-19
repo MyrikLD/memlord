@@ -11,8 +11,8 @@ jobs:
     name: Lint & type check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
       - run: uv sync --dev
       - run: uv run black --check .
 
@@ -36,8 +36,8 @@ jobs:
     env:
       MEMLORD_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
       - run: uv sync --dev
       - run: uv run alembic upgrade head
       - run: uv run alembic-autogen-check
@@ -63,8 +63,8 @@ jobs:
       MEMLORD_MODEL_DIR: src/memlord/onnx
       MEMLORD_DB_URL: postgresql+asyncpg://postgres:postgres@localhost/postgres
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
       - run: uv sync --dev
       - run: uv run python scripts/download_model.py
       - run: uv run pytest tests/ -x -q
@@ -77,7 +77,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
