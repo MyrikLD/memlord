@@ -72,7 +72,7 @@ async def hybrid_search(
     bm25_rows = (await session.execute(bm25_q)).fetchall()
 
     # Vector KNN via pgvector cosine distance
-    vector = embed(query)
+    vector = await embed(query)
     vec_param = bindparam("vec", type_=Vector(384))
     distance = Memory.embedding.op("<=>", return_type=Float)(vec_param).label(
         "distance"
