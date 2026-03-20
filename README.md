@@ -35,6 +35,48 @@ pgvector.</h4>
 
 ---
 
+## 🆚 How Memlord compares
+
+|                       | **Memlord**                                | [**OpenMemory**](https://github.com/mem0ai/mem0/tree/main/openmemory) | [**mcp-memory-service**](https://github.com/doobidoo/mcp-memory-service) | [**basic-memory**](https://github.com/basicmachines-co/basic-memory) | [**Graphiti**](https://github.com/getzep/graphiti) |
+|-----------------------|--------------------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------|
+| **Search**            | BM25 + vector + RRF                        | Vector only (Qdrant)                                                  | BM25 + vector + RRF                                                      | BM25 + vector                                                        | Semantic + BM25 + graph traversal                  |
+| **Embeddings**        | Local ONNX, zero config                    | OpenAI default; Ollama optional                                       | Local ONNX, zero config                                                  | Local FastEmbed                                                      | External API required (OpenAI)                     |
+| **Storage**           | PostgreSQL + pgvector                      | PostgreSQL + Qdrant                                                   | SQLite-vec / Cloudflare Vectorize                                        | SQLite + Markdown files                                              | FalkorDB or Neo4j                                  |
+| **Multi-user**        | ✅                                          | ❌ single-user in practice                                             | ⚠️ agent-ID scoping, no isolation                                        | ❌                                                                    | ⚠️ group_id scoping                                |
+| **Workspaces**        | ✅ shared + personal, invite links          | ⚠️ "Apps" namespace                                                   | ⚠️ tags + conversation_id                                                | ✅ per-project flag                                                   | ⚠️ group_id                                        |
+| **Authentication**    | ✅ OAuth 2.1                                | ❌ none (self-hosted)                                                  | ✅ OAuth 2.0 + PKCE                                                       | ❌                                                                    | ❌                                                  |
+| **Web UI**            | ✅ browse, edit, export                     | ✅ Next.js dashboard                                                   | ✅ rich UI, graph viz, quality scores                                     | ❌ local; cloud only                                                  | ❌                                                  |
+| **MCP tools**         | 10                                         | 5                                                                     | 15+                                                                      | ~20                                                                  | varies                                             |
+| **Self-hosted**       | ✅ single process                           | ✅ Docker (3 containers)                                               | ✅                                                                        | ✅                                                                    | ✅ Docker (requires graph DB)                       |
+| **Memory input**      | Manual (explicit store)                    | Auto-extracted by LLM                                                 | Manual                                                                   | Manual (Markdown notes)                                              | Auto-extracted by LLM                              |
+| **Memory types**      | fact / preference / instruction / feedback | auto-extracted facts                                                  | —                                                                        | observations + wiki links                                            | temporal entity facts                              |
+| **Time-aware search** | ✅ natural language dates                   | ⚠️ REST only, not in MCP tools                                        | —                                                                        | ✅ recent_activity                                                    | ✅ valid_at / invalid_at                            |
+| **Token efficiency**  | ✅ progressive disclosure                   | ❌                                                                     | —                                                                        | ✅ build_context traversal                                            | ❌                                                  |
+| **Import / Export**   | ✅ JSON                                     | ✅ ZIP (JSON + JSONL)                                                  | —                                                                        | ✅ Markdown (human-readable)                                          | ❌                                                  |
+| **License**           | AGPL-3.0 / Commercial                      | Apache 2.0                                                            | Apache 2.0                                                               | AGPL-3.0                                                             | Apache 2.0                                         |
+
+**Where competitors have a real edge:**
+
+- **OpenMemory** — auto-extracts memories from raw conversation text; no need to decide what to store manually; good
+  import/export
+- **mcp-memory-service** — richer web UI (graph visualization, quality scoring, 8 tabs); more permissive license (Apache
+  2.0); multiple transport options (stdio, SSE, HTTP)
+- **basic-memory** — memories are human-readable Markdown files you can edit, version-control, and read without any
+  server; wiki-style entity links form a local knowledge graph; ~20 MCP tools
+- **Graphiti** — true temporal knowledge graph with entity relationships and `valid_at`/`invalid_at` per fact; most
+  sophisticated memory model for agents that need to reason about how facts change over time
+
+**When to pick Memlord:**
+
+- You want **zero-config local embeddings** — ONNX model ships with the server, no Ollama or external API needed
+- You run a **multi-user team server** with proper OAuth 2.1 auth and invite-based workspaces
+- You want a **production-grade database** (PostgreSQL) that scales beyond a single machine's SQLite
+- You manage memories **explicitly** — store exactly what matters, typed and tagged, not everything the LLM decides to
+  extract
+- You want a **self-hosted Web UI** with full CRUD and JSON export, without a cloud subscription
+
+---
+
 ## 🚀 Quickstart
 
 ```bash
