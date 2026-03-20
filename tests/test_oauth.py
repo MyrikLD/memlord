@@ -10,6 +10,7 @@ import base64
 import hashlib
 import secrets
 import time
+from contextlib import asynccontextmanager
 
 import pytest
 from authlib.jose import JsonWebToken
@@ -25,10 +26,15 @@ RESOURCE_URL = f"{BASE_URL}{MCP_PATH}"
 
 
 @pytest.fixture
-def provider():
+def provider(session):
+    @asynccontextmanager
+    async def session_factory():
+        yield session
+
     return MemlordOAuthProvider(
         base_url=BASE_URL,
         jwt_secret="test-only-secret",
+        session_factory=session_factory,
     )
 
 
@@ -51,7 +57,7 @@ def _pkce_pair() -> tuple[str, str]:
     return verifier, challenge
 
 
-async def test_full_auth_pipeline_jwt_audience(provider, oauth_client):
+async def test_full_auth_pipeline_jwt_audience(provider, oauth_client, session):
     """Full OAuth pipeline: set_mcp_path → authorize → exchange → validate.
 
     The critical assertion is that the issued token's `aud` claim equals

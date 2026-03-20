@@ -1,5 +1,7 @@
 from fastmcp import FastMCP
+
 from memlord.config import settings
+from memlord.db import session
 from memlord.oauth import MemlordOAuthProvider
 from memlord.tools import (
     delete,
@@ -19,6 +21,7 @@ mcp: FastMCP = FastMCP(
     auth=MemlordOAuthProvider(
         base_url=settings.base_url,
         jwt_secret=settings.oauth_jwt_secret,
+        session_factory=session,
     ),
 )
 

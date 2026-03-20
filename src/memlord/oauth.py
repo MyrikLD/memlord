@@ -1,6 +1,8 @@
 import logging
 import secrets
 import time
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
@@ -21,13 +23,13 @@ from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOption
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import BaseModel
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route
 
 from memlord.auth import hash_password
 from memlord.dao.user import UserDao
-from memlord.db import session
 from memlord.models.oauth_client import OAuthClient
 from memlord.models.revoked_token import RevokedToken
 
@@ -139,7 +141,12 @@ class _PendingAuth(BaseModel):
 class MemlordOAuthProvider(OAuthProvider):
     """Full in-process OAuth 2.1 authorization server with email+password login."""
 
-    def __init__(self, base_url: str, jwt_secret: str) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        jwt_secret: str,
+        session_factory: Callable[[], AbstractAsyncContextManager[AsyncSession]],
+    ) -> None:
         super().__init__(
             base_url=base_url,
             client_registration_options=ClientRegistrationOptions(
@@ -168,6 +175,8 @@ class MemlordOAuthProvider(OAuthProvider):
         self._access_to_refresh: dict[str, str] = {}  # access str → refresh str
         self._refresh_to_access: dict[str, str] = {}  # refresh str → access str
         self._pending: dict[str, _PendingAuth] = {}
+
+        self.session = session_factory
 
     # ------------------------------------------------------------------
     # Login page
@@ -261,7 +270,7 @@ class MemlordOAuthProvider(OAuthProvider):
         email = str(form.get("email", "")).strip().lower()
         password = str(form.get("password", ""))
 
-        async with session() as s:
+        async with self.session() as s:
             exists = await UserDao(s).exists_by_email(email)
             if not exists:
                 logger.info(
@@ -322,7 +331,7 @@ class MemlordOAuthProvider(OAuthProvider):
         if password != password2:
             return _reg_error("Passwords do not match.")
 
-        async with session() as s:
+        async with self.session() as s:
             if await UserDao(s).exists_by_email(email):
                 return _reg_error("An account with this email already exists.")
             user = await UserDao(s).create(
@@ -340,7 +349,7 @@ class MemlordOAuthProvider(OAuthProvider):
         del self._pending[pending_id]
 
         # Link this OAuth client to the authenticated user
-        async with session() as s:
+        async with self.session() as s:
             await s.execute(
                 sa.update(OAuthClient)
                 .where(OAuthClient.client_id == pending.client_id)
@@ -374,7 +383,7 @@ class MemlordOAuthProvider(OAuthProvider):
     # ------------------------------------------------------------------
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
-        async with session() as s:
+        async with self.session() as s:
             data = await s.scalar(
                 sa.select(OAuthClient.data).where(OAuthClient.client_id == client_id)
             )
@@ -394,7 +403,7 @@ class MemlordOAuthProvider(OAuthProvider):
             client_info.scope,
         )
         data = client_info.model_dump(mode="json")
-        async with session() as s:
+        async with self.session() as s:
             await s.execute(
                 pg_insert(OAuthClient)
                 .values(client_id=client_info.client_id, data=data)
@@ -471,7 +480,7 @@ class MemlordOAuthProvider(OAuthProvider):
             return None
 
         # Check revocation in DB (survives restarts, works cross-instance).
-        async with session() as s:
+        async with self.session() as s:
             revoked = await s.scalar(
                 sa.select(RevokedToken.jti).where(RevokedToken.jti == jti)
             )
@@ -642,7 +651,7 @@ class MemlordOAuthProvider(OAuthProvider):
                 self._access_to_refresh.pop(paired_access, None)
 
         if to_revoke:
-            async with session() as s:
+            async with self.session() as s:
                 for jti, expires_at in to_revoke:
                     await s.execute(
                         pg_insert(RevokedToken)
