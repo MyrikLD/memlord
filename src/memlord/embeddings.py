@@ -1,3 +1,4 @@
+import asyncio
 from functools import cache
 
 import numpy as np
@@ -20,7 +21,7 @@ def _get_tokenizer() -> Tokenizer:
     return t
 
 
-def embed(text: str) -> list[float]:
+async def embed(text: str) -> list[float]:
     tokenizer = _get_tokenizer()
     session = _get_session()
 
@@ -29,14 +30,27 @@ def embed(text: str) -> list[float]:
     attention_mask = np.array([encoding.attention_mask], dtype=np.int64)
     token_type_ids = np.zeros_like(input_ids, dtype=np.int64)
 
-    outputs = session.run(
+    loop = asyncio.get_running_loop()
+    future: asyncio.Future[list[np.ndarray]] = loop.create_future()
+
+    def _callback(results: list[np.ndarray], _user_data: None, err: str) -> None:
+        if err:
+            loop.call_soon_threadsafe(future.set_exception, RuntimeError(err))
+        else:
+            loop.call_soon_threadsafe(future.set_result, results)
+
+    session.run_async(
         None,
         {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
             "token_type_ids": token_type_ids,
         },
+        _callback,
+        None,
     )
+
+    outputs = await future
 
     # mean pooling with attention mask
     token_embeddings = np.asarray(outputs[0])  # (1, seq_len, 384)

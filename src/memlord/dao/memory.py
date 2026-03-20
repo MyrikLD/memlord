@@ -83,7 +83,7 @@ class MemoryDao:
                 content=str(content),
                 memory_type=MemoryType(memory_type),
                 extra_data=metadata or {},
-                embedding=embed(_embed_text(content, tags or [])),
+                embedding=await embed(_embed_text(content, tags or [])),
                 created_by=self._uid,
                 workspace_id=workspace_id,
             )
@@ -138,7 +138,7 @@ class MemoryDao:
             )
             if content is not _UNSET:
                 values["content"] = content
-            values["embedding"] = embed(_embed_text(new_content, new_tags))
+            values["embedding"] = await embed(_embed_text(new_content, new_tags))
 
         if values:
             await self._s.execute(
