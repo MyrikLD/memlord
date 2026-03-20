@@ -1,9 +1,13 @@
 from contextlib import asynccontextmanager
 
+import sqlalchemy as sa
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette import status
+
 from memlord.config import settings
+from memlord.db import session
 from memlord.server import mcp
 from memlord.ui import router as ui_router
 
@@ -23,7 +27,23 @@ app = FastAPI(title="Memlord", lifespan=lifespan)
 async def permission_error_handler(
     request: Request, exc: PermissionError
 ) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={"detail": str(exc)},
+    )
+
+
+@app.get("/health")
+async def health() -> JSONResponse:
+    try:
+        async with session() as s:
+            await s.execute(sa.text("SELECT 1"))
+        return JSONResponse({"status": "ok"})
+    except Exception as exc:
+        return JSONResponse(
+            {"status": "error", "detail": str(exc)},
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
 
 # UI routes must be registered BEFORE the root mount so they take priority.
