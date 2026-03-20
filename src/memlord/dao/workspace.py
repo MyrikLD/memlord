@@ -288,6 +288,14 @@ class WorkspaceDao:
             is_personal=row["is_personal"],
         )
 
+    async def rename(self, workspace_id: int, owner_id: int, name: str) -> None:
+        role = await self.get_role(workspace_id, owner_id)
+        if role != WorkspaceRole.owner:
+            raise ValueError("Only the owner can rename a workspace")
+        await self._s.execute(
+            update(Workspace).where(Workspace.id == workspace_id).values(name=name)
+        )
+
     async def update_description(
         self, workspace_id: int, owner_id: int, description: str | None
     ) -> None:

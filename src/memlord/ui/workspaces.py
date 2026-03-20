@@ -85,6 +85,28 @@ async def workspace_detail(
     )
 
 
+@router.post("/workspaces/{workspace_id}/rename")
+async def workspace_rename_post(
+    workspace_id: int,
+    s: APISessionDep,
+    user: UserDep,
+    name: str = Form(),
+) -> Response:
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    ws = await WorkspaceDao(s).get_by_id_for_user(workspace_id, user.id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    if ws.is_personal:
+        raise HTTPException(status_code=400, detail="Cannot rename a personal workspace")
+    try:
+        await WorkspaceDao(s).rename(workspace_id=workspace_id, owner_id=user.id, name=name)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    return RedirectResponse(f"/ui/workspaces/{workspace_id}", status_code=303)
+
+
 @router.post("/workspaces/{workspace_id}/description")
 async def workspace_description_post(
     workspace_id: int,
