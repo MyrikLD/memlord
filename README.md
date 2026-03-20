@@ -1,17 +1,41 @@
-# Memlord
+# 🧠 Memlord
 
-Self-hosted MCP memory server with hybrid BM25 + semantic search, backed by PostgreSQL + pgvector.
+<h4 align="center">Self-hosted MCP memory server with hybrid BM25 + semantic search, backed by PostgreSQL +
+pgvector.</h4>
 
-## Features
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%203.0-blue.svg" alt="License"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-brightgreen.svg" alt="Python"></a>
+  <a href="https://github.com/MyrikLD/memlord/releases"><img src="https://img.shields.io/github/v/tag/MyrikLD/memlord?label=version&color=green" alt="Version"></a>
+  <a href="https://github.com/modelcontextprotocol/servers"><img src="https://img.shields.io/badge/MCP-compatible-purple.svg" alt="MCP"></a>
+  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
+</p>
 
-- **Hybrid search** — BM25 (full-text) + vector KNN (pgvector) fused via Reciprocal Rank Fusion
-- **Multi-user** — each user sees only their own memories; workspaces for shared team knowledge
-- **10 MCP tools** — store, retrieve, recall, list, search by tag, get, update, delete, move, list workspaces
-- **Web UI** — browse, search, edit and delete memories in the browser; export/import JSON
-- **OAuth 2.1** — full in-process authorization server, always enabled
-- **PostgreSQL** — pgvector for embeddings, tsvector for full-text search
+<p align="center">
+  <a href="#-quickstart">Quickstart</a> •
+  <a href="#-how-it-works">How It Works</a> •
+  <a href="#️-mcp-tools">MCP Tools</a> •
+  <a href="#️-configuration">Configuration</a> •
+  <a href="#-system-requirements">Requirements</a> •
+  <a href="#-license">License</a>
+</p>
 
-## Quickstart
+---
+
+## ✨ Features
+
+- 🔍 **Hybrid search** — BM25 (full-text) + vector KNN (pgvector) fused via Reciprocal Rank Fusion
+- 📂 **Multi-user** — each user sees only their own memories; workspaces for shared team knowledge
+- 🛠️ **10 MCP tools** — store, retrieve, recall, list, search by tag, get, update, delete, move, list workspaces
+- 🌐 **Web UI** — browse, search, edit and delete memories in the browser; export/import JSON
+- 🔒 **OAuth 2.1** — full in-process authorization server, always enabled
+- 🐘 **PostgreSQL** — pgvector for embeddings, tsvector for full-text search
+- 📊 **Progressive disclosure** — search returns compact snippets by default; call `get_memory(id)` only for what you
+  need, reducing token usage
+
+---
+
+## 🚀 Quickstart
 
 ```bash
 # Install dependencies
@@ -29,44 +53,91 @@ memlord
 
 Open **http://localhost:8000** for the Web UI. The MCP endpoint is at `/mcp`.
 
-## Docker
+---
+
+## 🐳 Docker
 
 ```bash
 cp .env.example .env
 docker compose up
 ```
 
-## Configuration
+---
+
+## 🔍 How It Works
+
+Each search request runs BM25 and vector KNN **in parallel**, then merges results via **Reciprocal Rank Fusion**:
+
+```
+query
+  ├── BM25  (search_vector @@ websearch_to_tsquery)
+  └── KNN   (embedding <=> query_vector, cosine distance)
+        ↓
+   RRF fusion  (score = 1/(k+rank_bm25) + 1/(k+rank_vec), k=60)
+        ↓
+   top-N results
+```
+
+Embeddings are generated locally via **ONNX** (all-MiniLM-L6-v2, 384 dimensions) — no external API calls.
+
+---
+
+## ⚙️ Configuration
 
 All settings use the `MEMLORD_` prefix. See [`.env.example`](.env.example) for the full list.
 
-| Variable                  | Default                                                   | Description                |
-|---------------------------|-----------------------------------------------------------|----------------------------|
-| `MEMLORD_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/memlord` | PostgreSQL connection URL  |
-| `MEMLORD_PORT`             | `8000`                                                    | Server port                |
-| `MEMLORD_BASE_URL`         | `http://localhost:8000`                                   | Public URL for OAuth       |
-| `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret         |
+| Variable                   | Default                                                    | Description               |
+|----------------------------|------------------------------------------------------------|---------------------------|
+| `MEMLORD_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/memlord` | PostgreSQL connection URL |
+| `MEMLORD_PORT`             | `8000`                                                     | Server port               |
+| `MEMLORD_BASE_URL`         | `http://localhost:8000`                                    | Public URL for OAuth      |
+| `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret        |
 
-OAuth is always enabled. Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` before deploying.
+OAuth is always enabled. Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` before
+deploying.
 
-## MCP Tools
+---
 
-| Tool              | Description                                              |
-|-------------------|----------------------------------------------------------|
-| `store_memory`    | Save a memory (idempotent per workspace by content)      |
-| `retrieve_memory` | Hybrid semantic + full-text search                       |
-| `recall_memory`   | Search by natural-language time expression               |
-| `list_memories`   | Paginated list with type/tag filters                     |
-| `search_by_tag`   | AND/OR tag search                                        |
-| `get_memory`      | Fetch a single memory by ID                              |
-| `update_memory`   | Update content, type, tags, or metadata by ID            |
-| `delete_memory`   | Delete by ID                                             |
-| `move_memory`     | Move a memory to a different workspace                   |
-| `list_workspaces` | List workspaces you are a member of (including personal) |
+## 🛠️ MCP Tools
+
+| Tool              | Description                                                             |
+|-------------------|-------------------------------------------------------------------------|
+| `store_memory`    | Save a memory (idempotent per workspace by content)                     |
+| `retrieve_memory` | Hybrid semantic + full-text search; returns snippets by default         |
+| `recall_memory`   | Search by natural-language time expression; returns snippets by default |
+| `list_memories`   | Paginated list with type/tag filters                                    |
+| `search_by_tag`   | AND/OR tag search                                                       |
+| `get_memory`      | Fetch a single memory by ID with full content                           |
+| `update_memory`   | Update content, type, tags, or metadata by ID                           |
+| `delete_memory`   | Delete by ID                                                            |
+| `move_memory`     | Move a memory to a different workspace                                  |
+| `list_workspaces` | List workspaces you are a member of (including personal)                |
 
 Workspace management (create, invite, join, leave) is handled via the Web UI.
 
-## Development
+### 📊 Progressive disclosure
+
+`retrieve_memory` and `recall_memory` return compact snippets (200 chars) by default. Drill into a specific memory with
+`get_memory(id)` to get full content, tags, and metadata — only when you actually need it.
+
+```
+recall_memory("asyncio event loop")   →  [{ id: 42, content: "Asyncio uses a single-threaded...", ... }]
+get_memory(42)                         →  full content + tags + metadata
+```
+
+Pass `snippet_length=None` to get full content immediately.
+
+---
+
+## 💻 System Requirements
+
+- **Python** 3.12
+- **PostgreSQL** ≥ 15 with [pgvector](https://github.com/pgvector/pgvector) extension
+- **uv** — Python package manager
+
+---
+
+## 👨‍💻 Development
 
 ```bash
 pyright src/           # type check
@@ -75,9 +146,13 @@ pytest                 # run tests
 alembic-autogen-check  # verify migrations are up to date
 ```
 
-## License
+---
+
+## 📄 License
 
 Memlord is dual-licensed:
 
-- **[AGPL-3.0](LICENSE)** — free for open-source use. If you run a modified version as a network service, you must publish your source code.
-- **[Commercial License](LICENSE-COMMERCIAL)** — for proprietary or closed-source deployments. Contact sergey@memlord.com or dmitry@memlord.com to purchase.
+- **[AGPL-3.0](LICENSE)** — free for open-source use. If you run a modified version as a network service, you must
+  publish your source code.
+- **[Commercial License](LICENSE-COMMERCIAL)** — for proprietary or closed-source deployments. Contact
+  sergey@memlord.com or dmitry@memlord.com to purchase.
