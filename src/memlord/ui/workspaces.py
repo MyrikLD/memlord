@@ -99,9 +99,13 @@ async def workspace_rename_post(
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
-        raise HTTPException(status_code=400, detail="Cannot rename a personal workspace")
+        raise HTTPException(
+            status_code=400, detail="Cannot rename a personal workspace"
+        )
     try:
-        await WorkspaceDao(s).rename(workspace_id=workspace_id, owner_id=user.id, name=name)
+        await WorkspaceDao(s).rename(
+            workspace_id=workspace_id, owner_id=user.id, name=name
+        )
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     return RedirectResponse(f"/ui/workspaces/{workspace_id}", status_code=303)
