@@ -80,9 +80,11 @@ async def recall_memory(
     return [
         RecallResult(
             id=r.id,
-            content=r.content
-            if snippet_length is None or len(r.content) <= snippet_length
-            else r.content[:snippet_length] + "...",
+            content=(
+                r.content
+                if snippet_length is None or len(r.content) <= snippet_length
+                else r.content[:snippet_length] + "..."
+            ),
             memory_type=r.memory_type,
             tags=tags_map.get(r.id, []),
             created_at=str(created_map.get(r.id, "")),
