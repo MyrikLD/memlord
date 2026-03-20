@@ -11,6 +11,17 @@
     <span class="badge badge-type">{{ workspace.role }}</span>
 </div>
 
+{% if workspace.role == 'owner' and not workspace.is_personal %}
+<div class="detail-card">
+    <div class="section-title">Name</div>
+    <form method="post" action="/ui/workspaces/{{ workspace.id }}/rename">
+        <input class="form-input" name="name" type="text" value="{{ workspace.name }}"
+               required style="margin-bottom:.75rem">
+        <button type="submit" class="btn btn-primary btn-sm">Rename</button>
+    </form>
+</div>
+{% endif %}
+
 <div class="detail-card">
     <div class="section-title">Description</div>
     {% if workspace.role == 'owner' %}
