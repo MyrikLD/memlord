@@ -19,10 +19,16 @@ async def retrieve_memory(
     limit: int = 10,
     similarity_threshold: float = 0.7,
     memory_type: MemoryType | None = None,
+    snippet_length: int | None = 200,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = UserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
-    """Hybrid semantic + full-text search over stored memories."""
+    """Hybrid semantic + full-text search over stored memories.
+
+    Returns compact snippets by default (snippet_length=200). To get the full
+    content of a specific memory, call get_memory(id).
+    Set snippet_length=None to return full content immediately.
+    """
     workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
     results = await hybrid_search(
         s,
@@ -44,10 +50,13 @@ async def retrieve_memory(
     output = []
     for r in results:
         metadata, created_at = meta_map.get(r.id, ({}, utcnow()))
+        content = r.content
+        if snippet_length is not None and len(content) > snippet_length:
+            content = content[:snippet_length] + "..."
         output.append(
             MemoryResult(
                 id=r.id,
-                content=r.content,
+                content=content,
                 memory_type=r.memory_type,
                 tags=tags_map.get(r.id, []),
                 metadata=metadata,

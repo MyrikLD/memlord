@@ -24,6 +24,8 @@ services:
       - POSTGRES_DB=memlord
     volumes:
       - ./data/postgres:/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
     healthcheck:
       test: [ "CMD", "pg_isready", "-d", "memlord", "-U", "postgres" ]
       interval: 10s
