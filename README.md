@@ -80,4 +80,4 @@ alembic-autogen-check  # verify migrations are up to date
 Memlord is dual-licensed:
 
 - **[AGPL-3.0](LICENSE)** — free for open-source use. If you run a modified version as a network service, you must publish your source code.
-- **[Commercial License](LICENSE-COMMERCIAL)** — for proprietary or closed-source deployments. Contact myrik260138@gmail.com or 5783354@gmail.com to purchase.
+- **[Commercial License](LICENSE-COMMERCIAL)** — for proprietary or closed-source deployments. Contact sergey@memlord.com or dmitry@memlord.com to purchase.
