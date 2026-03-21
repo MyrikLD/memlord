@@ -91,6 +91,7 @@ async def import_memories_ui(
             metadata=parsed.metadata,
             tags=parsed.tags,
             workspace_id=personal_ws.id,
+            force=True,
         )
         if created:
             imported += 1
