@@ -144,18 +144,18 @@ deploying.
 
 ## 🛠️ MCP Tools
 
-| Tool              | Description                                                                   |
-|-------------------|-------------------------------------------------------------------------------|
-| `store_memory`    | Save a memory (idempotent by content); raises on near-duplicates (force=True to override) |
-| `retrieve_memory` | Hybrid semantic + full-text search; returns snippets by default               |
-| `recall_memory`   | Search by natural-language time expression; returns snippets by default       |
-| `list_memories`   | Paginated list with type/tag filters                                          |
-| `search_by_tag`   | AND/OR tag search                                                             |
-| `get_memory`      | Fetch a single memory by ID with full content                                 |
-| `update_memory`   | Update content, type, tags, or metadata by ID                                 |
-| `delete_memory`   | Delete by ID                                                                  |
-| `move_memory`     | Move a memory to a different workspace                                        |
-| `list_workspaces` | List workspaces you are a member of (including personal)                      |
+| Tool              | Description                                                             |
+|-------------------|-------------------------------------------------------------------------|
+| `store_memory`    | Save a memory (idempotent by content); raises on near-duplicates        |
+| `retrieve_memory` | Hybrid semantic + full-text search; returns snippets by default         |
+| `recall_memory`   | Search by natural-language time expression; returns snippets by default |
+| `list_memories`   | Paginated list with type/tag filters                                    |
+| `search_by_tag`   | AND/OR tag search                                                       |
+| `get_memory`      | Fetch a single memory by ID with full content                           |
+| `update_memory`   | Update content, type, tags, or metadata by ID                           |
+| `delete_memory`   | Delete by ID                                                            |
+| `move_memory`     | Move a memory to a different workspace                                  |
+| `list_workspaces` | List workspaces you are a member of (including personal)                |
 
 Workspace management (create, invite, join, leave) is handled via the Web UI.
 

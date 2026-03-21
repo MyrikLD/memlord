@@ -17,6 +17,7 @@ async def _store(s: AsyncSession, content: str, uid: int, workspace_id: int) -> 
         metadata={},
         tags=[],
         workspace_id=workspace_id,
+        force=True,
     )
     return mid
 
