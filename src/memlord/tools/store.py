@@ -21,6 +21,7 @@ async def store_memory(
     tags: list[str] | None = None,
     metadata: dict | None = None,
     workspace: str | None = None,
+    force: bool = False,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = UserDep,  # type: ignore[assignment]
 ) -> StoreResult:
@@ -28,6 +29,7 @@ async def store_memory(
 
     workspace: name of the workspace to store into (must be a member).
                Omit or pass None to store as a personal memory.
+    force: skip near-duplicate check and store unconditionally.
     """
     ws_dao = WorkspaceDao(s)
     if workspace is not None:
@@ -50,5 +52,6 @@ async def store_memory(
         metadata=metadata or {},
         tags=tags or [],
         workspace_id=workspace_id,
+        force=force,
     )
     return StoreResult(id=memory_id, created=created)

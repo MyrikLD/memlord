@@ -35,6 +35,7 @@ pgvector</h4>
 - 🐘 **PostgreSQL** — pgvector for embeddings, tsvector for full-text search
 - 📊 **Progressive disclosure** — search returns compact snippets by default; call `get_memory(id)` only for what you
   need, reducing token usage
+- 🔁 **Deduplication** — automatically detects near-identical memories before saving, preventing noise accumulation
 
 ---
 
@@ -111,17 +112,15 @@ docker compose up
 
 Each search request runs BM25 and vector KNN **in parallel**, then merges results via **Reciprocal Rank Fusion**:
 
+```mermaid
+flowchart TD
+    Q([query]) --> BM25["BM25\nsearch_vector @@ websearch_to_tsquery"]
+    Q --> EMB["ONNX embed\nall-MiniLM-L6-v2 · 384d · local"]
+    EMB --> KNN["KNN\nembedding <=> query_vector\ncosine distance"]
+    BM25 --> RRF["RRF fusion\nscore = 1/(k+rank_bm25) + 1/(k+rank_vec)\nk=60"]
+    KNN --> RRF
+    RRF --> R([top-N results])
 ```
-query
-  ├── BM25  (search_vector @@ websearch_to_tsquery)
-  └── KNN   (embedding <=> query_vector, cosine distance)
-        ↓
-   RRF fusion  (score = 1/(k+rank_bm25) + 1/(k+rank_vec), k=60)
-        ↓
-   top-N results
-```
-
-Embeddings are generated locally via **ONNX** (all-MiniLM-L6-v2, 384 dimensions) — no external API calls.
 
 ---
 
@@ -145,7 +144,7 @@ deploying.
 
 | Tool              | Description                                                             |
 |-------------------|-------------------------------------------------------------------------|
-| `store_memory`    | Save a memory (idempotent per workspace by content)                     |
+| `store_memory`    | Save a memory (idempotent by content); raises on near-duplicates        |
 | `retrieve_memory` | Hybrid semantic + full-text search; returns snippets by default         |
 | `recall_memory`   | Search by natural-language time expression; returns snippets by default |
 | `list_memories`   | Paginated list with type/tag filters                                    |
@@ -157,18 +156,6 @@ deploying.
 | `list_workspaces` | List workspaces you are a member of (including personal)                |
 
 Workspace management (create, invite, join, leave) is handled via the Web UI.
-
-### 📊 Progressive disclosure
-
-`retrieve_memory` and `recall_memory` return compact snippets (200 chars) by default. Drill into a specific memory with
-`get_memory(id)` to get full content, tags, and metadata — only when you actually need it.
-
-```
-recall_memory("asyncio event loop")   →  [{ id: 42, content: "Asyncio uses a single-threaded...", ... }]
-get_memory(42)                         →  full content + tags + metadata
-```
-
-Pass `snippet_length=None` to get full content immediately.
 
 ---
 
