@@ -52,6 +52,28 @@ class MemoryDao:
         await self._upsert_tags(memory_id, tags)
         await self._cleanup_orphan_tags()
 
+    async def _check_near_duplicate(self, vector: list[float], workspace_id: int) -> None:
+        """Raise ValueError if a near-duplicate exists in the workspace."""
+        vec_param = bindparam("vec", type_=Vector(384))
+        distance_expr = Memory.embedding.op("<=>", return_type=Float)(vec_param)
+        dup_row = (
+            await self._s.execute(
+                select(Memory.id, distance_expr.label("distance"))
+                .where(Memory.embedding.isnot(None), Memory.workspace_id == workspace_id)
+                .order_by(distance_expr)
+                .limit(1),
+                {"vec": vector},
+            )
+        ).mappings().one_or_none()
+        if dup_row is None:
+            return
+        similarity = 1.0 - dup_row["distance"]
+        if similarity >= settings.dedup_threshold:
+            raise ValueError(
+                f"Near-duplicate found (id={dup_row['id']}, similarity={round(similarity, 4):.4f}). "
+                f"Review with get_memory({dup_row['id']}). Pass force=True to store anyway."
+            )
+
     async def _personal_workspace_id(self) -> int:
         ws = await WorkspaceDao(self._s).get_personal(self._uid)
         return ws.id
@@ -66,8 +88,8 @@ class MemoryDao:
         metadata: dict,
         tags: list[str],
         workspace_id: int | None = None,
-    ) -> tuple[int, bool, int | None, float | None]:
-        """Returns (id, created, near_duplicate_id, near_duplicate_similarity)."""
+        force: bool = False,
+    ) -> tuple[int, bool]:
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
 
@@ -78,29 +100,12 @@ class MemoryDao:
             )
         )
         if memory_id is not None:
-            return memory_id, False, None, None
+            return memory_id, False
 
         vector = await embed(_embed_text(content, tags or []))
 
-        # Check for near-duplicates via cosine similarity
-        near_dup_id: int | None = None
-        near_dup_sim: float | None = None
-        vec_param = bindparam("vec", type_=Vector(384))
-        distance_expr = Memory.embedding.op("<=>", return_type=Float)(vec_param)
-        dup_row = (
-            await self._s.execute(
-                select(Memory.id, distance_expr.label("distance"))
-                .where(Memory.embedding.isnot(None), Memory.workspace_id == workspace_id)
-                .order_by(distance_expr)
-                .limit(1),
-                {"vec": vector},
-            )
-        ).mappings().one_or_none()
-        if dup_row is not None:
-            similarity = 1.0 - dup_row["distance"]
-            if similarity >= settings.dedup_threshold:
-                near_dup_id = dup_row["id"]
-                near_dup_sim = round(similarity, 4)
+        if not force:
+            await self._check_near_duplicate(vector, workspace_id)
 
         memory_id = await self._s.scalar(
             insert(Memory)
@@ -117,7 +122,7 @@ class MemoryDao:
         assert memory_id is not None
 
         await self._upsert_tags(memory_id, tags or [])
-        return memory_id, True, near_dup_id, near_dup_sim
+        return memory_id, True
 
     async def update(
         self,

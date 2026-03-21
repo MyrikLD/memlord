@@ -35,8 +35,7 @@ pgvector</h4>
 - 🐘 **PostgreSQL** — pgvector for embeddings, tsvector for full-text search
 - 📊 **Progressive disclosure** — search returns compact snippets by default; call `get_memory(id)` only for what you
   need, reducing token usage
-- 🔁 **Deduplication** — `store_memory` warns when a near-identical memory already exists (cosine similarity ≥ 0.95),
-  letting the caller decide whether to keep or discard
+- 🔁 **Deduplication** — automatically detects near-identical memories before saving, preventing noise accumulation
 
 ---
 
@@ -147,7 +146,7 @@ deploying.
 
 | Tool              | Description                                                                   |
 |-------------------|-------------------------------------------------------------------------------|
-| `store_memory`    | Save a memory (idempotent per workspace by content); warns on near-duplicates |
+| `store_memory`    | Save a memory (idempotent by content); raises on near-duplicates (force=True to override) |
 | `retrieve_memory` | Hybrid semantic + full-text search; returns snippets by default               |
 | `recall_memory`   | Search by natural-language time expression; returns snippets by default       |
 | `list_memories`   | Paginated list with type/tag filters                                          |

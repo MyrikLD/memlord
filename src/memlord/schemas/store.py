@@ -17,5 +17,3 @@ class ImportItem(BaseModel):
 class StoreResult(BaseModel):
     id: int
     created: bool
-    near_duplicate_id: int | None = None
-    near_duplicate_similarity: float | None = None
