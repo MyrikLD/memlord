@@ -52,19 +52,28 @@ class MemoryDao:
         await self._upsert_tags(memory_id, tags)
         await self._cleanup_orphan_tags()
 
-    async def _check_near_duplicate(self, vector: list[float], workspace_id: int) -> None:
+    async def _check_near_duplicate(
+        self, vector: list[float], workspace_id: int
+    ) -> None:
         """Raise ValueError if a near-duplicate exists in the workspace."""
         vec_param = bindparam("vec", type_=Vector(384))
         distance_expr = Memory.embedding.op("<=>", return_type=Float)(vec_param)
         dup_row = (
-            await self._s.execute(
-                select(Memory.id, distance_expr.label("distance"))
-                .where(Memory.embedding.isnot(None), Memory.workspace_id == workspace_id)
-                .order_by(distance_expr)
-                .limit(1),
-                {"vec": vector},
+            (
+                await self._s.execute(
+                    select(Memory.id, distance_expr.label("distance"))
+                    .where(
+                        Memory.embedding.isnot(None),
+                        Memory.workspace_id == workspace_id,
+                    )
+                    .order_by(distance_expr)
+                    .limit(1),
+                    {"vec": vector},
+                )
             )
-        ).mappings().one_or_none()
+            .mappings()
+            .one_or_none()
+        )
         if dup_row is None:
             return
         similarity = 1.0 - dup_row["distance"]
