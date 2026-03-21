@@ -1,7 +1,10 @@
-<h1 align="center">Memlord</h1>
+<p align="center">
+  <img src="media/logo.svg" alt="Self-hosted MCP memory server with hybrid BM25 + semantic search, backed by PostgreSQL +
+pgvector" width="100%">
+</p>
 
 <h4 align="center">Self-hosted MCP memory server with hybrid BM25 + semantic search, backed by PostgreSQL +
-pgvector.</h4>
+pgvector</h4>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL%203.0-blue.svg" alt="License"></a>
