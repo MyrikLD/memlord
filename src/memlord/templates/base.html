@@ -17,35 +17,35 @@
         }
 
         :root {
-            --bg: #f7f7f8;
-            --surface: #ffffff;
-            --surface-2: #f3f4f6;
-            --border: #e5e7eb;
-            --border-hover: #c4b5fd;
-            --text: #111827;
-            --text-2: #374151;
-            --text-3: #6b7280;
-            --text-4: #9ca3af;
-            --accent: #6366f1;
-            --accent-hover: #4f46e5;
-            --accent-soft: #eef2ff;
-            --accent-text: #4338ca;
+            --bg: #0b0b14;
+            --surface: #15152a;
+            --surface-2: #10101e;
+            --border: #1f1f38;
+            --border-hover: #7c3aed;
+            --text: #e2e8f0;
+            --text-2: #c4c9db;
+            --text-3: #8b8fa8;
+            --text-4: #5a5e7a;
+            --accent: #7c3aed;
+            --accent-hover: #911af3;
+            --accent-soft: rgba(124, 58, 237, .15);
+            --accent-text: #a78bfa;
             --danger: #ef4444;
-            --danger-soft: #fef2f2;
-            --danger-border: #fecaca;
-            --danger-text: #dc2626;
-            --success-bg: #f0fdf4;
-            --success-bdr: #86efac;
-            --success-text: #15803d;
-            --nav-bg: #18181b;
-            --nav-border: #27272a;
-            --nav-text: #d4d4d8;
-            --nav-text-2: #71717a;
-            --nav-input-bg: #27272a;
-            --nav-input-bd: #3f3f46;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, .05);
-            --shadow: 0 1px 3px 0 rgba(0, 0, 0, .08), 0 1px 2px -1px rgba(0, 0, 0, .06);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, .07), 0 2px 4px -2px rgba(0, 0, 0, .05);
+            --danger-soft: rgba(239, 68, 68, .12);
+            --danger-border: rgba(239, 68, 68, .3);
+            --danger-text: #f87171;
+            --success-bg: rgba(74, 222, 128, .1);
+            --success-bdr: rgba(74, 222, 128, .3);
+            --success-text: #4ade80;
+            --nav-bg: #0b0b14;
+            --nav-border: #1f1f38;
+            --nav-text: #e2e8f0;
+            --nav-text-2: #8b8fa8;
+            --nav-input-bg: #15152a;
+            --nav-input-bd: #2a2a4a;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, .3);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, .4), 0 1px 2px -1px rgba(0, 0, 0, .3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, .4), 0 2px 4px -2px rgba(0, 0, 0, .3);
             --radius-sm: 6px;
             --radius: 10px;
             --radius-lg: 14px;
@@ -109,7 +109,7 @@
         .nav-brand-icon {
             width: 26px;
             height: 26px;
-            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+            background: linear-gradient(135deg, #911af3 0%, #7c3aed 100%);
             border-radius: 7px;
             display: flex;
             align-items: center;
@@ -150,8 +150,8 @@
 
         .search-input:focus {
             outline: none;
-            border-color: #818cf8;
-            background: #2a2a30;
+            border-color: #7c3aed;
+            background: #1a1a2e;
         }
 
         .btn-search {
@@ -282,13 +282,13 @@
         .badge-type {
             background: var(--accent-soft);
             color: var(--accent-text);
-            border: 1px solid #c7d2fe;
+            border: 1px solid rgba(124, 58, 237, .3);
         }
 
-        .badge-type--feedback    { background: #ede9fe; color: #6d28d9; border-color: #ddd6fe; }
-        .badge-type--fact        { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
-        .badge-type--preference  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-        .badge-type--instruction { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+        .badge-type--feedback    { background: rgba(139, 92, 246, .15); color: #c4b5fd; border-color: rgba(139, 92, 246, .3); }
+        .badge-type--fact        { background: rgba(16, 185, 129, .12); color: #6ee7b7; border-color: rgba(16, 185, 129, .3); }
+        .badge-type--preference  { background: rgba(245, 158, 11, .12); color: #fcd34d; border-color: rgba(245, 158, 11, .3); }
+        .badge-type--instruction { background: rgba(59, 130, 246, .12); color: #93c5fd; border-color: rgba(59, 130, 246, .3); }
 
         .tag {
             display: inline-flex;
@@ -308,7 +308,7 @@
         a.tag:hover {
             background: var(--accent-soft);
             color: var(--accent-text);
-            border-color: #c7d2fe;
+            border-color: rgba(124, 58, 237, .4);
         }
 
         /* ── Buttons ──────────────────────────────────────────────── */
@@ -348,7 +348,7 @@
         .btn-ghost:hover {
             background: var(--surface-2);
             color: var(--text);
-            border-color: #d1d5db;
+            border-color: #3a3a5c;
         }
 
         .btn-primary {
@@ -391,7 +391,7 @@
 
         .btn-danger:hover {
             background: var(--danger-soft);
-            border-color: #fca5a5;
+            border-color: rgba(239, 68, 68, .5);
         }
 
         .btn-danger-sm {
@@ -411,7 +411,7 @@
 
         .btn-danger-sm:hover {
             background: var(--danger-soft);
-            border-color: #fca5a5;
+            border-color: rgba(239, 68, 68, .5);
         }
 
         .btn-icon {
@@ -468,8 +468,8 @@
 
         .filter-input:focus {
             outline: none;
-            border-color: #a5b4fc;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, .2);
         }
 
         .info-bar {
@@ -520,8 +520,8 @@
 
         .form-input:focus, .form-textarea:focus {
             outline: none;
-            border-color: #a5b4fc;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, .2);
         }
 
         .form-textarea {
@@ -690,7 +690,7 @@
         .btn-nav:hover {
             background: var(--nav-input-bg);
             color: #fff;
-            border-color: #71717a;
+            border-color: #7c3aed;
         }
 
         .btn-logout {
@@ -707,7 +707,7 @@
         }
 
         .btn-logout:hover {
-            border-color: #71717a;
+            border-color: #8b8fa8;
             color: var(--nav-text);
         }
 
