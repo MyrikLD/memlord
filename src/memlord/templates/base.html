@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Memlord{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -109,13 +110,7 @@
         .nav-brand-icon {
             width: 26px;
             height: 26px;
-            background: linear-gradient(135deg, #911af3 0%, #7c3aed 100%);
-            border-radius: 7px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: .75rem;
-            line-height: 1;
+            display: block;
         }
 
         .nav-divider {
@@ -743,7 +738,7 @@
 <nav>
     <div class="nav-inner">
         <a href="/" class="nav-brand">
-            <span class="nav-brand-icon">M</span>
+            <img src="/favicon.svg" class="nav-brand-icon" alt="Memlord">
             Memlord
         </a>
         <div class="nav-divider"></div>

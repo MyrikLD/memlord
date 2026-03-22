@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import sqlalchemy as sa
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette import status
 
 from memlord.config import settings
@@ -31,6 +32,14 @@ async def permission_error_handler(
         status_code=status.HTTP_403_FORBIDDEN,
         content={"detail": str(exc)},
     )
+
+
+_FAVICON = Path(__file__).parent / "templates" / "icon.svg"
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+async def favicon() -> FileResponse:
+    return FileResponse(_FAVICON, media_type="image/svg+xml")
 
 
 @app.get("/health")
