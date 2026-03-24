@@ -1,4 +1,4 @@
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.auth import verify_password
@@ -15,9 +15,13 @@ class UserDao:
         row = (
             (
                 await self._s.execute(
-                    select(User.id, User.display_name, User.hashed_password).where(
-                        User.email == email.strip().lower()
-                    )
+                    select(
+                        User.id,
+                        User.display_name,
+                        User.email,
+                        User.email_verified,
+                        User.hashed_password,
+                    ).where(User.email == email.strip().lower())
                 )
             )
             .mappings()
@@ -25,7 +29,12 @@ class UserDao:
         )
         if row is None or not verify_password(password, row["hashed_password"]):
             return None
-        return UserInfo(id=row["id"], display_name=row["display_name"])
+        return UserInfo(
+            id=row["id"],
+            display_name=row["display_name"],
+            email=row["email"],
+            email_verified=row["email_verified"],
+        )
 
     async def exists_by_email(self, email: str) -> bool:
         result = await self._s.scalar(
@@ -37,7 +46,9 @@ class UserDao:
         row = (
             (
                 await self._s.execute(
-                    select(User.id, User.display_name).where(User.id == id)
+                    select(
+                        User.id, User.display_name, User.email, User.email_verified
+                    ).where(User.id == id)
                 )
             )
             .mappings()
@@ -45,7 +56,32 @@ class UserDao:
         )
         if row is None:
             return None
-        return UserInfo(id=row["id"], display_name=row["display_name"])
+        return UserInfo(
+            id=row["id"],
+            display_name=row["display_name"],
+            email=row["email"],
+            email_verified=row["email_verified"],
+        )
+
+    async def get_email_by_id(self, id: int) -> str | None:
+        return await self._s.scalar(select(User.email).where(User.id == id))
+
+    async def get_id_by_email(self, email: str) -> int | None:
+        return await self._s.scalar(
+            select(User.id).where(User.email == email.strip().lower())
+        )
+
+    async def set_email_verified(self, user_id: int) -> None:
+        await self._s.execute(
+            update(User).where(User.id == user_id).values(email_verified=True)
+        )
+
+    async def set_password(self, user_id: int, hashed_password: str) -> None:
+        await self._s.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(hashed_password=hashed_password)
+        )
 
     async def create(
         self, email: str, display_name: str, hashed_password: str
@@ -61,4 +97,9 @@ class UserDao:
         )
         assert user_id is not None
         await WorkspaceDao(self._s).create_personal(user_id)
-        return UserInfo(id=user_id, display_name=display_name.strip())
+        return UserInfo(
+            id=user_id,
+            display_name=display_name.strip(),
+            email=email.strip().lower(),
+            email_verified=False,
+        )

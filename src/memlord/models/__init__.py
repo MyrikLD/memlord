@@ -1,4 +1,5 @@
 from .base import Base
+from .email_token import EmailToken
 from .memory import Memory
 from .memory_tag import MemoryTag
 from .oauth_client import OAuthClient
