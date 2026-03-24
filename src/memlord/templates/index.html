@@ -6,14 +6,6 @@
     <h1 class="page-title">Memories</h1>
     <div style="display:flex;gap:.5rem;align-items:center">
         <button type="button" class="btn btn-ghost btn-sm" onclick="openConnectModal()">Quick Start</button>
-        <a href="/ui/export" class="btn btn-ghost btn-sm">Export JSON</a>
-        <form method="post" action="/ui/import" enctype="multipart/form-data" style="display:inline">
-            <label class="btn btn-ghost btn-sm" style="cursor:pointer">
-                Import JSON
-                <input type="file" name="file" accept=".json,application/json"
-                       style="display:none" onchange="this.form.submit()">
-            </label>
-        </form>
     </div>
 </div>
 
