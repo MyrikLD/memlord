@@ -15,8 +15,7 @@ async def workspaces_list(
     s: APISessionDep,
     user: UserDep,
 ) -> HTMLResponse:
-    all_workspaces = await WorkspaceDao(s).list_workspaces(user_id=user.id)
-    workspaces = [ws for ws in all_workspaces if not ws.is_personal]
+    workspaces = await WorkspaceDao(s).list_workspaces(user_id=user.id)
     return templates.TemplateResponse(
         request, "workspaces.html", {"user": user, "workspaces": workspaces}
     )

@@ -19,6 +19,7 @@ dependencies = [
     "greenlet>=3.3.2",
     "email-validator>=2.3.0",
     "bcrypt>=5.0.0",
+    "aiosmtplib>=5.1.0",
 ]
 
 [project.scripts]

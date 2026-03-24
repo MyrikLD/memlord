@@ -13,6 +13,7 @@ from memlord.db import APISessionDep
 from memlord.schemas import UserInfo
 
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
+templates.env.globals["smtp_configured"] = bool(settings.smtp_host)
 
 SESSION_TTL = 30 * 24 * 3600  # 30 days
 

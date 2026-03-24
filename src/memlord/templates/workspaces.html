@@ -7,29 +7,33 @@
     <a href="/ui/workspaces/new" class="btn btn-primary btn-sm">+ New workspace</a>
 </div>
 
-{% if workspaces %}
-{% for ws in workspaces %}
+{% for ws in workspaces | sort(attribute='is_personal', reverse=true) %}
 <div class="card">
     <div class="card-header">
         <a href="/ui/workspaces/{{ ws.id }}" style="flex:1;min-width:0;color:inherit;text-decoration:none;">
-            <div style="font-weight:600;font-size:.9375rem">{{ ws.name }}</div>
+            <div style="font-weight:600;font-size:.9375rem">
+                {% if ws.is_personal %}Personal{% else %}{{ ws.name }}{% endif %}
+            </div>
         </a>
         <span class="badge badge-type">{{ ws.role }}</span>
     </div>
     <div class="card-meta">
-        {% if ws.description %}
+        {% if ws.is_personal %}
+        <span style="font-size:.8125rem;color:var(--text-3)">Your private memory space</span>
+        {% elif ws.description %}
         <span style="font-size:.8125rem;color:var(--text-3)">{{ ws.description }}</span>
         {% endif %}
+        {% if not ws.is_personal %}
         <span style="font-size:.75rem;color:var(--text-4)">{{ ws.member_count }} member{{ 's' if ws.member_count != 1 else '' }}</span>
+        {% endif %}
     </div>
 </div>
-{% endfor %}
 {% else %}
 <div class="empty-state">
     <div class="empty-state-icon">🏢</div>
     <div class="empty-state-title">No workspaces yet</div>
     <div class="empty-state-desc">Create a workspace or join one via an invite link.</div>
 </div>
-{% endif %}
+{% endfor %}
 
 {% endblock %}

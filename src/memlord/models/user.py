@@ -10,6 +10,7 @@ class User(Base):
     email = sa.Column(sa.Text, unique=True, nullable=False)
     display_name = sa.Column(sa.Text, nullable=False, server_default="")
     hashed_password = sa.Column(sa.Text, nullable=False)
+    email_verified = sa.Column(sa.Boolean, nullable=False, server_default=sa.false())
     created_at = sa.Column(
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )

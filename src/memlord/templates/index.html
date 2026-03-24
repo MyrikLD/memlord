@@ -97,11 +97,8 @@
             <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">3</div>
             <div style="flex:1;min-width:0;">
                 <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.375rem;">Use workspaces for projects <span style="font-size:.75rem;font-weight:400;color:var(--text-4);">— optional</span></p>
-                <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.5rem;">By default memories are personal. For project-specific memory, create a <a href="/ui/workspaces" onclick="closeConnectModal()">workspace</a> and tell Claude which one to use:</p>
-                <div style="position:relative;">
-                    <pre id="connect-workspace" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;white-space:pre-wrap;line-height:1.5;margin:0;">Store memories in the "my-project" workspace unless I say otherwise.</pre>
-                    <button id="copy-workspace-btn" type="button" onclick="copySnippet('connect-workspace','copy-workspace-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
-                </div>
+                <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">By default memories are personal. For project-specific memory, <a href="/ui/workspaces" onclick="closeConnectModal()">create a workspace</a> and give it a clear description — e.g. <em>"Work memories for the Acme iOS project"</em>.</p>
+                <p style="font-size:.8125rem;color:var(--text-3);">Before storing a memory Claude will check your workspaces and pick the right one automatically based on context. No need to mention the workspace name explicitly.</p>
             </div>
         </div>
 
@@ -132,7 +129,7 @@ function openConnectModal() {
     document.getElementById('connect-cmd').textContent = 'claude mcp add --transport http memlord ' + origin + '/mcp';
     document.getElementById('connect-json').textContent = JSON.stringify({mcpServers:{memlord:{type:"http",url:origin+'/mcp'}}}, null, 2);
     document.getElementById('connect-url').textContent = origin + '/mcp';
-    ['copy-cmd-btn','copy-json-btn','copy-url-btn','copy-prompt-btn','copy-workspace-btn'].forEach(function(id){
+    ['copy-cmd-btn','copy-json-btn','copy-url-btn','copy-prompt-btn'].forEach(function(id){
         var el = document.getElementById(id);
         if (el) el.textContent = 'Copy';
     });
@@ -162,12 +159,6 @@ document.getElementById('connect-modal').addEventListener('click', function(e) {
 });
 </script>
 
-{% if request.query_params.get('imported') %}
-<div class="info-bar" style="background:var(--bg-2);border-radius:6px;padding:.5rem 1rem;margin-bottom:1rem">
-    Imported {{ request.query_params.get('imported') }},
-    skipped {{ request.query_params.get('skipped') }} memories.
-</div>
-{% endif %}
 
 <form method="get" class="toolbar">
     {% if workspaces %}

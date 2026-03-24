@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ workspace.name }} — Memlord{% endblock %}
+{% block title %}{% if workspace.is_personal %}Personal{% else %}{{ workspace.name }}{% endif %} — Memlord{% endblock %}
 {% block content %}
 
 <div class="breadcrumb">
@@ -7,7 +7,7 @@
 </div>
 
 <div class="page-header">
-    <h1 class="page-title">{{ workspace.name }}</h1>
+    <h1 class="page-title">{% if workspace.is_personal %}Personal{% else %}{{ workspace.name }}{% endif %}</h1>
     <span class="badge badge-type">{{ workspace.role }}</span>
 </div>
 
@@ -21,7 +21,7 @@
     </form>
 </div>
 {% endif %}
-
+{% if not workspace.is_personal %}
 <div class="detail-card">
     <div class="section-title">Description</div>
     {% if workspace.role == 'owner' %}
@@ -37,7 +37,9 @@
     </p>
     {% endif %}
 </div>
+{% endif %}
 
+{% if not workspace.is_personal %}
 <div class="detail-card">
     <div class="section-title">Members ({{ workspace.member_count }})</div>
     {% for m in members %}
@@ -51,7 +53,38 @@
     </div>
     {% endfor %}
 </div>
+{% endif %}
 
+{% if request.query_params.get('imported') is not none %}
+<div class="alert alert-success">
+    Imported <strong>{{ request.query_params.get('imported') }}</strong> memories
+    {% if request.query_params.get('skipped', '0') != '0' %}
+    · skipped {{ request.query_params.get('skipped') }}
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="detail-card">
+    <div class="section-title">Data</div>
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem">
+        Export all memories in this workspace as JSON, or import memories from a JSON file.
+    </p>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <a href="/ui/export?workspace_id={{ workspace.id }}" class="btn btn-ghost btn-sm">Export JSON</a>
+        {% if workspace.role in ['owner', 'editor'] %}
+        <form method="post" action="/ui/import" enctype="multipart/form-data" style="display:inline">
+            <input type="hidden" name="workspace_id" value="{{ workspace.id }}">
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+                Import JSON
+                <input type="file" name="file" accept=".json,application/json"
+                       style="display:none" onchange="this.form.submit()">
+            </label>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if not workspace.is_personal %}
 <div class="detail-card">
     <div class="section-title">Invite link</div>
     <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem">
@@ -64,26 +97,29 @@
         <button type="submit" class="btn btn-primary">Generate invite link</button>
     </form>
 </div>
+{% endif %}
 
-{% if workspace.role == 'owner' %}
-<div class="detail-card" style="border-color:var(--danger-border)">
-    <div class="section-title" style="color:var(--danger-text)">Danger zone</div>
-    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem">
-        Deleting this workspace is permanent. All memories in this workspace will be deleted.
-    </p>
-    <form method="post" action="/ui/workspaces/{{ workspace.id }}/delete"
-          onsubmit="return confirm('Delete workspace &quot;{{ workspace.name }}&quot;? This cannot be undone.')">
-        <button type="submit" class="btn btn-danger">Delete workspace</button>
-    </form>
-</div>
-{% else %}
-<div class="detail-card">
-    <div class="section-title">Leave workspace</div>
-    <form method="post" action="/ui/workspaces/{{ workspace.id }}/leave"
-          onsubmit="return confirm('Leave this workspace?')">
-        <button type="submit" class="btn btn-danger">Leave workspace</button>
-    </form>
-</div>
+{% if not workspace.is_personal %}
+    {% if workspace.role == 'owner' %}
+    <div class="detail-card" style="border-color:var(--danger-border)">
+        <div class="section-title" style="color:var(--danger-text)">Danger zone</div>
+        <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem">
+            Deleting this workspace is permanent. All memories in this workspace will be deleted.
+        </p>
+        <form method="post" action="/ui/workspaces/{{ workspace.id }}/delete"
+              onsubmit="return confirm('Delete workspace &quot;{{ workspace.name }}&quot;? This cannot be undone.')">
+            <button type="submit" class="btn btn-danger">Delete workspace</button>
+        </form>
+    </div>
+    {% else %}
+    <div class="detail-card">
+        <div class="section-title">Leave workspace</div>
+        <form method="post" action="/ui/workspaces/{{ workspace.id }}/leave"
+              onsubmit="return confirm('Leave this workspace?')">
+            <button type="submit" class="btn btn-danger">Leave workspace</button>
+        </form>
+    </div>
+    {% endif %}
 {% endif %}
 
 {% endblock %}

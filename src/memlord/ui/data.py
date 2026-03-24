@@ -1,10 +1,12 @@
 import json
 import logging
+from datetime import datetime
 
 from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     Response,
     UploadFile,
@@ -14,6 +16,7 @@ from sqlalchemy import select
 from starlette import status
 
 from memlord.dao import MemoryDao
+from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.models import Memory
 from memlord.schemas import ImportItem
@@ -25,8 +28,20 @@ router = APIRouter()
 @router.get("/export")
 async def export_memories_ui(
     s: APISessionDep,
+    workspace_id: int,
     uid: int = Depends(require_auth),
 ) -> Response:
+    ws_dao = WorkspaceDao(s)
+    if not await ws_dao.can_read(workspace_id, uid):
+        raise HTTPException(status_code=403, detail="No access to this workspace")
+
+    ws = await ws_dao.get_by_id_for_user(workspace_id, uid)
+    assert ws is not None
+
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M")
+    ws_slug = "personal" if ws.is_personal else ws.name.replace(" ", "-")
+    filename = f"memories-{ws_slug}-{ts}.json"
+
     rows = (
         (
             await s.execute(
@@ -37,7 +52,7 @@ async def export_memories_ui(
                     Memory.created_at,
                     Memory.extra_data.label("metadata"),
                 )
-                .where(Memory.created_by == uid)
+                .where(Memory.workspace_id == workspace_id)
                 .order_by(Memory.created_at)
             )
         )
@@ -56,7 +71,7 @@ async def export_memories_ui(
     return Response(
         content=json.dumps(data, ensure_ascii=False, indent=2),
         media_type="application/json",
-        headers={"Content-Disposition": "attachment; filename=memories.json"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -65,6 +80,7 @@ async def import_memories_ui(
     s: APISessionDep,
     file: UploadFile = File(),
     uid: int = Depends(require_auth),
+    workspace_id: str | None = Form(None),
 ) -> Response:
     try:
         items = json.loads(await file.read())
@@ -73,9 +89,16 @@ async def import_memories_ui(
     if not isinstance(items, list):
         raise HTTPException(status_code=400, detail="Expected a JSON array")
 
-    from memlord.dao.workspace import WorkspaceDao
+    ws_dao = WorkspaceDao(s)
+    ws_id: int | None = int(workspace_id) if workspace_id else None
+    if ws_id is not None:
+        if not await ws_dao.can_write(ws_id, uid):
+            raise HTTPException(status_code=403, detail="No write access to this workspace")
+        target_ws_id = ws_id
+    else:
+        personal_ws = await ws_dao.get_personal(uid)
+        target_ws_id = personal_ws.id
 
-    personal_ws = await WorkspaceDao(s).get_personal(uid)
     dao = MemoryDao(s, uid)
     imported = skipped = 0
     for item in items:
@@ -90,7 +113,7 @@ async def import_memories_ui(
             memory_type=parsed.memory_type,
             metadata=parsed.metadata,
             tags=parsed.tags,
-            workspace_id=personal_ws.id,
+            workspace_id=target_ws_id,
             force=True,
         )
         if created:
@@ -98,7 +121,7 @@ async def import_memories_ui(
         else:
             skipped += 1
 
-    return RedirectResponse(
-        f"/?imported={imported}&skipped={skipped}",
-        status_code=status.HTTP_303_SEE_OTHER,
+    redirect_target = (
+        f"/ui/workspaces/{target_ws_id}?imported={imported}&skipped={skipped}"
     )
+    return RedirectResponse(redirect_target, status_code=status.HTTP_303_SEE_OTHER)
