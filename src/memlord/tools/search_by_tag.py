@@ -5,7 +5,7 @@ from mcp.types import ToolAnnotations
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from memlord.auth import UserDep
+from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
@@ -29,7 +29,7 @@ async def search_by_tag(
     tags: list[str],
     operation: Literal["AND", "OR"] = "AND",
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = UserDep,  # type: ignore[assignment]
+    uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> list[MemoryListItem]:
     """Search memories by tags. AND: all tags present. OR: any tag present."""
     if not tags:

@@ -2,7 +2,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from memlord.auth import UserDep
+from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
@@ -22,7 +22,7 @@ async def retrieve_memory(
     snippet_length: int | None = 200,
     workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = UserDep,  # type: ignore[assignment]
+    uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
     """Hybrid semantic + full-text search over stored memories.
 

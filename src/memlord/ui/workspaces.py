@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
-from memlord.ui.utils import templates, UserDep
+from memlord.ui.utils import templates, APIUserDep
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ router = APIRouter()
 async def workspaces_list(
     request: Request,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> HTMLResponse:
     workspaces = await WorkspaceDao(s).list_workspaces(user_id=user.id)
     return templates.TemplateResponse(
@@ -24,7 +24,7 @@ async def workspaces_list(
 @router.get("/workspaces/new", response_class=HTMLResponse)
 async def workspace_new_get(
     request: Request,
-    user: UserDep,
+    user: APIUserDep,
 ) -> HTMLResponse:
     return templates.TemplateResponse(request, "workspace_new.html", {"user": user})
 
@@ -33,7 +33,7 @@ async def workspace_new_get(
 async def workspace_new_post(
     request: Request,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
     name: str = Form(),
     description: str = Form(default=""),
 ) -> Response:
@@ -70,7 +70,7 @@ async def workspace_detail(
     request: Request,
     workspace_id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> HTMLResponse:
     dao = WorkspaceDao(s)
     ws = await dao.get_by_id_for_user(workspace_id, user.id)
@@ -88,7 +88,7 @@ async def workspace_detail(
 async def workspace_rename_post(
     workspace_id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
     name: str = Form(),
 ) -> Response:
     name = name.strip()
@@ -114,7 +114,7 @@ async def workspace_rename_post(
 async def workspace_description_post(
     workspace_id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
     description: str = Form(default=""),
 ) -> Response:
     ws = await WorkspaceDao(s).get_by_id_for_user(workspace_id, user.id)
@@ -136,7 +136,7 @@ async def workspace_invite(
     request: Request,
     workspace_id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
     expires_in_hours: int = Form(default=72),
 ) -> HTMLResponse:
     ws = await WorkspaceDao(s).get_by_id_for_user(workspace_id, user.id)
@@ -169,7 +169,7 @@ async def workspace_invite(
 async def workspace_leave(
     workspace_id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> Response:
     dao = WorkspaceDao(s)
     ws = await dao.get_by_id_for_user(workspace_id, user.id)
@@ -188,7 +188,7 @@ async def workspace_leave(
 async def workspace_delete(
     workspace_id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> Response:
     dao = WorkspaceDao(s)
     ws = await dao.get_by_id_for_user(workspace_id, user.id)
@@ -210,7 +210,7 @@ async def join_get(
     request: Request,
     token: str,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> HTMLResponse:
     row = await WorkspaceDao(s).get_invite(token)
     if row is None:
@@ -232,7 +232,7 @@ async def join_get(
 async def join_post(
     token: str,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> Response:
     try:
         ws = await WorkspaceDao(s).use_invite(token=token, user_id=user.id)

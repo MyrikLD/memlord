@@ -35,4 +35,4 @@ async def _current_user_gen(
     yield user_id
 
 
-UserDep = MCPDepends(asynccontextmanager(_current_user_gen))
+MCPUserDep = MCPDepends(asynccontextmanager(_current_user_gen))

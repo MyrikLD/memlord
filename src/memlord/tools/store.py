@@ -2,7 +2,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from memlord.auth import UserDep
+from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
@@ -23,7 +23,7 @@ async def store_memory(
     workspace: str | None = None,
     force: bool = False,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = UserDep,  # type: ignore[assignment]
+    uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
     """Save a new memory. Idempotent: returns existing if content already stored.
 

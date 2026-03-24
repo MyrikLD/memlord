@@ -1,10 +1,8 @@
 import json
 import logging
-from datetime import datetime
 
 from fastapi import (
     APIRouter,
-    Depends,
     File,
     Form,
     HTTPException,
@@ -20,7 +18,8 @@ from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.models import Memory
 from memlord.schemas import ImportItem
-from memlord.ui.utils import require_auth
+from memlord.ui.utils import APIUserDep
+from memlord.utils.dt import utcnow
 
 router = APIRouter()
 
@@ -29,16 +28,16 @@ router = APIRouter()
 async def export_memories_ui(
     s: APISessionDep,
     workspace_id: int,
-    uid: int = Depends(require_auth),
+    user: APIUserDep,
 ) -> Response:
     ws_dao = WorkspaceDao(s)
-    if not await ws_dao.can_read(workspace_id, uid):
+    if not await ws_dao.can_read(workspace_id, user.id):
         raise HTTPException(status_code=403, detail="No access to this workspace")
 
-    ws = await ws_dao.get_by_id_for_user(workspace_id, uid)
+    ws = await ws_dao.get_by_id_for_user(workspace_id, user.id)
     assert ws is not None
 
-    ts = datetime.utcnow().strftime("%Y%m%d-%H%M")
+    ts = utcnow().strftime("%Y%m%d-%H%M")
     ws_slug = "personal" if ws.is_personal else ws.name.replace(" ", "-")
     filename = f"memories-{ws_slug}-{ts}.json"
 
@@ -78,8 +77,8 @@ async def export_memories_ui(
 @router.post("/import")
 async def import_memories_ui(
     s: APISessionDep,
+    user: APIUserDep,
     file: UploadFile = File(),
-    uid: int = Depends(require_auth),
     workspace_id: str | None = Form(None),
 ) -> Response:
     try:
@@ -92,14 +91,16 @@ async def import_memories_ui(
     ws_dao = WorkspaceDao(s)
     ws_id: int | None = int(workspace_id) if workspace_id else None
     if ws_id is not None:
-        if not await ws_dao.can_write(ws_id, uid):
-            raise HTTPException(status_code=403, detail="No write access to this workspace")
+        if not await ws_dao.can_write(ws_id, user.id):
+            raise HTTPException(
+                status_code=403, detail="No write access to this workspace"
+            )
         target_ws_id = ws_id
     else:
-        personal_ws = await ws_dao.get_personal(uid)
+        personal_ws = await ws_dao.get_personal(user.id)
         target_ws_id = personal_ws.id
 
-    dao = MemoryDao(s, uid)
+    dao = MemoryDao(s, user.id)
     imported = skipped = 0
     for item in items:
         try:

@@ -3,7 +3,6 @@ import math
 import sqlalchemy as sa
 from fastapi import (
     APIRouter,
-    Depends,
     Form,
     HTTPException,
     Request,
@@ -18,7 +17,7 @@ from memlord.db import APISessionDep
 from memlord.models import Memory, MemoryTag, Tag
 from memlord.schemas import MemoryType, UpdateMemoryRequest
 from memlord.search import hybrid_search
-from memlord.ui.utils import get_current_user, templates, UserDep
+from memlord.ui.utils import templates, APIUserDep
 from memlord.utils.dt import utcnow
 
 router = APIRouter()
@@ -37,19 +36,18 @@ _COLS = (
 async def index(
     request: Request,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
     page: int = 1,
     page_size: int = 20,
     memory_type: str | None = None,
     tag: str = "",
     workspace: str = "",
 ) -> HTMLResponse:
-    uid: int = user.id
     page_size = min(page_size, 100)
     offset = (page - 1) * page_size
 
     ws_dao = WorkspaceDao(s)
-    workspaces = await ws_dao.list_workspaces(uid)
+    workspaces = await ws_dao.list_workspaces(user.id)
     workspace_ids = [ws.id for ws in workspaces]
 
     # Apply workspace filter
@@ -94,7 +92,7 @@ async def index(
     )
     total_pages = math.ceil(total / page_size) if total else 0
     ids = [row["id"] for row in rows]
-    tags_map = await MemoryDao(s, uid).fetch_tags(ids)
+    tags_map = await MemoryDao(s, user.id).fetch_tags(ids)
 
     ws_display = {
         ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
@@ -133,13 +131,12 @@ async def index(
 async def search(
     request: Request,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
     q: str = "",
 ) -> HTMLResponse:
-    uid: int = user.id
     results = []
     if q:
-        workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
+        workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(user.id)
         raw = await hybrid_search(
             s,
             query=q,
@@ -148,7 +145,7 @@ async def search(
             similarity_threshold=0.0,
         )
         if raw:
-            dao = MemoryDao(s, uid)
+            dao = MemoryDao(s, user.id)
             ids = [r.id for r in raw]
             tags_map = await dao.fetch_tags(ids)
             created_map = {
@@ -186,14 +183,13 @@ async def memory_detail(
     request: Request,
     id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> HTMLResponse:
-    uid: int = user.id
-    memory = await MemoryDao(s, uid).get(id)
+    memory = await MemoryDao(s, user.id).get(id)
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
 
-    workspaces = await WorkspaceDao(s).list_workspaces(uid)
+    workspaces = await WorkspaceDao(s).list_workspaces(user.id)
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
     writable = [
@@ -220,10 +216,9 @@ async def update_memory(
     id: int,
     s: APISessionDep,
     body: UpdateMemoryRequest,
-    user: UserDep,
+    user: APIUserDep,
 ) -> HTMLResponse:
-    uid: int = user.id
-    dao = MemoryDao(s, uid)
+    dao = MemoryDao(s, user.id)
     existing = await dao.get(id)
     if existing is None:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -243,7 +238,7 @@ async def update_memory(
 
     await dao.update(**data)
 
-    workspaces = await WorkspaceDao(s).list_workspaces(uid)
+    workspaces = await WorkspaceDao(s).list_workspaces(user.id)
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(existing.workspace_id) if existing.workspace_id else None
     writable = [
@@ -277,19 +272,18 @@ async def move_memory(
     request: Request,
     id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
     target_workspace_id: int = Form(...),
 ) -> HTMLResponse:
-    uid: int = user.id
     ws_dao = WorkspaceDao(s)
-    dao = MemoryDao(s, uid)
+    dao = MemoryDao(s, user.id)
     try:
         await dao.move(id, target_workspace_id)
     except ValueError as e:
         memory = await dao.get(id)
         if memory is None:
             raise HTTPException(status_code=404, detail="Memory not found")
-        workspaces = await ws_dao.list_workspaces(uid)
+        workspaces = await ws_dao.list_workspaces(user.id)
         ws_map = {
             ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
         }
@@ -314,7 +308,7 @@ async def move_memory(
     memory = await dao.get(id)
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
-    workspaces = await ws_dao.list_workspaces(uid)
+    workspaces = await ws_dao.list_workspaces(user.id)
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
     writable = [
@@ -339,11 +333,10 @@ async def move_memory(
 async def delete_memory_ui(
     id: int,
     s: APISessionDep,
-    user: UserDep,
+    user: APIUserDep,
 ) -> Response:
-    uid: int = user.id
     try:
-        await MemoryDao(s, uid).delete(id)
+        await MemoryDao(s, user.id).delete(id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Memory not found")
     return Response(content="", status_code=200)

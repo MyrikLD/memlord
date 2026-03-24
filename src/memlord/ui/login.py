@@ -9,7 +9,7 @@ from memlord.dao.user import UserDao
 from memlord.db import APISessionDep
 from memlord.email import send_email
 from memlord.models.email_token import TokenPurpose
-from .utils import make_session_token, require_auth, templates
+from .utils import make_session_token, templates, APIUserDep
 
 router = APIRouter()
 
@@ -149,13 +149,12 @@ if settings.smtp_host:
         )
 
     @router.post("/resend-verification")
-    async def resend_verification(request: Request, s: APISessionDep) -> Response:
-        uid = require_auth(request)
-        user = await UserDao(s).get_by_id(uid)
+    async def resend_verification(user: APIUserDep, s: APISessionDep) -> Response:
+        user = await UserDao(s).get_by_id(user.id)
         if user is None or user.email_verified:
             return RedirectResponse("/", status_code=303)
 
-        raw_token = await EmailTokenDao(s).create(uid, TokenPurpose.verify)
+        raw_token = await EmailTokenDao(s).create(user.id, TokenPurpose.verify)
         await send_email(
             to=user.email,
             subject="Verify your Memlord email",

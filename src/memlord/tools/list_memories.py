@@ -5,7 +5,7 @@ from mcp.types import ToolAnnotations
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from memlord.auth import UserDep
+from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
@@ -34,7 +34,7 @@ async def list_memories(
     memory_type: MemoryType | None = None,
     tag: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = UserDep,  # type: ignore[assignment]
+    uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
     """Paginated list of memories with optional type/tag filters."""
     page_size = min(page_size, 100)
