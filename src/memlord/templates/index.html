@@ -5,64 +5,111 @@
 <div class="page-header">
     <h1 class="page-title">Memories</h1>
     <div style="display:flex;gap:.5rem;align-items:center">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="openConnectModal()">Connect</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="openConnectModal()">Quick Start</button>
     </div>
 </div>
 
-<!-- Connect modal -->
-<div id="connect-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;">
-    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;max-width:560px;width:90%;box-shadow:var(--shadow-md);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-            <h2 style="font-size:1.0625rem;font-weight:600;letter-spacing:-.02em;margin:0;">Connect Memlord</h2>
+<!-- Quick Start modal -->
+<div id="connect-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;overflow-y:auto;padding:1rem;">
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;max-width:560px;width:100%;box-shadow:var(--shadow-md);margin:auto;">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+            <h2 style="font-size:1.0625rem;font-weight:600;letter-spacing:-.02em;margin:0;">Quick Start</h2>
             <button type="button" onclick="closeConnectModal()" style="background:none;border:none;cursor:pointer;color:var(--text-4);font-size:1.25rem;line-height:1;padding:.125rem .25rem;">&#x2715;</button>
         </div>
 
-        <!-- Tabs -->
-        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:1.25rem;font-size:.8125rem;">
-            <button type="button" id="tab-code" onclick="switchTab('code')" style="flex:1;padding:.5rem;border:none;cursor:pointer;font-family:inherit;font-size:.8125rem;font-weight:500;background:var(--accent);color:#fff;border-right:1px solid var(--border);">Claude Code</button>
-            <button type="button" id="tab-desktop" onclick="switchTab('desktop')" style="flex:1;padding:.5rem;border:none;cursor:pointer;font-family:inherit;font-size:.8125rem;font-weight:500;background:var(--surface-2);color:var(--text-3);border-right:1px solid var(--border);">Claude Desktop</button>
-            <button type="button" id="tab-web" onclick="switchTab('web')" style="flex:1;padding:.5rem;border:none;cursor:pointer;font-family:inherit;font-size:.8125rem;font-weight:500;background:var(--surface-2);color:var(--text-3);">Claude.ai</button>
-        </div>
+        <!-- Step 1 -->
+        <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+            <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">1</div>
+            <div style="flex:1;min-width:0;">
+                <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.625rem;">Connect your client</p>
+                <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:.875rem;">
+                    <button type="button" id="tab-code" onclick="switchTab('code')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--accent);color:#fff;border-right:1px solid var(--border);">Claude Code</button>
+                    <button type="button" id="tab-desktop" onclick="switchTab('desktop')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--text-3);border-right:1px solid var(--border);">Claude Desktop</button>
+                    <button type="button" id="tab-web" onclick="switchTab('web')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--text-3);">Claude.ai</button>
+                </div>
 
-        <!-- Claude Code tab -->
-        <div id="panel-code">
-            <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.5rem;"><strong style="color:var(--text-2);">1.</strong> Register — run in terminal:</p>
-            <div style="position:relative;margin-bottom:.75rem;">
-                <pre id="connect-cmd" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.625rem 3.5rem .625rem .875rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.8125rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
-                <button id="copy-cmd-btn" type="button" onclick="copySnippet('connect-cmd','copy-cmd-btn')" style="position:absolute;top:.35rem;right:.4rem;" class="btn btn-sm">Copy</button>
+                <!-- Claude Code panel -->
+                <div id="panel-code">
+                    <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">Run in terminal:</p>
+                    <div style="position:relative;margin-bottom:.625rem;">
+                        <pre id="connect-cmd" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
+                        <button id="copy-cmd-btn" type="button" onclick="copySnippet('connect-cmd','copy-cmd-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
+                    </div>
+                    <p style="font-size:.8125rem;color:var(--text-3);">Then inside Claude Code run <code style="font-family:monospace;background:var(--surface-2);padding:.1em .3em;border-radius:4px;">/mcp</code>, select <strong>memlord</strong> and complete the OAuth flow.</p>
+                    <p style="font-size:.75rem;color:var(--text-4);margin-top:.375rem;">Self-hosting? Use your domain, e.g. <code style="font-family:monospace;color:var(--text-3);">https://memlord.example.com/mcp</code></p>
+                </div>
+
+                <!-- Claude Desktop panel -->
+                <div id="panel-desktop" style="display:none;">
+                    <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">Add to <code style="font-family:monospace;background:var(--surface-2);padding:.1em .3em;border-radius:4px;font-size:.8em;">claude_desktop_config.json</code>:</p>
+                    <div style="position:relative;margin-bottom:.625rem;">
+                        <pre id="connect-json" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
+                        <button id="copy-json-btn" type="button" onclick="copySnippet('connect-json','copy-json-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
+                    </div>
+                    <p style="font-size:.8125rem;color:var(--text-3);">Restart Claude Desktop — it will prompt you to sign in on first use.</p>
+                    <p style="font-size:.75rem;color:var(--text-4);margin-top:.375rem;">
+                        macOS: <code style="font-family:monospace;">~/Library/Application Support/Claude/claude_desktop_config.json</code><br>
+                        Windows: <code style="font-family:monospace;">%APPDATA%\Claude\claude_desktop_config.json</code>
+                    </p>
+                </div>
+
+                <!-- Claude.ai panel -->
+                <div id="panel-web" style="display:none;">
+                    <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">Go to <strong>claude.ai → Settings → Connectors</strong> and add this URL:</p>
+                    <div style="position:relative;margin-bottom:.625rem;">
+                        <pre id="connect-url" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
+                        <button id="copy-url-btn" type="button" onclick="copySnippet('connect-url','copy-url-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
+                    </div>
+                    <p style="font-size:.8125rem;color:var(--text-3);">Authorize the OAuth flow when prompted.</p>
+                    <p style="font-size:.75rem;color:var(--text-4);margin-top:.375rem;">The server must be publicly reachable — localhost won't work.</p>
+                </div>
             </div>
-            <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.5rem;"><strong style="color:var(--text-2);">2.</strong> Authenticate — inside Claude Code, run <code style="font-family:monospace;background:var(--surface-2);padding:.1em .35em;border-radius:4px;">/mcp</code>, select <strong>memlord</strong> and complete the OAuth flow in the browser.</p>
-            <p style="font-size:.75rem;color:var(--text-4);">Self-hosting? Replace the URL with your domain, e.g. <code style="font-family:monospace;color:var(--text-3);">https://memlord.example.com/mcp</code></p>
         </div>
 
-        <!-- Claude Desktop tab -->
-        <div id="panel-desktop" style="display:none;">
-            <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.5rem;"><strong style="color:var(--text-2);">1.</strong> Open <code style="font-family:monospace;background:var(--surface-2);padding:.1em .35em;border-radius:4px;font-size:.8em;">claude_desktop_config.json</code> and add:</p>
-            <div style="position:relative;margin-bottom:.75rem;">
-                <pre id="connect-json" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.625rem 3.5rem .625rem .875rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.8125rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
-                <button id="copy-json-btn" type="button" onclick="copySnippet('connect-json','copy-json-btn')" style="position:absolute;top:.35rem;right:.4rem;" class="btn btn-sm">Copy</button>
+        <hr style="margin:0 0 1.25rem;">
+
+        <!-- Step 2 -->
+        <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+            <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">2</div>
+            <div style="flex:1;min-width:0;">
+                <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.375rem;">Tell Claude to use Memlord</p>
+                <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.5rem;">Add to your <code style="font-family:monospace;background:var(--surface-2);padding:.1em .3em;border-radius:4px;">CLAUDE.md</code> or system prompt:</p>
+                <div style="position:relative;">
+                    <pre id="connect-prompt" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;white-space:pre-wrap;line-height:1.5;margin:0;">Use Memlord MCP tools to store and retrieve memories across sessions.</pre>
+                    <button id="copy-prompt-btn" type="button" onclick="copySnippet('connect-prompt','copy-prompt-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
+                </div>
             </div>
-            <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;"><strong style="color:var(--text-2);">2.</strong> Restart Claude Desktop — it will prompt you to sign in on first use.</p>
-            <p style="font-size:.75rem;color:var(--text-4);">
-                Config file location:<br>
-                <code style="font-family:monospace;color:var(--text-3);">~/Library/Application Support/Claude/claude_desktop_config.json</code><br>
-                <code style="font-family:monospace;color:var(--text-4);">%APPDATA%\Claude\claude_desktop_config.json</code> (Windows)
-            </p>
         </div>
 
-        <!-- Claude.ai tab -->
-        <div id="panel-web" style="display:none;">
-            <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.875rem;"><strong style="color:var(--text-2);">1.</strong> Go to <strong>claude.ai → Settings → Connectors</strong> (or Integrations).</p>
-            <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.5rem;"><strong style="color:var(--text-2);">2.</strong> Add a new connector with this URL:</p>
-            <div style="position:relative;margin-bottom:.75rem;">
-                <pre id="connect-url" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.625rem 3.5rem .625rem .875rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.8125rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
-                <button id="copy-url-btn" type="button" onclick="copySnippet('connect-url','copy-url-btn')" style="position:absolute;top:.35rem;right:.4rem;" class="btn btn-sm">Copy</button>
+        <hr style="margin:0 0 1.25rem;">
+
+        <!-- Step 3 -->
+        <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+            <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">3</div>
+            <div style="flex:1;min-width:0;">
+                <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.375rem;">Use workspaces for projects <span style="font-size:.75rem;font-weight:400;color:var(--text-4);">— optional</span></p>
+                <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">By default memories are personal. For project-specific memory, <a href="/ui/workspaces" onclick="closeConnectModal()">create a workspace</a> and give it a clear description — e.g. <em>"Work memories for the Acme iOS project"</em>.</p>
+                <p style="font-size:.8125rem;color:var(--text-3);">Before storing a memory Claude will check your workspaces and pick the right one automatically based on context. No need to mention the workspace name explicitly.</p>
             </div>
-            <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;"><strong style="color:var(--text-2);">3.</strong> Authorize — Claude.ai will redirect you to sign in via OAuth.</p>
-            <p style="font-size:.75rem;color:var(--text-4);">Note: the server must be publicly reachable for claude.ai to connect. Localhost won't work.</p>
         </div>
 
-        <div style="margin-top:1.25rem;display:flex;justify-content:flex-end;">
+        <hr style="margin:0 0 1.25rem;">
+
+        <!-- Step 4 -->
+        <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+            <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">4</div>
+            <div style="flex:1;min-width:0;">
+                <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.375rem;">Share a workspace with teammates <span style="font-size:.75rem;font-weight:400;color:var(--text-4);">— optional</span></p>
+                <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">Open the workspace, click <strong>Generate invite link</strong>, and send it to your teammate. The link is one-time use and expires in 72 hours.</p>
+                <p style="font-size:.8125rem;color:var(--text-3);">Once they join, everyone on the team references the same workspace name in their prompts and Claude shares memory across all members.</p>
+                <div style="margin-top:.625rem;">
+                    <a href="/ui/workspaces" onclick="closeConnectModal()" class="btn btn-ghost btn-sm">Go to Workspaces →</a>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
             <button type="button" class="btn btn-ghost" onclick="closeConnectModal()">Close</button>
         </div>
     </div>
@@ -74,7 +121,7 @@ function openConnectModal() {
     document.getElementById('connect-cmd').textContent = 'claude mcp add --transport http memlord ' + origin + '/mcp';
     document.getElementById('connect-json').textContent = JSON.stringify({mcpServers:{memlord:{type:"http",url:origin+'/mcp'}}}, null, 2);
     document.getElementById('connect-url').textContent = origin + '/mcp';
-    ['copy-cmd-btn','copy-json-btn','copy-url-btn'].forEach(function(id){
+    ['copy-cmd-btn','copy-json-btn','copy-url-btn','copy-prompt-btn'].forEach(function(id){
         var el = document.getElementById(id);
         if (el) el.textContent = 'Copy';
     });
