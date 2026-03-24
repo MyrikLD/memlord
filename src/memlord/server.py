@@ -18,6 +18,15 @@ from memlord.tools import (
 
 mcp: FastMCP = FastMCP(
     "Memlord",
+    instructions=(
+        "Use this MCP to persist and retrieve memories across sessions.\n\n"
+        "Before storing a memory, call list_workspaces and pick the most relevant workspace "
+        "based on context (personal by default). Use store_memory for facts, preferences, "
+        "instructions, or feedback worth remembering. At the start of a session call "
+        "recall_memory or retrieve_memory to surface relevant context. "
+        "Use get_memory(id) only when you need the full content of a specific memory — "
+        "search results return snippets to save tokens."
+    ),
     auth=MemlordOAuthProvider(
         base_url=settings.base_url,
         jwt_secret=settings.oauth_jwt_secret,

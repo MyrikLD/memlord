@@ -26,7 +26,9 @@
                 <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:.875rem;">
                     <button type="button" id="tab-code" onclick="switchTab('code')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--accent);color:#fff;border-right:1px solid var(--border);">Claude Code</button>
                     <button type="button" id="tab-desktop" onclick="switchTab('desktop')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--text-3);border-right:1px solid var(--border);">Claude Desktop</button>
-                    <button type="button" id="tab-web" onclick="switchTab('web')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--text-3);">Claude.ai</button>
+                    <button type="button" id="tab-web" onclick="switchTab('web')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--text-3);border-right:1px solid var(--border);">Claude.ai</button>
+                    <button type="button" id="tab-cursor" onclick="switchTab('cursor')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--text-3);border-right:1px solid var(--border);">Cursor</button>
+                    <button type="button" id="tab-chatgpt" onclick="switchTab('chatgpt')" style="flex:1;padding:.4rem .5rem;border:none;cursor:pointer;font-family:inherit;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--text-3);">ChatGPT</button>
                 </div>
 
                 <!-- Claude Code panel -->
@@ -64,6 +66,27 @@
                     <p style="font-size:.8125rem;color:var(--text-3);">Authorize the OAuth flow when prompted.</p>
                     <p style="font-size:.75rem;color:var(--text-4);margin-top:.375rem;">The server must be publicly reachable — localhost won't work.</p>
                 </div>
+
+                <!-- Cursor panel -->
+                <div id="panel-cursor" style="display:none;">
+                    <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">Add to <code style="font-family:monospace;background:var(--surface-2);padding:.1em .3em;border-radius:4px;font-size:.8em;">~/.cursor/mcp.json</code> (global) or <code style="font-family:monospace;background:var(--surface-2);padding:.1em .3em;border-radius:4px;font-size:.8em;">.cursor/mcp.json</code> (project):</p>
+                    <div style="position:relative;margin-bottom:.625rem;">
+                        <pre id="connect-cursor-json" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
+                        <button id="copy-cursor-btn" type="button" onclick="copySnippet('connect-cursor-json','copy-cursor-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
+                    </div>
+                    <p style="font-size:.8125rem;color:var(--text-3);">Restart Cursor — OAuth flow will open automatically on first use.</p>
+                </div>
+
+                <!-- ChatGPT panel -->
+                <div id="panel-chatgpt" style="display:none;">
+                    <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.625rem;">Go to <strong>Settings → Apps → Add</strong> and enter this URL:</p>
+                    <div style="position:relative;margin-bottom:.625rem;">
+                        <pre id="connect-chatgpt-url" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
+                        <button id="copy-chatgpt-btn" type="button" onclick="copySnippet('connect-chatgpt-url','copy-chatgpt-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
+                    </div>
+                    <p style="font-size:.8125rem;color:var(--text-3);">Authorize the OAuth flow when prompted.</p>
+                    <p style="font-size:.75rem;color:var(--text-4);margin-top:.375rem;">Requires Pro/Plus/Business/Enterprise. The server must be publicly reachable — localhost won't work.</p>
+                </div>
             </div>
         </div>
 
@@ -73,21 +96,6 @@
         <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
             <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">2</div>
             <div style="flex:1;min-width:0;">
-                <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.375rem;">Tell Claude to use Memlord</p>
-                <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.5rem;">Add to your <code style="font-family:monospace;background:var(--surface-2);padding:.1em .3em;border-radius:4px;">CLAUDE.md</code> or system prompt:</p>
-                <div style="position:relative;">
-                    <pre id="connect-prompt" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);border-radius:var(--radius-sm);padding:.5rem 3.5rem .5rem .75rem;font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.75rem;white-space:pre-wrap;line-height:1.5;margin:0;">Use Memlord MCP tools to store and retrieve memories across sessions.</pre>
-                    <button id="copy-prompt-btn" type="button" onclick="copySnippet('connect-prompt','copy-prompt-btn')" style="position:absolute;top:.3rem;right:.35rem;" class="btn btn-sm">Copy</button>
-                </div>
-            </div>
-        </div>
-
-        <hr style="margin:0 0 1.25rem;">
-
-        <!-- Step 3 -->
-        <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
-            <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">3</div>
-            <div style="flex:1;min-width:0;">
                 <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.375rem;">Use workspaces for projects <span style="font-size:.75rem;font-weight:400;color:var(--text-4);">— optional</span></p>
                 <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">By default memories are personal. For project-specific memory, <a href="/ui/workspaces" onclick="closeConnectModal()">create a workspace</a> and give it a clear description — e.g. <em>"Work memories for the Acme iOS project"</em>.</p>
                 <p style="font-size:.8125rem;color:var(--text-3);">Before storing a memory Claude will check your workspaces and pick the right one automatically based on context. No need to mention the workspace name explicitly.</p>
@@ -96,9 +104,9 @@
 
         <hr style="margin:0 0 1.25rem;">
 
-        <!-- Step 4 -->
+        <!-- Step 3 -->
         <div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
-            <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">4</div>
+            <div style="flex-shrink:0;width:1.375rem;height:1.375rem;border-radius:50%;background:var(--accent);color:#fff;font-size:.6875rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:.1rem;">3</div>
             <div style="flex:1;min-width:0;">
                 <p style="font-size:.875rem;font-weight:600;color:var(--text-2);margin-bottom:.375rem;">Share a workspace with teammates <span style="font-size:.75rem;font-weight:400;color:var(--text-4);">— optional</span></p>
                 <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">Open the workspace, click <strong>Generate invite link</strong>, and send it to your teammate. The link is one-time use and expires in 72 hours.</p>
@@ -121,7 +129,9 @@ function openConnectModal() {
     document.getElementById('connect-cmd').textContent = 'claude mcp add --transport http memlord ' + origin + '/mcp';
     document.getElementById('connect-json').textContent = JSON.stringify({mcpServers:{memlord:{type:"http",url:origin+'/mcp'}}}, null, 2);
     document.getElementById('connect-url').textContent = origin + '/mcp';
-    ['copy-cmd-btn','copy-json-btn','copy-url-btn','copy-prompt-btn'].forEach(function(id){
+    document.getElementById('connect-cursor-json').textContent = JSON.stringify({mcpServers:{memlord:{url:origin+'/mcp'}}}, null, 2);
+    document.getElementById('connect-chatgpt-url').textContent = origin + '/mcp';
+    ['copy-cmd-btn','copy-json-btn','copy-url-btn','copy-cursor-btn','copy-chatgpt-btn'].forEach(function(id){
         var el = document.getElementById(id);
         if (el) el.textContent = 'Copy';
     });
@@ -132,7 +142,7 @@ function closeConnectModal() {
     document.getElementById('connect-modal').style.display = 'none';
 }
 function switchTab(name) {
-    ['code','desktop','web'].forEach(function(t) {
+    ['code','desktop','web','cursor','chatgpt'].forEach(function(t) {
         var active = t === name;
         document.getElementById('tab-'+t).style.background = active ? 'var(--accent)' : 'var(--surface-2)';
         document.getElementById('tab-'+t).style.color = active ? '#fff' : 'var(--text-3)';
