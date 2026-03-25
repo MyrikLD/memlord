@@ -1,16 +1,21 @@
 import asyncio
+from contextlib import asynccontextmanager
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
+from fastmcp import Client
 from sqlalchemy import text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from memlord.auth import hash_password
+from memlord.auth import hash_password, MCPUserDep
 from memlord.config import settings
 from memlord.dao.user import UserDao
 from memlord.dao.workspace import WorkspaceDao
+from memlord.db import MCPSessionDep
 from memlord.models import Base
+from memlord.server import mcp
 
 
 @pytest.fixture(scope="session")
@@ -74,3 +79,19 @@ async def workspace_id(session: AsyncSession, user_id: int) -> int:
     """Return the personal workspace id for the test user."""
     ws = await WorkspaceDao(session).get_personal(user_id)
     return ws.id
+
+
+@pytest_asyncio.fixture
+async def mcp_client(session, user_id):
+    async def _session():
+        yield session
+
+    async def _user():
+        yield user_id
+
+    with (
+        patch.object(MCPSessionDep, "factory", asynccontextmanager(_session)),
+        patch.object(MCPUserDep, "factory", asynccontextmanager(_user)),
+    ):
+        async with Client(mcp) as client:
+            yield client
