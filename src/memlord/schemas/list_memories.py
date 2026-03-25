@@ -10,7 +10,7 @@ class MemoryListItem(BaseModel):
     content: str
     memory_type: MemoryType
     metadata: dict = Field(default_factory=dict)
-    tags: list[str]
+    tags: set[str]
     created_at: datetime
     workspace_id: int | None = None
 

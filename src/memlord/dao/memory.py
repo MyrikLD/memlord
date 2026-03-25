@@ -1,5 +1,5 @@
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Float, bindparam, delete, insert, select, update
+from sqlalchemy import bindparam, delete, Float, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,8 +12,8 @@ from memlord.schemas import MemoryListItem, MemoryType
 _UNSET = object()
 
 
-def _embed_text(content: str, tags: list[str]) -> str:
-    return f"{content} {' '.join(tags)}" if tags else content
+def _embed_text(content: str, tags: set[str]) -> str:
+    return f"{content} {' '.join(sorted(tags))}" if tags else content
 
 
 class MemoryDao:
@@ -21,7 +21,7 @@ class MemoryDao:
         self._s = s
         self._uid = uid
 
-    async def _upsert_tags(self, memory_id: int, tags: list[str]) -> None:
+    async def _upsert_tags(self, memory_id: int, tags: set[str]) -> None:
         for tag_name in tags:
             normalized = tag_name.lower().strip()
             if not normalized:
@@ -47,7 +47,7 @@ class MemoryDao:
     async def _cleanup_orphan_tags(self) -> None:
         await self._s.execute(delete(Tag).where(~Tag.id.in_(select(MemoryTag.tag_id))))
 
-    async def _replace_tags(self, memory_id: int, tags: list[str]) -> None:
+    async def _replace_tags(self, memory_id: int, tags: set[str]) -> None:
         await self._s.execute(delete(MemoryTag).where(MemoryTag.memory_id == memory_id))
         await self._upsert_tags(memory_id, tags)
         await self._cleanup_orphan_tags()
@@ -95,7 +95,7 @@ class MemoryDao:
         content: str,
         memory_type: MemoryType,
         metadata: dict,
-        tags: list[str],
+        tags: set[str],
         workspace_id: int | None = None,
         force: bool = False,
     ) -> tuple[int, bool]:
@@ -130,7 +130,7 @@ class MemoryDao:
         )
         assert memory_id is not None
 
-        await self._upsert_tags(memory_id, tags or [])
+        await self._upsert_tags(memory_id, tags or set())
         return memory_id, True
 
     async def update(
@@ -140,7 +140,7 @@ class MemoryDao:
         content: str = _UNSET,  # type: ignore[assignment]
         memory_type: MemoryType = _UNSET,  # type: ignore[assignment]
         metadata: dict = _UNSET,  # type: ignore[assignment]
-        tags: list[str] = _UNSET,  # type: ignore[assignment]
+        tags: set[str] = _UNSET,  # type: ignore[assignment]
     ) -> int:
         """Update memory fields. Pass _UNSET to leave a field unchanged; None sets it to NULL."""
         if workspace_ids is None:

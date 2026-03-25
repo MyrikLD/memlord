@@ -16,7 +16,7 @@ class MemoryResult(BaseModel):
     id: int
     content: str
     memory_type: MemoryType
-    tags: list[str]
+    tags: set[str]
     metadata: dict
     created_at: str
     rrf_score: float
