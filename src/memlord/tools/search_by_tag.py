@@ -26,7 +26,7 @@ _COLS = (
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
 async def search_by_tag(
-    tags: list[str],
+    tags: set[str],
     operation: Literal["AND", "OR"] = "AND",
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
@@ -79,7 +79,7 @@ async def search_by_tag(
             content=row["content"],
             memory_type=row["memory_type"],
             metadata=row["extra_data"],
-            tags=tags_map.get(row["id"], []),
+            tags=tags_map.get(row["id"], set()),
             created_at=row["created_at"],
             workspace_id=row["workspace_id"],
         )

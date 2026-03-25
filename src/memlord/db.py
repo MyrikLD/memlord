@@ -32,9 +32,9 @@ async def session_dep():
         yield s
 
 
-MCPSessionDep = MCPDepends(asynccontextmanager(session_dep))
+session = asynccontextmanager(session_dep)
+MCPSessionDep = MCPDepends(session)
 APISessionDep = Annotated[AsyncSession, APIDepends(session_dep, scope="function")]
 
-session = asynccontextmanager(session_dep)
 
 __all__ = ["MCPSessionDep", "APISessionDep", "session"]
