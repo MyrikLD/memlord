@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from .memory_type import MemoryType
@@ -18,6 +20,6 @@ class MemoryResult(BaseModel):
     memory_type: MemoryType
     tags: set[str]
     metadata: dict
-    created_at: str
+    created_at: datetime
     rrf_score: float
     workspace_id: int | None = None
