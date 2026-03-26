@@ -25,10 +25,9 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
 COPY migrations/ migrations/
 COPY alembic.ini alembic.ini
-
-# Run migrations then start the server
-RUN printf '#!/bin/sh\nset -e\nalembic upgrade head\nexec "$@"\n' \
-    > /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
+COPY scripts/ scripts/
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 ENV PATH="/app/.venv/bin:$PATH"
 

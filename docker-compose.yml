@@ -8,6 +8,8 @@ services:
       - ./data:/data
     env_file:
       - .env
+#    environment:
+#      - REEMBED=1
     depends_on:
       postgres:
         condition: service_healthy
