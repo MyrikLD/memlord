@@ -124,8 +124,8 @@ Via `pydantic-settings`. Sources in priority order: environment variables (prefi
 | `MEMLORD_BASE_URL`         | —                                                          | Public server URL (enables OAuth)                                 |
 | `MEMLORD_RRF_K`            | `60`                                                       | RRF fusion k parameter                                            |
 | `MEMLORD_DEFAULT_LIMIT`    | `10`                                                       | Default result limit                                              |
-| `MEMLORD_SIM_THRESHOLD`    | `0.7`                                                      | Default cosine similarity threshold                               |
-| `MEMLORD_DEDUP_THRESHOLD`  | `0.95`                                                     | Cosine similarity threshold for near-duplicate detection on write |
+| `MEMLORD_SIM_THRESHOLD`    | `0.25`                                                      | Default cosine similarity threshold                               |
+| `MEMLORD_DEDUP_THRESHOLD`  | `0.85`                                                     | Cosine similarity threshold for near-duplicate detection on write |
 | `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret                                                |
 
 ---

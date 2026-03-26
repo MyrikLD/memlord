@@ -83,4 +83,4 @@ async def get_current_user(
 
 APIUserDep = Annotated[UserInfo, Depends(get_current_user)]
 
-__all__ = ["APIUserDep", "make_session_token"]
+__all__ = ["APIUserDep", "make_session_token", "templates"]

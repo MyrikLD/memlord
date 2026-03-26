@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     rrf_k: int = 60
     default_limit: int = 10
-    sim_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
-    dedup_threshold: float = Field(default=0.95, ge=0.0, le=1.0)
+    sim_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
+    dedup_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
     oauth_jwt_secret: str = "memlord-dev-secret-please-change"
 
     smtp_host: str | None = None
