@@ -59,7 +59,7 @@ async def export_memories_ui(
         .all()
     )
     ids = [r["id"] for r in rows]
-    tags_map = await MemoryDao(s, uid).fetch_tags(ids) if ids else {}
+    tags_map = await MemoryDao(s, user.id).fetch_tags(ids) if ids else {}
     data = [
         ImportItem(
             **r,
