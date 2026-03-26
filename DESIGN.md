@@ -114,17 +114,17 @@ docker-compose.yml
 
 Via `pydantic-settings`. Sources in priority order: environment variables (prefix `MEMLORD_`) → `.env` file → defaults.
 
-| Variable                  | Default                                                   | Description                         |
-|---------------------------|-----------------------------------------------------------|-------------------------------------|
+| Variable                   | Default                                                    | Description                         |
+|----------------------------|------------------------------------------------------------|-------------------------------------|
 | `MEMLORD_DB_URL`           | `postgresql+asyncpg://postgres:postgres@localhost/memlord` | PostgreSQL connection URL           |
-| `MEMLORD_DB_ECHO`          | `false`                                                   | SQLAlchemy query logging            |
+| `MEMLORD_DB_ECHO`          | `false`                                                    | SQLAlchemy query logging            |
 | `MEMLORD_MODEL_DIR`        | `/app/src/memlord/onnx`                                    | Directory containing ONNX model     |
-| `MEMLORD_HOST`             | `0.0.0.0`                                                 | uvicorn host                        |
-| `MEMLORD_PORT`             | `8000`                                                    | uvicorn port                        |
-| `MEMLORD_BASE_URL`         | —                                                         | Public server URL (enables OAuth)   |
-| `MEMLORD_RRF_K`            | `60`                                                      | RRF fusion k parameter              |
-| `MEMLORD_DEFAULT_LIMIT`    | `10`                                                      | Default result limit                |
-| `MEMLORD_SIM_THRESHOLD`    | `0.7`                                                     | Default cosine similarity threshold |
+| `MEMLORD_HOST`             | `0.0.0.0`                                                  | uvicorn host                        |
+| `MEMLORD_PORT`             | `8000`                                                     | uvicorn port                        |
+| `MEMLORD_BASE_URL`         | —                                                          | Public server URL (enables OAuth)   |
+| `MEMLORD_RRF_K`            | `60`                                                       | RRF fusion k parameter              |
+| `MEMLORD_DEFAULT_LIMIT`    | `10`                                                       | Default result limit                |
+| `MEMLORD_SIM_THRESHOLD`    | `0.7`                                                      | Default cosine similarity threshold |
 | `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret                  |
 
 ---
@@ -193,13 +193,13 @@ composite PK; `role` (default `member`), `joined_at`
 
 ### Parameters
 
-| Parameter               | Description                                                      |
-|-------------------------|------------------------------------------------------------------|
-| `workspace_ids`         | List of accessible workspace IDs                                 |
+| Parameter               | Description                                                       |
+|-------------------------|-------------------------------------------------------------------|
+| `workspace_ids`         | List of accessible workspace IDs                                  |
 | `limit`                 | Max results (default: `MEMLORD_DEFAULT_LIMIT`)                    |
 | `similarity_threshold`  | Threshold for pure vector hits (default: `MEMLORD_SIM_THRESHOLD`) |
-| `date_from` / `date_to` | Filter by `created_at`                                           |
-| `memory_type`           | Filter by type                                                   |
+| `date_from` / `date_to` | Filter by `created_at`                                            |
+| `memory_type`           | Filter by type                                                    |
 
 ### Usage in tools
 
@@ -222,13 +222,13 @@ All tools require authentication. `UserDep` resolves `user_id` from the access t
 
 Save a memory entry.
 
-| Field         | Type     | Required | Description                                                                          |
-|---------------|----------|----------|--------------------------------------------------------------------------------------|
-| `content`     | string   | ✅        | Memory text                                                                          |
-| `memory_type` | string   | ✅        | Type: `fact`, `preference`, `instruction`, `feedback` |
-| `tags`        | string[] | ❌        | Tags                                                                                 |
-| `metadata`    | object   | ❌        | Arbitrary metadata (JSON)                                                            |
-| `workspace`   | string   | ❌        | Workspace name (must have write access). `null` → personal workspace                 |
+| Field         | Type     | Required | Description                                                          |
+|---------------|----------|----------|----------------------------------------------------------------------|
+| `content`     | string   | ✅        | Memory text                                                          |
+| `memory_type` | string   | ✅        | Type: `fact`, `preference`, `instruction`, `feedback`                |
+| `tags`        | string[] | ❌        | Tags                                                                 |
+| `metadata`    | object   | ❌        | Arbitrary metadata (JSON)                                            |
+| `workspace`   | string   | ❌        | Workspace name (must have write access). `null` → personal workspace |
 
 **Logic:** if `workspace` is provided — name lookup, `can_write` check → `workspace_id`. If `null` → personal
 workspace resolved via `get_personal(uid)`. Unique constraint `(content, workspace_id)` — idempotent per workspace.
