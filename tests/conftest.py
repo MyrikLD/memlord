@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 from fastmcp import Client
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -13,9 +14,11 @@ from memlord.auth import hash_password, MCPUserDep
 from memlord.config import settings
 from memlord.dao.user import UserDao
 from memlord.dao.workspace import WorkspaceDao
-from memlord.db import MCPSessionDep
+from memlord.db import MCPSessionDep, session_dep
+from memlord.main import app
 from memlord.models import Base
 from memlord.server import mcp
+from memlord.ui.utils import make_session_token
 
 
 @pytest.fixture(scope="session")
@@ -95,3 +98,20 @@ async def mcp_client(session, user_id):
     ):
         async with Client(mcp) as client:
             yield client
+
+
+@pytest_asyncio.fixture
+async def api_client(session, user_id):
+    async def _override_session():
+        yield session
+
+    app.dependency_overrides[session_dep] = _override_session
+    cookie = make_session_token(user_id)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as client:
+        client.cookies.set("memlord_session", cookie)
+        yield client
+    app.dependency_overrides.pop(session_dep, None)
