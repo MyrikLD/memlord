@@ -11,13 +11,14 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
+from memlord.config import settings
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.models import Memory, MemoryTag, Tag
 from memlord.schemas import MemoryType, UpdateMemoryRequest
 from memlord.search import hybrid_search
-from memlord.ui.utils import templates, APIUserDep
+from memlord.ui.utils import APIUserDep, templates
 from memlord.utils.dt import utcnow
 
 router = APIRouter()
@@ -133,6 +134,7 @@ async def search(
     s: APISessionDep,
     user: APIUserDep,
     q: str = "",
+    similarity_threshold: float = settings.sim_threshold,
 ) -> HTMLResponse:
     results = []
     if q:
@@ -142,7 +144,7 @@ async def search(
             query=q,
             workspace_ids=workspace_ids,
             limit=20,
-            similarity_threshold=0.0,
+            similarity_threshold=similarity_threshold,
         )
         if raw:
             dao = MemoryDao(s, user.id)

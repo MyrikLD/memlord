@@ -3,6 +3,7 @@ from mcp.types import ToolAnnotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.auth import MCPUserDep
+from memlord.config import settings
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
@@ -17,7 +18,7 @@ mcp = FastMCP()
 async def retrieve_memory(
     query: str,
     limit: int = 10,
-    similarity_threshold: float = 0.7,
+    similarity_threshold: float = settings.sim_threshold,
     memory_type: MemoryType | None = None,
     snippet_length: int | None = 200,
     workspace: str | None = None,
