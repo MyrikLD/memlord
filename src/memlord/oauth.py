@@ -406,7 +406,8 @@ class MemlordOAuthProvider(OAuthProvider):
             logger.warning("get_client: client_id=%s not found in DB", client_id)
             return None
 
-        logger.debug("get_client: client_id=%s found", client_id)
+        logger.info("get_client: client_id=%s found auth_method=%s has_secret=%s",
+                    client_id, data.get("token_endpoint_auth_method"), bool(data.get("client_secret")))
         return _PatternMatchingClient.model_validate(data)
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
