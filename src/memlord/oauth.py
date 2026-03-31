@@ -414,9 +414,7 @@ class MemlordOAuthProvider(OAuthProvider):
                 new_uris: list[str] = data.get("redirect_uris") or []
                 merged = list(dict.fromkeys(existing_uris + new_uris))
                 data["redirect_uris"] = merged
-                logger.info(
-                    "register_client merged redirect_uris=%s", merged
-                )
+                logger.info("register_client merged redirect_uris=%s", merged)
             await s.execute(
                 pg_insert(OAuthClient)
                 .values(client_id=client_info.client_id, data=data)
