@@ -1,6 +1,6 @@
 [project]
 name = "memlord"
-version = "0.1.0"
+dynamic = ["version"]
 description = "MCP server for storing and searching memory"
 license = { file = "LICENSE" }
 requires-python = "==3.12.*"
@@ -38,8 +38,11 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/memlord"]
