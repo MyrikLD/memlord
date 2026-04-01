@@ -1,3 +1,5 @@
+import asyncio
+from argparse import ArgumentParser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -62,8 +64,15 @@ app.include_router(ui_router)
 app.mount("/", mcp_app)
 
 
-def main() -> None:
-    uvicorn.run(app, host=settings.host, port=settings.port)
+def main():
+    parser = ArgumentParser(prog="Memlord")
+    parser.add_argument("--stdio", action="store_true")
+    args = parser.parse_args()
+
+    if args.stdio:
+        asyncio.run(mcp.run_stdio_async())
+    else:
+        uvicorn.run(app, host=settings.host, port=settings.port)
 
 
 if __name__ == "__main__":

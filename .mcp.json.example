@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "memlord-local": {
+      "command": "python",
+      "args": [
+        "src/memlord/main.py",
+        "--stdio"
+      ],
+      "env": {
+        "MEMLORD_DB_URL": "postgresql+asyncpg://postgres:postgres@localhost/memlord",
+        "MEMLORD_STDIO_USER_ID": "1"
+      }
+    },
+    "memlord-cloud": {
+      "type": "http",
+      "url": "http://app.memlord.com/mcp"
+    }
+  }
+}

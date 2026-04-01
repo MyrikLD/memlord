@@ -216,3 +216,4 @@ __marimo__/
 .streamlit/secrets.toml
 *.db
 data/
+.mcp.json
