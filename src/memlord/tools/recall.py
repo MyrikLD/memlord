@@ -22,7 +22,7 @@ async def recall_memory(
     query: str,
     n_results: int = 5,
     memory_type: MemoryType | None = None,
-    snippet_length: int | None = 200,
+    snippet_length: int = 200,
     workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
@@ -91,12 +91,12 @@ async def recall_memory(
             id=r.id,
             content=(
                 r.content
-                if snippet_length is None or len(r.content) <= snippet_length
+                if len(r.content) <= snippet_length
                 else r.content[:snippet_length] + "..."
             ),
             memory_type=r.memory_type,
             tags=tags_map.get(r.id, []),
-            created_at=str(created_map.get(r.id, "")),
+            created_at=created_map[r.id],
             workspace_id=r.workspace_id,
         )
         for r in results

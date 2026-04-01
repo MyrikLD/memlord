@@ -61,7 +61,7 @@ async def retrieve_memory(
     for r in results:
         metadata, created_at = meta_map.get(r.id, ({}, utcnow()))
         content = r.content
-        if snippet_length is not None and len(content) > snippet_length:
+        if len(content) > snippet_length:
             content = content[:snippet_length] + "..."
         output.append(
             MemoryResult(

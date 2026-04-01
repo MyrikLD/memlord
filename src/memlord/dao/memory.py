@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import bindparam, delete, Float, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -269,18 +271,20 @@ class MemoryDao:
             .values(workspace_id=target_workspace_id)
         )
 
-    async def fetch_tags(self, memory_ids: list[int]) -> dict[int, list[str]]:
+    async def fetch_tags(self, memory_ids: list[int]) -> dict[int, set[str]]:
         rows = await self._s.execute(
             select(MemoryTag.memory_id, Tag.name)
             .join(Tag, MemoryTag.tag_id == Tag.id)
             .where(MemoryTag.memory_id.in_(memory_ids))
         )
-        result: dict[int, list[str]] = {i: [] for i in memory_ids}
+        result = {i: set() for i in memory_ids}
         for mid, name in rows.fetchall():
-            result[mid].append(name)
+            result[mid].add(name)
         return result
 
-    async def fetch_metadata(self, memory_ids: list[int]) -> dict[int, tuple]:
+    async def fetch_metadata(
+        self, memory_ids: list[int]
+    ) -> dict[int, tuple[dict, datetime]]:
         rows = await self._s.execute(
             select(Memory.id, Memory.extra_data, Memory.created_at).where(
                 Memory.id.in_(memory_ids)

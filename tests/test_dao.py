@@ -12,7 +12,7 @@ async def test_crud(session, user_id, workspace_id):
         content="hello world",
         memory_type=MemoryType.fact,
         metadata={"k": "v"},
-        tags=["foo", "bar"],
+        tags={"foo", "bar"},
         workspace_id=workspace_id,
     )
     assert created is True
@@ -23,7 +23,7 @@ async def test_crud(session, user_id, workspace_id):
         content="hello world",
         memory_type=MemoryType.fact,
         metadata={},
-        tags=[],
+        tags=set(),
         workspace_id=workspace_id,
     )
     assert created2 is False
@@ -39,10 +39,10 @@ async def test_crud(session, user_id, workspace_id):
 
     # update content + tags
     await dao.update(
-        id=mid, workspace_ids=[workspace_id], content="updated content", tags=["baz"]
+        id=mid, workspace_ids=[workspace_id], content="updated content", tags={"baz"}
     )
     tags2 = await dao.fetch_tags([mid])
-    assert tags2[mid] == ["baz"]
+    assert tags2[mid] == {"baz"}
 
     # delete
     await dao.delete(mid, workspace_ids=[workspace_id])

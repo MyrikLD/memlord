@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: src/memlord/onnx
           key: onnx-model-v1
