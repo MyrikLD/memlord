@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+python scripts/download_model.py
+
 alembic upgrade head
 
 if [ "${REEMBED}" = "true" ] || [ "${REEMBED}" = "True" ] || [ "${REEMBED}" = "1" ]; then

@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/data
+      - ./data/onnx:/app/src/memlord/onnx
     env_file:
       - .env
 #    environment:
