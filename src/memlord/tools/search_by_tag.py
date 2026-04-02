@@ -10,7 +10,7 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
 from memlord.models import Memory, MemoryTag, Tag
-from memlord.schemas import MemoryListItem
+from memlord.schemas import MemoryListItem, MemoryPage
 
 mcp = FastMCP()
 
@@ -18,26 +18,29 @@ _COLS = (
     Memory.id,
     Memory.content,
     Memory.memory_type,
-    Memory.extra_data,
+    Memory.extra_data.label("metadata"),
     Memory.created_at,
     Memory.workspace_id,
 )
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
+@mcp.tool(
+    output_schema=MemoryPage.model_json_schema(),
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
+)
 async def search_by_tag(
     tags: set[str],
     operation: Literal["AND", "OR"] = "AND",
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
-) -> list[MemoryListItem]:
+) -> MemoryPage:
     """Search memories by tags. AND: all tags present. OR: any tag present."""
     if not tags:
-        return []
+        return MemoryPage()
 
     normalized = [t.lower().strip() for t in tags if t.strip()]
     if not normalized:
-        return []
+        return MemoryPage()
 
     workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
     access_filter = Memory.workspace_id.in_(workspace_ids)
@@ -68,20 +71,21 @@ async def search_by_tag(
 
     rows = (await s.execute(stmt)).mappings().all()
     if not rows:
-        return []
+        return MemoryPage()
 
     ids: list[int] = [row["id"] for row in rows]
     tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
-    return [
-        MemoryListItem(
-            id=row["id"],
-            content=row["content"],
-            memory_type=row["memory_type"],
-            metadata=row["extra_data"],
-            tags=tags_map.get(row["id"], set()),
-            created_at=row["created_at"],
-            workspace_id=row["workspace_id"],
-        )
-        for row in rows
-    ]
+    return MemoryPage(
+        items=[
+            MemoryListItem(
+                **row,
+                tags=tags_map.get(row["id"], set()),
+            )
+            for row in rows
+        ],
+        total=len(rows),
+        page=1,
+        page_size=len(rows),
+        total_pages=1,
+    )

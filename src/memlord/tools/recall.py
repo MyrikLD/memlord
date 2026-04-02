@@ -11,13 +11,16 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
 from memlord.models import Memory
-from memlord.schemas import MemoryType, RecallResult
+from memlord.schemas import MemoryType, RecallPage, RecallResult
 from memlord.search import hybrid_search
 
 mcp = FastMCP()
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
+@mcp.tool(
+    output_schema=RecallPage.model_json_schema(),
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
+)
 async def recall_memory(
     query: str,
     n_results: int = 5,
@@ -26,7 +29,7 @@ async def recall_memory(
     workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
-) -> list[RecallResult]:
+) -> RecallPage:
     """Search memories by time expression + semantics.
 
     Examples: "last week", "yesterday", "about Python last month".
@@ -76,7 +79,7 @@ async def recall_memory(
     )
 
     if not results:
-        return []
+        return RecallPage()
 
     ids = [r.id for r in results]
     tags_map = await MemoryDao(s, uid).fetch_tags(ids)
@@ -86,18 +89,20 @@ async def recall_memory(
     )
     created_map = {row.id: row.created_at for row in rows.fetchall()}
 
-    return [
-        RecallResult(
-            id=r.id,
-            content=(
-                r.content
-                if len(r.content) <= snippet_length
-                else r.content[:snippet_length] + "..."
-            ),
-            memory_type=r.memory_type,
-            tags=tags_map.get(r.id, []),
-            created_at=created_map[r.id],
-            workspace_id=r.workspace_id,
-        )
-        for r in results
-    ]
+    return RecallPage(
+        items=[
+            RecallResult(
+                id=r.id,
+                content=(
+                    r.content
+                    if len(r.content) <= snippet_length
+                    else r.content[:snippet_length] + "..."
+                ),
+                memory_type=r.memory_type,
+                tags=tags_map.get(r.id, set()),
+                created_at=created_map[r.id],
+                workspace_id=r.workspace_id,
+            )
+            for r in results
+        ]
+    )

@@ -44,7 +44,7 @@ async def test_pipeline(mcp_client):
     r = await mcp_client.call_tool(
         "search_by_tag", {"tags": ["pipeline", "updated"], "operation": "AND"}
     )
-    ids = [m.id for m in r.data]
+    ids = [m.id for m in r.data.items]
     assert mid in ids
 
     # --- delete ---
