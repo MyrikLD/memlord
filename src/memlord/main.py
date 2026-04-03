@@ -36,12 +36,17 @@ async def permission_error_handler(
     )
 
 
-_FAVICON = Path(__file__).parent / "templates" / "icon.svg"
+_TEMPLATES = Path(__file__).parent / "templates"
+
+
+@app.get("/favicon.png", include_in_schema=False)
+async def favicon() -> FileResponse:
+    return FileResponse(_TEMPLATES / "icon.png", media_type="image/png")
 
 
 @app.get("/favicon.svg", include_in_schema=False)
 async def favicon() -> FileResponse:
-    return FileResponse(_FAVICON, media_type="image/svg+xml")
+    return FileResponse(_TEMPLATES / "icon.svg", media_type="image/svg+xml")
 
 
 @app.get("/health")
