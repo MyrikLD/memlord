@@ -26,6 +26,7 @@ router = APIRouter()
 
 _COLS = (
     Memory.id,
+    Memory.name,
     Memory.content,
     Memory.memory_type,
     Memory.created_at,
@@ -158,9 +159,6 @@ async def search(
                     )
                 ).all()
             }
-            ws_ids = {r.workspace_id for r in raw if r.workspace_id}
-            ws_names = await WorkspaceDao(s).get_names_by_ids(ws_ids) if ws_ids else {}
-
             for r in raw:
                 results.append(
                     {
@@ -170,9 +168,7 @@ async def search(
                         "tags": tags_map.get(r.id, []),
                         "created_at": created_map.get(r.id, utcnow()),  # type: ignore[call-overload]
                         "rrf_score": round(r.rrf_score, 4),
-                        "workspace_name": (
-                            ws_names.get(r.workspace_id) if r.workspace_id else None
-                        ),
+                        "workspace_name": r.workspace,
                     }
                 )
     return templates.TemplateResponse(
@@ -206,6 +202,7 @@ async def memory_detail(
         {
             "user": user,
             "memory": memory,
+            "memory_id": id,
             "workspace_name": ws_name,
             "writable_workspaces": writable,
         },
@@ -228,17 +225,19 @@ async def update_memory(
     new_content = (body.content or "").strip() or existing.content
     new_type = (body.memory_type or "").strip() or None
     new_tags = [t.lower().strip() for t in (body.tags or []) if t.strip()]
+    new_name = body.name.strip() if body.name and body.name.strip() else None
 
     data: dict = {
         "id": id,
         "memory_type": new_type,
         "metadata": body.metadata,
         "tags": new_tags,
+        "name": new_name,
     }
     if new_content != existing.content:
         data["content"] = new_content
 
-    await dao.update(**data)
+    await dao.update(**data)  # returns (id, name), ignore here
 
     workspaces = await WorkspaceDao(s).list_workspaces(user.id)
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
@@ -254,14 +253,15 @@ async def update_memory(
         "_memory_content.html",
         {
             "memory": {
-                "id": id,
                 "content": new_content,
+                "name": new_name,
                 "memory_type": new_type or "",
                 "metadata": body.metadata,
                 "tags": new_tags,
                 "created_at": existing.created_at,
                 "workspace_id": existing.workspace_id,
             },
+            "memory_id": id,
             "workspace_name": ws_name,
             "writable_workspaces": writable,
             "success": "Saved.",
@@ -301,6 +301,7 @@ async def move_memory(
             {
                 "user": user,
                 "memory": memory,
+                "memory_id": id,
                 "workspace_name": ws_name,
                 "writable_workspaces": writable,
                 "error": str(e),
@@ -324,6 +325,7 @@ async def move_memory(
         {
             "user": user,
             "memory": memory,
+            "memory_id": id,
             "workspace_name": ws_name,
             "writable_workspaces": writable,
             "success": "Moved.",

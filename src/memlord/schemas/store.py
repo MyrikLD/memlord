@@ -15,5 +15,5 @@ class ImportItem(BaseModel):
 
 
 class StoreResult(BaseModel):
-    id: int
+    name: str | None
     created: bool

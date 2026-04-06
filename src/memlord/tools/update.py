@@ -17,18 +17,26 @@ mcp = FastMCP()
     annotations=ToolAnnotations(idempotentHint=False, destructiveHint=False),
 )
 async def update_memory(
-    id: int,
+    name: str,
     memory_type: MemoryType,
     content: str | None = None,
+    new_name: str | None = None,
     tags: set[str] | None = None,
     metadata: dict | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
-    """Update an existing memory by ID. Only provided fields are changed."""
+    """Update an existing memory identified by name. Only provided fields are changed.
+
+    new_name: rename the memory to this name.
+    """
     dao = MemoryDao(s, uid)
+    memory_id = await dao.get_id_by_name(name)
+    if memory_id is None:
+        raise ValueError(f"Memory with name={name!r} not found")
+
     data: dict[str, Any] = {
-        "id": id,
+        "id": memory_id,
         "memory_type": MemoryType(memory_type),
     }
 
@@ -38,6 +46,8 @@ async def update_memory(
         data["metadata"] = metadata or {}
     if tags is not None:
         data["tags"] = tags
+    if new_name is not None:
+        data["name"] = new_name
 
-    memory_id = await dao.update(**data)
-    return StoreResult(id=memory_id, created=False)
+    _, final_name = await dao.update(**data)
+    return StoreResult(name=final_name, created=False)

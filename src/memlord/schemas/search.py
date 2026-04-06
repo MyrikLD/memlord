@@ -7,22 +7,22 @@ from .memory_type import MemoryType
 
 class SearchResult(BaseModel):
     id: int
+    name: str | None
     content: str
     memory_type: MemoryType
     rrf_score: float
     vec_similarity: float | None
-    workspace_id: int | None = None
+    workspace: str | None = None
 
 
 class MemoryResult(BaseModel):
-    id: int
-    content: str
+    name: str | None
     memory_type: MemoryType
     tags: set[str]
     metadata: dict
     created_at: NaiveDatetime
     rrf_score: float
-    workspace_id: int | None = None
+    workspace: str | None = None
 
     @field_serializer("created_at")
     def serialize_created_at(self, v: datetime) -> str:

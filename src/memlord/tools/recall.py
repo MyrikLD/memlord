@@ -25,18 +25,14 @@ async def recall_memory(
     query: str,
     n_results: int = 5,
     memory_type: MemoryType | None = None,
-    snippet_length: int = 200,
     workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> RecallPage:
-    """Search memories by time expression + semantics.
+    """Search memories by time expression + semantics. Returns names + metadata only.
 
     Examples: "last week", "yesterday", "about Python last month".
-
-    Returns compact snippets by default (snippet_length=200). To get the full
-    content of a specific memory, call get_memory(id).
-    Set snippet_length=None to return full content immediately.
+    Use get_memory(name=...) to fetch full content of a specific result.
     Pass workspace=<name> to search only within a specific workspace.
     """
     date_from: datetime | None = None
@@ -92,16 +88,11 @@ async def recall_memory(
     return RecallPage(
         items=[
             RecallResult(
-                id=r.id,
-                content=(
-                    r.content
-                    if len(r.content) <= snippet_length
-                    else r.content[:snippet_length] + "..."
-                ),
+                name=r.name,
                 memory_type=r.memory_type,
                 tags=tags_map.get(r.id, set()),
                 created_at=created_map[r.id],
-                workspace_id=r.workspace_id,
+                workspace=r.workspace,
             )
             for r in results
         ]

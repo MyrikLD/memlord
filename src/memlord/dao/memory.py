@@ -85,6 +85,15 @@ class MemoryDao:
                 f"Review with get_memory({dup_row['id']}). Pass force=True to store anyway."
             )
 
+    async def get_id_by_name(self, name: str) -> int | None:
+        workspace_ids = await self._accessible_workspace_ids()
+        return await self._s.scalar(
+            select(Memory.id).where(
+                Memory.name == name,
+                Memory.workspace_id.in_(workspace_ids),
+            )
+        )
+
     async def _personal_workspace_id(self) -> int:
         ws = await WorkspaceDao(self._s).get_personal(self._uid)
         return ws.id
@@ -100,6 +109,7 @@ class MemoryDao:
         tags: set[str],
         workspace_id: int | None = None,
         force: bool = False,
+        name: str | None = None,
     ) -> tuple[int, bool]:
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
@@ -127,6 +137,7 @@ class MemoryDao:
                 embedding=vector,
                 created_by=self._uid,
                 workspace_id=workspace_id,
+                name=name,
             )
             .returning(Memory.id)
         )
@@ -143,7 +154,8 @@ class MemoryDao:
         memory_type: MemoryType = _UNSET,  # type: ignore[assignment]
         metadata: dict = _UNSET,  # type: ignore[assignment]
         tags: set[str] = _UNSET,  # type: ignore[assignment]
-    ) -> int:
+        name: str | None = _UNSET,  # type: ignore[assignment]
+    ) -> tuple[int, str | None]:
         """Update memory fields. Pass _UNSET to leave a field unchanged; None sets it to NULL."""
         if workspace_ids is None:
             workspace_ids = await self._accessible_workspace_ids()
@@ -160,6 +172,8 @@ class MemoryDao:
             values["memory_type"] = MemoryType(memory_type)
         if metadata is not _UNSET:
             values["extra_data"] = metadata or {}
+        if name is not _UNSET:
+            values["name"] = name
 
         if content is not _UNSET or tags is not _UNSET:
             new_content = (
@@ -189,7 +203,12 @@ class MemoryDao:
         if tags is not _UNSET:
             await self._replace_tags(memory_id, tags)  # type: ignore[arg-type]
 
-        return memory_id
+        final_name: str | None = (
+            values["name"]
+            if "name" in values
+            else await self._s.scalar(select(Memory.name).where(Memory.id == memory_id))
+        )
+        return memory_id, final_name
 
     async def delete(self, id: int, workspace_ids: list[int] | None = None) -> None:
         if workspace_ids is None:
@@ -204,23 +223,30 @@ class MemoryDao:
         await self._cleanup_orphan_tags()
 
     async def get(
-        self, id: int, workspace_ids: list[int] | None = None
+        self,
+        id: int | None = None,
+        name: str | None = None,
+        workspace_ids: list[int] | None = None,
     ) -> MemoryListItem | None:
+        if id is None and name is None:
+            raise ValueError("Either id or name must be provided")
         if workspace_ids is None:
             workspace_ids = await self._accessible_workspace_ids()
         access_check = Memory.workspace_id.in_(workspace_ids)
 
+        id_filter = Memory.id == id if id is not None else Memory.name == name
         row = (
             (
                 await self._s.execute(
                     select(
                         Memory.id,
+                        Memory.name,
                         Memory.content,
                         Memory.memory_type,
                         Memory.extra_data.label("metadata"),
                         Memory.created_at,
                         Memory.workspace_id,
-                    ).where(Memory.id == id, access_check)
+                    ).where(id_filter, access_check)
                 )
             )
             .mappings()
@@ -228,11 +254,9 @@ class MemoryDao:
         )
         if row is None:
             return None
-        tags = (await self.fetch_tags([id])).get(id, [])
-        return MemoryListItem(
-            **row,
-            tags=tags,
-        )
+        memory_id: int = row["id"]
+        tags = (await self.fetch_tags([memory_id])).get(memory_id, [])
+        return MemoryListItem(**row, tags=tags)  # extra "id" silently ignored
 
     async def move(self, id: int, target_workspace_id: int) -> None:
         """Move memory to a different workspace. Raises ValueError if not found or duplicate."""

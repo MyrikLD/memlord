@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from memlord.config import settings
 from memlord.embeddings import embed
 from memlord.models import Memory, MemoryTag, Tag
-from memlord.schemas import SearchResult
+from memlord.models.workspace import Workspace
+from memlord.schemas import MemoryType, SearchResult
 
 
 async def hybrid_search(
@@ -57,11 +58,13 @@ async def hybrid_search(
     bm25_q = (
         select(
             Memory.id,
+            Memory.name,
             Memory.content,
             Memory.memory_type,
-            Memory.workspace_id,
+            Workspace.name.label("workspace"),
             bm25_rank,
         )
+        .join(Workspace, Memory.workspace_id == Workspace.id)
         .where(
             (Memory.search_vector.op("@@")(tsquery)) | tag_match,
             *conditions,
@@ -82,12 +85,14 @@ async def hybrid_search(
     vec_q = (
         select(
             Memory.id,
+            Memory.name,
             Memory.content,
             Memory.memory_type,
-            Memory.workspace_id,
+            Workspace.name.label("workspace"),
             distance,
             vec_rank,
         )
+        .join(Workspace, Memory.workspace_id == Workspace.id)
         .where(Memory.embedding.isnot(None), *conditions)
         .order_by(distance)
         .limit(n)
@@ -98,12 +103,13 @@ async def hybrid_search(
     bm25_ranks: dict[int, int] = {row.id: row.bm25_rank for row in bm25_rows}
     vec_ranks: dict[int, int] = {row.id: row.vec_rank for row in vec_rows}
     vec_distances: dict[int, float] = {row.id: row.distance for row in vec_rows}
-    contents: dict[int, tuple] = {
-        row.id: (row.content, row.memory_type, row.workspace_id) for row in bm25_rows
+    contents: dict[int, tuple[str, str, MemoryType, str]] = {
+        row.id: (row.name, row.content, row.memory_type, row.workspace)
+        for row in bm25_rows
+    } | {
+        row.id: (row.name, row.content, row.memory_type, row.workspace)
+        for row in vec_rows
     }
-    contents.update(
-        {row.id: (row.content, row.memory_type, row.workspace_id) for row in vec_rows}
-    )
 
     # RRF fusion
     all_ids = set(bm25_ranks) | set(vec_ranks)
@@ -128,13 +134,14 @@ async def hybrid_search(
         ):
             continue
 
-        content, memory_type, workspace_id = contents[doc_id]
+        name, content, memory_type, workspace = contents[doc_id]
         scored.append(
             SearchResult(
                 id=doc_id,
+                name=name,
                 content=content,
                 memory_type=memory_type,  # type: ignore[arg-type]
-                workspace_id=workspace_id,
+                workspace=workspace,
                 rrf_score=rrf,
                 vec_similarity=similarity,
             )

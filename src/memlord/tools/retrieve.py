@@ -20,16 +20,13 @@ async def retrieve_memory(
     limit: int = 10,
     similarity_threshold: float = settings.sim_threshold,
     memory_type: MemoryType | None = None,
-    snippet_length: int = 200,
     workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
-    """Hybrid semantic + full-text search over stored memories.
+    """Hybrid semantic + full-text search. Returns names + metadata only.
 
-    Returns compact snippets by default (snippet_length=200). To get the full
-    content of a specific memory, call get_memory(id).
-    Set snippet_length=None to return full content immediately.
+    Use get_memory(name=...) to fetch full content of a specific result.
     Pass workspace=<name> to search only within a specific workspace.
     """
     ws_dao = WorkspaceDao(s)
@@ -57,22 +54,15 @@ async def retrieve_memory(
     tags_map = await dao.fetch_tags(ids)
     meta_map = await dao.fetch_metadata(ids)
 
-    output = []
-    for r in results:
-        metadata, created_at = meta_map.get(r.id, ({}, utcnow()))
-        content = r.content
-        if len(content) > snippet_length:
-            content = content[:snippet_length] + "..."
-        output.append(
-            MemoryResult(
-                id=r.id,
-                content=content,
-                memory_type=r.memory_type,
-                tags=tags_map.get(r.id, []),
-                metadata=metadata,
-                created_at=created_at,
-                rrf_score=r.rrf_score,
-                workspace_id=r.workspace_id,
-            )
+    return [
+        MemoryResult(
+            name=r.name,
+            memory_type=r.memory_type,
+            tags=tags_map.get(r.id, []),
+            metadata=meta_map.get(r.id, ({}, utcnow()))[0],
+            created_at=meta_map.get(r.id, ({}, utcnow()))[1],
+            rrf_score=r.rrf_score,
+            workspace=r.workspace,
         )
-    return output
+        for r in results
+    ]

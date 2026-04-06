@@ -31,7 +31,7 @@
 {% if writable_workspaces %}
 <div class="detail-card">
     <div class="section-title">Move to workspace</div>
-    <form hx-post="/memory/{{ memory.id }}/move"
+    <form hx-post="/memory/{{ memory_id }}/move"
           hx-target="#page-content"
           hx-swap="innerHTML"
           style="display:flex;gap:.5rem;align-items:center">
@@ -47,7 +47,14 @@
 
 <div class="detail-card">
     <div class="section-title">Edit memory</div>
-    <form id="edit-form-{{ memory.id }}">
+    <form id="edit-form-{{ memory_id }}">
+        <div class="form-group">
+            <label class="form-label" for="name">
+                Name <span class="form-hint">— optional, unique within workspace</span>
+            </label>
+            <input class="form-input" id="name"
+                   value="{{ memory.name or '' }}" placeholder="e.g. my-note">
+        </div>
         <div class="form-group">
             <label class="form-label" for="content">Content</label>
             <textarea class="form-textarea" id="content" rows="6">{{ memory.content }}</textarea>
@@ -77,13 +84,13 @@
         </div>
         <div class="form-actions">
             <button type="submit" class="btn-primary-sm">Save changes</button>
-            <button type="button" class="btn-danger-sm" id="delete-btn-{{ memory.id }}">
+            <button type="button" class="btn-danger-sm" id="delete-btn-{{ memory_id }}">
                 Delete memory
             </button>
         </div>
     </form>
     <script>
-        document.getElementById('edit-form-{{ memory.id }}').addEventListener('submit', async function (e) {
+        document.getElementById('edit-form-{{ memory_id }}').addEventListener('submit', async function (e) {
             e.preventDefault();
             const metaRaw = document.getElementById('metadata_str').value.trim();
             let metadata = null;
@@ -96,13 +103,15 @@
                 }
             }
             const tagsRaw = document.getElementById('tags_str').value;
+            const nameVal = document.getElementById('name').value.trim();
             const body = {
+                name: nameVal || null,
                 content: document.getElementById('content').value,
                 memory_type: document.getElementById('memory_type').value,
                 tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
                 metadata: metadata,
             };
-            const resp = await fetch('/memory/{{ memory.id }}', {
+            const resp = await fetch('/memory/{{ memory_id }}', {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(body),
@@ -111,9 +120,9 @@
             htmx.process(document.getElementById('page-content'));
         });
 
-        document.getElementById('delete-btn-{{ memory.id }}').addEventListener('click', async function () {
+        document.getElementById('delete-btn-{{ memory_id }}').addEventListener('click', async function () {
             if (!confirm('Delete this memory?')) return;
-            const resp = await fetch('/memory/{{ memory.id }}', {method: 'DELETE'});
+            const resp = await fetch('/memory/{{ memory_id }}', {method: 'DELETE'});
             if (resp.ok) window.location.href = '/';
         });
     </script>

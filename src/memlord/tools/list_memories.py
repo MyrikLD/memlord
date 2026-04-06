@@ -10,17 +10,19 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
 from memlord.models import Memory, MemoryTag, Tag
-from memlord.schemas import MemoryListItem, MemoryPage, MemoryType
+from memlord.models.workspace import Workspace
+from memlord.schemas import MemoryItem, MemoryPage, MemoryType
 
 mcp = FastMCP()
 
 _COLS = (
     Memory.id,
+    Memory.name,
     Memory.content,
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
-    Memory.workspace_id,
+    Workspace.name.label("workspace"),
 )
 
 
@@ -41,7 +43,11 @@ async def list_memories(
     offset = (page - 1) * page_size
 
     workspace_ids = await WorkspaceDao(s).get_accessible_workspace_ids(uid)
-    q = select(*_COLS).where(Memory.workspace_id.in_(workspace_ids))
+    q = (
+        select(*_COLS)
+        .join(Workspace, Memory.workspace_id == Workspace.id)
+        .where(Memory.workspace_id.in_(workspace_ids))
+    )
 
     if memory_type:
         q = q.where(Memory.memory_type == memory_type)
@@ -82,9 +88,9 @@ async def list_memories(
 
     return MemoryPage(
         items=[
-            MemoryListItem(
+            MemoryItem(
                 **row,
-                tags=tags_map.get(row["id"], []),
+                tags=set(tags_map.get(row["id"], [])),
             )
             for row in rows
         ],

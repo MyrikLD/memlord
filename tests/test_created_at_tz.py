@@ -6,9 +6,9 @@ from memlord.schemas import MemoryType
 
 
 def _assert_tz_aware(created_at: datetime) -> None:
-    assert (
-        created_at.tzinfo is not None
-    ), f"created_at must be timezone-aware: {created_at!r}"
+    assert created_at.tzinfo is not None, (
+        f"created_at must be timezone-aware: {created_at!r}"
+    )
 
 
 async def test_recall_memory_created_at_has_timezone(mcp_client):

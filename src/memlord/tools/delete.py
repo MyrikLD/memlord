@@ -15,11 +15,14 @@ mcp = FastMCP()
     annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False),
 )
 async def delete_memory(
-    id: int,
+    name: str,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> DeleteResult:
-    """Delete a memory by ID. Removes from vec index and FTS (via trigger)."""
+    """Delete a memory by name."""
     dao = MemoryDao(s, uid)
-    await dao.delete(id)
-    return DeleteResult(success=True, id=id)
+    memory_id = await dao.get_id_by_name(name)
+    if memory_id is None:
+        raise ValueError(f"Memory with name={name!r} not found")
+    await dao.delete(memory_id)
+    return DeleteResult(success=True, name=name)
