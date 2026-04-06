@@ -52,13 +52,11 @@ async def index(
     workspaces = await ws_dao.list_workspaces()
     workspace_ids = [ws.id for ws in workspaces]
 
-    # Apply workspace filter
+    # Apply to_workspace filter
     if workspace == "__personal__":
         personal = next((ws for ws in workspaces if ws.is_personal), None)
         access_filter = (
-            Memory.workspace_id == personal.id
-            if personal
-            else Memory.workspace_id.in_([])
+            Memory.workspace_id == personal.id if personal else Memory.workspace_id.in_([])
         )
     elif workspace:
         ws_obj = next((ws for ws in workspaces if ws.name == workspace), None)
@@ -84,11 +82,7 @@ async def index(
 
     total = await s.scalar(select(sa.func.count()).select_from(q.subquery())) or 0
     rows = (
-        (
-            await s.execute(
-                q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)
-            )
-        )
+        (await s.execute(q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)))
         .mappings()
         .all()
     )
@@ -96,9 +90,7 @@ async def index(
     ids = [row["id"] for row in rows]
     tags_map = await MemoryDao(s, user.id).fetch_tags(ids)
 
-    ws_display = {
-        ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
-    }
+    ws_display = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
 
     memories = [
         {
@@ -123,7 +115,7 @@ async def index(
             "total_pages": total_pages,
             "memory_type": memory_type,
             "tag": tag,
-            "workspace": workspace,
+            "to_workspace": workspace,
             "workspaces": workspaces,
         },
     )
@@ -154,9 +146,7 @@ async def search(
             created_map = {
                 row.id: row.created_at
                 for row in (
-                    await s.execute(
-                        select(Memory.id, Memory.created_at).where(Memory.id.in_(ids))
-                    )
+                    await s.execute(select(Memory.id, Memory.created_at).where(Memory.id.in_(ids)))
                 ).all()
             }
             for r in raw:
@@ -191,9 +181,7 @@ async def memory_detail(
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
     writable = [
-        ws
-        for ws in workspaces
-        if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
+        ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
     ]
 
     return templates.TemplateResponse(
@@ -229,6 +217,7 @@ async def update_memory(
 
     data: dict = {
         "id": id,
+        "workspace_id": existing.workspace_id,
         "memory_type": new_type,
         "metadata": body.metadata,
         "tags": new_tags,
@@ -243,9 +232,7 @@ async def update_memory(
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(existing.workspace_id) if existing.workspace_id else None
     writable = [
-        ws
-        for ws in workspaces
-        if ws.role in ("owner", "editor") and ws.id != existing.workspace_id
+        ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != existing.workspace_id
     ]
 
     return templates.TemplateResponse(
@@ -275,26 +262,25 @@ async def move_memory(
     id: int,
     s: APISessionDep,
     user: APIUserDep,
-    target_workspace_id: int = Form(...),
+    to_workspace_id: int = Form(...),
 ) -> HTMLResponse:
     ws_dao = WorkspaceDao(s, user.id)
     dao = MemoryDao(s, user.id)
+    memory = await dao.get(id)
+
+    if memory is None:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    workspaces = await ws_dao.list_workspaces()
+    ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
+    ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
+    writable = [
+        ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
+    ]
+
     try:
-        await dao.move(id, target_workspace_id)
+        await dao.move(memory.id, memory.workspace_id, to_workspace_id)
     except ValueError as e:
-        memory = await dao.get(id)
-        if memory is None:
-            raise HTTPException(status_code=404, detail="Memory not found")
-        workspaces = await ws_dao.list_workspaces()
-        ws_map = {
-            ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
-        }
-        ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
-        writable = [
-            ws
-            for ws in workspaces
-            if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
-        ]
         return templates.TemplateResponse(
             request,
             "_memory_content.html",
@@ -308,17 +294,6 @@ async def move_memory(
             },
         )
 
-    memory = await dao.get(id)
-    if memory is None:
-        raise HTTPException(status_code=404, detail="Memory not found")
-    workspaces = await ws_dao.list_workspaces()
-    ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
-    ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
-    writable = [
-        ws
-        for ws in workspaces
-        if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
-    ]
     return templates.TemplateResponse(
         request,
         "_memory_content.html",
@@ -328,7 +303,7 @@ async def move_memory(
             "memory_id": id,
             "workspace_name": ws_name,
             "writable_workspaces": writable,
-            "success": "Moved.",
+            "success": "Moved",
         },
     )
 
@@ -339,8 +314,12 @@ async def delete_memory_ui(
     s: APISessionDep,
     user: APIUserDep,
 ) -> Response:
-    try:
-        await MemoryDao(s, user.id).delete(id)
-    except ValueError:
+    dao = MemoryDao(s, user.id)
+    item = await dao.get(id=id)
+    if item is None:
         raise HTTPException(status_code=404, detail="Memory not found")
+    try:
+        await dao.delete(item.id, item.workspace_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="Memory not found") from e
     return Response(content="", status_code=200)

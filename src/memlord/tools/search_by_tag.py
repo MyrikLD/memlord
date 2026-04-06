@@ -22,7 +22,7 @@ _COLS = (
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
-    Workspace.name.label("workspace"),
+    Workspace.name.label("to_workspace"),
 )
 
 
@@ -37,15 +37,11 @@ async def search_by_tag(
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
     """Search memories by tags. AND: all tags present. OR: any tag present."""
-    if not tags:
-        return MemoryPage()
-
     normalized = [t.lower().strip() for t in tags if t.strip()]
     if not normalized:
         return MemoryPage()
 
     workspace_ids = await WorkspaceDao(s, uid).get_accessible_workspace_ids()
-    access_filter = Memory.workspace_id.in_(workspace_ids)
 
     if operation == "AND":
         matching_count = (
@@ -59,7 +55,10 @@ async def search_by_tag(
         stmt = (
             select(*_COLS)
             .join(Workspace, Memory.workspace_id == Workspace.id)
-            .where(matching_count == len(normalized), access_filter)
+            .where(
+                matching_count == len(normalized),
+                Memory.workspace_id.in_(workspace_ids),
+            )
             .order_by(Memory.created_at.desc())
         )
     else:
@@ -68,7 +67,10 @@ async def search_by_tag(
             .join(MemoryTag, Memory.id == MemoryTag.memory_id)
             .join(Tag, MemoryTag.tag_id == Tag.id)
             .join(Workspace, Memory.workspace_id == Workspace.id)
-            .where(Tag.name.in_(normalized), access_filter)
+            .where(
+                Tag.name.in_(normalized),
+                Memory.workspace_id.in_(workspace_ids),
+            )
             .distinct()
             .order_by(Memory.created_at.desc())
         )

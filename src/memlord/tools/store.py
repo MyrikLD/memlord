@@ -18,7 +18,7 @@ mcp = FastMCP()
 async def store_memory(
     content: str,
     memory_type: MemoryType,
-    name: str | None = None,
+    name: str,
     tags: set[str] | None = None,
     metadata: dict | None = None,
     workspace: str | None = None,
@@ -28,9 +28,8 @@ async def store_memory(
 ) -> StoreResult:
     """Save a new memory. Idempotent: returns existing if content already stored.
 
-    name: optional human-readable name, unique within the workspace.
-    workspace: name of the workspace to store into (must be a member).
-               Omit or pass None to store as a personal memory.
+    name: human-readable name, unique within the workspace.
+    workspace: name of the workspace to store into. Omit to store as a personal memory.
     force: skip near-duplicate check and store unconditionally.
     """
     ws_dao = WorkspaceDao(s, uid)

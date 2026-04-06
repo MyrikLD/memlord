@@ -15,7 +15,7 @@ class MemoryListItem(BaseModel):
     metadata: dict = Field(default_factory=dict)
     tags: set[str]
     created_at: NaiveDatetime
-    workspace_id: int | None = None
+    workspace_id: int
 
     @field_serializer("created_at")
     def serialize_created_at(self, v: datetime) -> str:

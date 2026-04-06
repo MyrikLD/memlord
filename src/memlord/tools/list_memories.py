@@ -61,16 +61,9 @@ async def list_memories(
         q = q.where(Memory.id.in_(tag_subq))
 
     total = await s.scalar(select(func.count()).select_from(q.subquery())) or 0
+    q = q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)
 
-    rows = (
-        (
-            await s.execute(
-                q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)
-            )
-        )
-        .mappings()
-        .all()
-    )
+    rows = (await s.execute(q)).mappings().all()
 
     total_pages = math.ceil(total / page_size) if total else 0
 

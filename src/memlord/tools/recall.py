@@ -59,7 +59,7 @@ async def recall_memory(
     if workspace is not None:
         ws = await ws_dao.get_by_name(workspace)
         if ws is None:
-            raise ValueError(f"Workspace {workspace!r} not found or not accessible")
+            raise ValueError(f"Workspace {workspace!r} not found")
         workspace_ids = [ws.id]
     else:
         workspace_ids = await ws_dao.get_accessible_workspace_ids()
@@ -80,9 +80,7 @@ async def recall_memory(
     ids = [r.id for r in results]
     tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
-    rows = await s.execute(
-        select(Memory.id, Memory.created_at).where(Memory.id.in_(ids))
-    )
+    rows = await s.execute(select(Memory.id, Memory.created_at).where(Memory.id.in_(ids)))
     created_map = {row.id: row.created_at for row in rows.fetchall()}
 
     return RecallPage(

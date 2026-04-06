@@ -47,9 +47,7 @@ async def workspace_new_post(
             status_code=400,
         )
     try:
-        ws = await WorkspaceDao(s, user.id).create(
-            name=name, description=description_val
-        )
+        ws = await WorkspaceDao(s, user.id).create(name=name, description=description_val)
     except IntegrityError:
         return templates.TemplateResponse(
             request,
@@ -98,9 +96,7 @@ async def workspace_rename_post(
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
-        raise HTTPException(
-            status_code=400, detail="Cannot rename a personal workspace"
-        )
+        raise HTTPException(status_code=400, detail="Cannot rename a personal workspace")
     try:
         await WorkspaceDao(s, user.id).rename(workspace_id=workspace_id, name=name)
     except ValueError as e:
@@ -140,18 +136,14 @@ async def workspace_invite(
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
-        raise HTTPException(
-            status_code=400, detail="Cannot invite to a personal workspace"
-        )
+        raise HTTPException(status_code=400, detail="Cannot invite to a personal workspace")
     try:
         token = await WorkspaceDao(s, user.id).create_invite(
             workspace_id=workspace_id,
             expires_in_hours=expires_in_hours,
         )
     except ValueError as e:
-        return HTMLResponse(
-            f'<div class="alert alert-error">{e}</div>', status_code=400
-        )
+        return HTMLResponse(f'<div class="alert alert-error">{e}</div>', status_code=400)
     base = str(request.base_url).rstrip("/")
     invite_url = f"{base}/ui/join/{token}"
     return templates.TemplateResponse(
@@ -191,9 +183,7 @@ async def workspace_delete(
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
-        raise HTTPException(
-            status_code=400, detail="Cannot delete a personal workspace"
-        )
+        raise HTTPException(status_code=400, detail="Cannot delete a personal workspace")
     try:
         await dao.delete_workspace(workspace_id=workspace_id)
     except ValueError as e:

@@ -127,9 +127,7 @@ class WorkspaceDao:
         role: WorkspaceRole = WorkspaceRole.member,
     ) -> None:
         await self._s.execute(
-            insert(WorkspaceMember).values(
-                workspace_id=workspace_id, user_id=user_id, role=role
-            )
+            insert(WorkspaceMember).values(workspace_id=workspace_id, user_id=user_id, role=role)
         )
 
     async def remove_member(self, workspace_id: int, user_id: int) -> None:
@@ -137,9 +135,7 @@ class WorkspaceDao:
         if role is None:
             raise ValueError(f"Not a member of workspace {workspace_id}")
         if role == WorkspaceRole.owner:
-            raise ValueError(
-                "Owners cannot leave a workspace. Delete the workspace instead."
-            )
+            raise ValueError("Owners cannot leave a workspace. Delete the workspace instead.")
         await self._s.execute(
             delete(WorkspaceMember).where(
                 WorkspaceMember.workspace_id == workspace_id,
@@ -153,12 +149,11 @@ class WorkspaceDao:
             raise ValueError("Only the owner can delete a workspace")
         await self._s.execute(delete(Workspace).where(Workspace.id == workspace_id))
 
-    async def get_accessible_workspace_ids(self) -> list[int]:
-        rows = await self._s.scalars(
-            select(WorkspaceMember.workspace_id).where(
-                WorkspaceMember.user_id == self._uid
-            )
-        )
+    async def get_accessible_workspace_ids(self, write: bool = False) -> list[int]:
+        q = select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == self._uid)
+        if write:
+            q = q.where(WorkspaceMember.role.in_([WorkspaceRole.owner, WorkspaceRole.editor]))
+        rows = await self._s.scalars(q)
         return list(rows)
 
     async def list_workspaces(self) -> list[WorkspaceInfo]:
@@ -207,34 +202,25 @@ class WorkspaceDao:
             .correlate(Workspace)
             .scalar_subquery()
         )
-        row = (
-            (
-                await self._s.execute(
-                    select(
-                        Workspace.id,
-                        Workspace.name,
-                        Workspace.description,
-                        Workspace.is_personal,
-                        WorkspaceMember.role,
-                        member_count_subq.label("member_count"),
-                    )
-                    .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
-                    .where(Workspace.name == name, WorkspaceMember.user_id == self._uid)
-                )
+        q = (
+            select(
+                Workspace.id,
+                Workspace.name,
+                Workspace.description,
+                Workspace.is_personal,
+                WorkspaceMember.role,
+                member_count_subq.label("member_count"),
             )
-            .mappings()
-            .one_or_none()
+            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+            .where(
+                Workspace.name == name,
+                WorkspaceMember.user_id == self._uid,
+            )
         )
+        row = (await self._s.execute(q)).mappings().one_or_none()
         if row is None:
             return None
-        return WorkspaceInfo(
-            id=row["id"],
-            name=row["name"],
-            description=row["description"],
-            role=row["role"],
-            member_count=row["member_count"],
-            is_personal=row["is_personal"],
-        )
+        return WorkspaceInfo(**row)
 
     async def get_by_id_for_user(self, workspace_id: int) -> WorkspaceInfo | None:
         member_count_subq = (
@@ -282,16 +268,12 @@ class WorkspaceDao:
             update(Workspace).where(Workspace.id == workspace_id).values(name=name)
         )
 
-    async def update_description(
-        self, workspace_id: int, description: str | None
-    ) -> None:
+    async def update_description(self, workspace_id: int, description: str | None) -> None:
         role = await self.get_role(workspace_id, self._uid)
         if role != WorkspaceRole.owner:
             raise ValueError("Only the owner can update the workspace description")
         await self._s.execute(
-            update(Workspace)
-            .where(Workspace.id == workspace_id)
-            .values(description=description)
+            update(Workspace).where(Workspace.id == workspace_id).values(description=description)
         )
 
     async def get_members(self, workspace_id: int) -> list[WorkspaceMemberInfo]:

@@ -6,15 +6,13 @@ from memlord.schemas import MemoryType
 
 
 def _assert_tz_aware(created_at: datetime) -> None:
-    assert (
-        created_at.tzinfo is not None
-    ), f"created_at must be timezone-aware: {created_at!r}"
+    assert created_at.tzinfo is not None, f"created_at must be timezone-aware: {created_at!r}"
 
 
 async def test_recall_memory_created_at_has_timezone(mcp_client):
     await mcp_client.call_tool(
         "store_memory",
-        {"content": "tz test memory", "memory_type": MemoryType.fact},
+        {"content": "tz test memory", "memory_type": MemoryType.fact, "name": "test"},
     )
 
     r = await mcp_client.call_tool("recall_memory", {"query": "tz test memory"})
@@ -26,7 +24,7 @@ async def test_recall_memory_created_at_has_timezone(mcp_client):
 async def test_list_memories_created_at_has_timezone(mcp_client):
     await mcp_client.call_tool(
         "store_memory",
-        {"content": "tz list test memory", "memory_type": MemoryType.fact},
+        {"content": "tz list test memory", "memory_type": MemoryType.fact, "name": "test"},
     )
 
     r = await mcp_client.call_tool("list_memories", {})
@@ -39,6 +37,7 @@ async def test_search_by_tag_created_at_has_timezone(mcp_client):
         "store_memory",
         {
             "content": "tz tag test memory",
+            "name": "test",
             "memory_type": MemoryType.fact,
             "tags": ["tz-test"],
         },
