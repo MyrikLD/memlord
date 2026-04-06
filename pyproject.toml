@@ -35,7 +35,6 @@ dev = [
     "pytest==9.*",
     "pytest-asyncio",
     "pytest-cov",
-    "pytest-mock",
     "pytest-xdist",
 ]
 
@@ -52,8 +51,6 @@ packages = ["src/memlord"]
 
 [tool.coverage.run]
 source = ["src/memlord"]
-parallel = true
-concurrency = ["thread"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
