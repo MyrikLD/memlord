@@ -9,7 +9,7 @@ from memlord.schemas import MemoryType
 
 @pytest.fixture
 async def other_workspace_id(session, user_id: int) -> int:
-    ws = await WorkspaceDao(session).create(name="other", owner_id=user_id)
+    ws = await WorkspaceDao(session, user_id).create(name="other")
     return ws.id
 
 
@@ -48,7 +48,7 @@ async def test_move_inaccessible_workspace_raises(session, user_id, memory_id):
         display_name="Other User",
         hashed_password=hash_password("pass"),
     )
-    other_ws = await WorkspaceDao(session).get_personal(other_user.id)
+    other_ws = await WorkspaceDao(session, other_user.id).get_personal()
 
     dao = MemoryDao(session, user_id)
     with pytest.raises(PermissionError, match="No access"):

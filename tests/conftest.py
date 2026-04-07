@@ -80,7 +80,7 @@ async def user_id(session: AsyncSession) -> int:
 @pytest_asyncio.fixture
 async def workspace_id(session: AsyncSession, user_id: int) -> int:
     """Return the personal workspace id for the test user."""
-    ws = await WorkspaceDao(session).get_personal(user_id)
+    ws = await WorkspaceDao(session, user_id).get_personal()
     return ws.id
 
 
