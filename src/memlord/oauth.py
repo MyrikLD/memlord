@@ -562,11 +562,9 @@ class MemlordOAuthProvider(OAuthProvider):
             return entry
         # Fallback: verify as JWT and reconstruct after server restart.
         try:
-            claims = self._jwt.verify_token(refresh_token)
+            claims = self._jwt.verify_token(refresh_token, expected_token_use="refresh")
         except JoseError as exc:
             logger.debug("load_refresh_token JWT invalid: %s", exc)
-            return None
-        if claims.get("token_use") != "refresh":
             return None
         token_client_id = claims.get("client_id", "")
         if token_client_id != client.client_id:
