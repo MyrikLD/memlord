@@ -23,9 +23,7 @@ class InjectClientIdMiddleware:
             more = msg.get("more_body", False)
         body = b"".join(chunks)
 
-        params = {
-            k: v[0] for k, v in parse_qs(body.decode(), keep_blank_values=True).items()
-        }
+        params = {k: v[0] for k, v in parse_qs(body.decode(), keep_blank_values=True).items()}
         if not params.get("client_id") and params.get("code"):
             entry = self._auth_codes.get(params["code"])
             if entry:

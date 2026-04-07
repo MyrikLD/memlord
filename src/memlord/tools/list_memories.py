@@ -64,11 +64,7 @@ async def list_memories(
     total = await s.scalar(select(func.count()).select_from(q.subquery())) or 0
 
     rows = (
-        (
-            await s.execute(
-                q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)
-            )
-        )
+        (await s.execute(q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)))
         .mappings()
         .all()
     )

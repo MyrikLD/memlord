@@ -41,9 +41,7 @@ class WorkspaceMember(Base):
         nullable=False,
     )
     role = sa.Column(sa.Text, nullable=False, server_default="member")
-    joined_at = sa.Column(
-        sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
-    )
+    joined_at = sa.Column(sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False)
 
 
 class WorkspaceInvite(Base):

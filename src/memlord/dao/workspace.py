@@ -140,9 +140,7 @@ class WorkspaceDao:
         role: WorkspaceRole = WorkspaceRole.member,
     ) -> None:
         await self._s.execute(
-            insert(WorkspaceMember).values(
-                workspace_id=workspace_id, user_id=user_id, role=role
-            )
+            insert(WorkspaceMember).values(workspace_id=workspace_id, user_id=user_id, role=role)
         )
 
     async def remove_member(self, workspace_id: int, user_id: int) -> None:
@@ -150,9 +148,7 @@ class WorkspaceDao:
         if role is None:
             raise ValueError(f"Not a member of workspace {workspace_id}")
         if role == WorkspaceRole.owner:
-            raise ValueError(
-                "Owners cannot leave a workspace. Delete the workspace instead."
-            )
+            raise ValueError("Owners cannot leave a workspace. Delete the workspace instead.")
         await self._s.execute(
             delete(WorkspaceMember).where(
                 WorkspaceMember.workspace_id == workspace_id,
@@ -168,9 +164,7 @@ class WorkspaceDao:
 
     async def get_accessible_workspace_ids(self, user_id: int) -> list[int]:
         rows = await self._s.scalars(
-            select(WorkspaceMember.workspace_id).where(
-                WorkspaceMember.user_id == user_id
-            )
+            select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == user_id)
         )
         return list(rows)
 
@@ -249,9 +243,7 @@ class WorkspaceDao:
             is_personal=row["is_personal"],
         )
 
-    async def get_by_id_for_user(
-        self, workspace_id: int, user_id: int
-    ) -> WorkspaceInfo | None:
+    async def get_by_id_for_user(self, workspace_id: int, user_id: int) -> WorkspaceInfo | None:
         member_count_subq = (
             select(sa.func.count())
             .where(WorkspaceMember.workspace_id == workspace_id)
@@ -269,9 +261,7 @@ class WorkspaceDao:
                         member_count_subq.label("member_count"),
                     )
                     .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
-                    .where(
-                        Workspace.id == workspace_id, WorkspaceMember.user_id == user_id
-                    )
+                    .where(Workspace.id == workspace_id, WorkspaceMember.user_id == user_id)
                 )
             )
             .mappings()
@@ -303,9 +293,7 @@ class WorkspaceDao:
         if role != WorkspaceRole.owner:
             raise ValueError("Only the owner can update the workspace description")
         await self._s.execute(
-            update(Workspace)
-            .where(Workspace.id == workspace_id)
-            .values(description=description)
+            update(Workspace).where(Workspace.id == workspace_id).values(description=description)
         )
 
     async def get_members(self, workspace_id: int) -> list[WorkspaceMemberInfo]:

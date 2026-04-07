@@ -57,9 +57,7 @@ async def test_vector_semantic_match(session, user_id, workspace_id):
 
 async def test_threshold_zero_includes_bm25_hit(session, user_id, workspace_id):
     """Regression: threshold=0.0 must not filter BM25-only matches."""
-    await _store(
-        session, "The quick brown fox jumps over the lazy dog", user_id, workspace_id
-    )
+    await _store(session, "The quick brown fox jumps over the lazy dog", user_id, workspace_id)
 
     results = await hybrid_search(
         session,
@@ -99,9 +97,7 @@ async def test_limit(session, user_id, workspace_id):
 async def test_date_filter_today(session, user_id, workspace_id):
     mid = await _store(session, "something stored today", user_id, workspace_id)
     yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).replace(tzinfo=None)
-    await session.execute(
-        update(Memory).where(Memory.id == mid).values(created_at=yesterday)
-    )
+    await session.execute(update(Memory).where(Memory.id == mid).values(created_at=yesterday))
     mid2 = await _store(session, "something stored recently", user_id, workspace_id)
 
     today_start = datetime.now(timezone.utc).replace(
@@ -121,9 +117,7 @@ async def test_date_filter_today(session, user_id, workspace_id):
 
 async def test_date_filter_includes_today(session, user_id, workspace_id):
     """Regression: date_from = start-of-day must include memories created today."""
-    mid = await _store(
-        session, "python programming language tutorial", user_id, workspace_id
-    )
+    mid = await _store(session, "python programming language tutorial", user_id, workspace_id)
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)

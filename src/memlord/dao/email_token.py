@@ -59,7 +59,5 @@ class EmailTokenDao:
             return None
         if utcnow() > row["expires_at"]:
             return None
-        await self._s.execute(
-            delete(EmailToken).where(EmailToken.token_hash == _hash(raw))
-        )
+        await self._s.execute(delete(EmailToken).where(EmailToken.token_hash == _hash(raw)))
         return row["user_id"]

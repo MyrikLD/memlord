@@ -30,9 +30,7 @@ async def _current_user_gen(
         yield settings.stdio_user_id
         return
     user_id = await s.scalar(
-        select(OAuthClient.user_id).where(
-            OAuthClient.client_id == access_token.client_id
-        )
+        select(OAuthClient.user_id).where(OAuthClient.client_id == access_token.client_id)
     )
     if user_id is None:
         raise PermissionError("Unauthenticated")

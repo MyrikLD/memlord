@@ -22,11 +22,7 @@ async def hybrid_search(
 ) -> list[SearchResult]:
     n = (limit or settings.default_limit) * 4
     k = settings.rrf_k
-    threshold = (
-        similarity_threshold
-        if similarity_threshold is not None
-        else settings.sim_threshold
-    )
+    threshold = similarity_threshold if similarity_threshold is not None else settings.sim_threshold
 
     # Build access filter: all workspaces the user is a member of
     access = Memory.workspace_id.in_(workspace_ids or [])
@@ -74,9 +70,7 @@ async def hybrid_search(
     # Vector KNN via pgvector cosine distance
     vector = await embed(query)
     vec_param = bindparam("vec", type_=Vector(384))
-    distance = Memory.embedding.op("<=>", return_type=Float)(vec_param).label(
-        "distance"
-    )
+    distance = Memory.embedding.op("<=>", return_type=Float)(vec_param).label("distance")
     vec_rank = func.row_number().over(order_by=distance).label("vec_rank")
 
     vec_q = (
@@ -101,9 +95,7 @@ async def hybrid_search(
     contents: dict[int, tuple] = {
         row.id: (row.content, row.memory_type, row.workspace_id) for row in bm25_rows
     }
-    contents.update(
-        {row.id: (row.content, row.memory_type, row.workspace_id) for row in vec_rows}
-    )
+    contents.update({row.id: (row.content, row.memory_type, row.workspace_id) for row in vec_rows})
 
     # RRF fusion
     all_ids = set(bm25_ranks) | set(vec_ranks)
@@ -121,11 +113,7 @@ async def hybrid_search(
 
         # BM25 hits (content or tag match) are always included; threshold only
         # filters pure vec matches that lack any text/tag signal.
-        if (
-            doc_id not in bm25_ranks
-            and similarity is not None
-            and similarity < threshold
-        ):
+        if doc_id not in bm25_ranks and similarity is not None and similarity < threshold:
             continue
 
         content, memory_type, workspace_id = contents[doc_id]

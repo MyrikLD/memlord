@@ -245,9 +245,7 @@ class MemlordOAuthProvider(OAuthProvider):
         pending_id = request.query_params.get("id", "")
         pending = self._pending.get(pending_id)
         if not pending or pending.expires_at < time.time():
-            logger.warning(
-                "login GET: invalid/expired pending_id=%s...", pending_id[:8]
-            )
+            logger.warning("login GET: invalid/expired pending_id=%s...", pending_id[:8])
             return HTMLResponse(
                 "<h3>Authorization request expired. Please try again.</h3>",
                 status_code=400,
@@ -270,9 +268,7 @@ class MemlordOAuthProvider(OAuthProvider):
         pending = self._pending.get(pending_id)
         if not pending or pending.expires_at < time.time():
             self._pending.pop(pending_id, None)
-            logger.warning(
-                "login POST: invalid/expired pending_id=%s...", pending_id[:8]
-            )
+            logger.warning("login POST: invalid/expired pending_id=%s...", pending_id[:8])
             return HTMLResponse(
                 "<h3>Authorization request expired. Please try again.</h3>",
                 status_code=400,
@@ -282,18 +278,14 @@ class MemlordOAuthProvider(OAuthProvider):
             return await self._handle_register(form, pending_id, pending)
         return await self._handle_login(form, pending_id, pending)
 
-    async def _handle_login(
-        self, form, pending_id: str, pending: "_PendingAuth"
-    ) -> Response:
+    async def _handle_login(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
         email = str(form.get("email", "")).strip().lower()
         password = str(form.get("password", ""))
 
         async with self.session() as s:
             exists = await UserDao(s).exists_by_email(email)
             if not exists:
-                logger.info(
-                    "login: email not found, showing register form email=%s", email
-                )
+                logger.info("login: email not found, showing register form email=%s", email)
                 return HTMLResponse(
                     _REGISTER_HTML.format(
                         style=_CARD_STYLE,
@@ -306,9 +298,7 @@ class MemlordOAuthProvider(OAuthProvider):
             user = await UserDao(s).authenticate(email, password)
 
         if user is None:
-            logger.warning(
-                "login: wrong password email=%s client_id=%s", email, pending.client_id
-            )
+            logger.warning("login: wrong password email=%s client_id=%s", email, pending.client_id)
             return HTMLResponse(
                 _LOGIN_HTML.format(
                     style=_CARD_STYLE,
@@ -322,9 +312,7 @@ class MemlordOAuthProvider(OAuthProvider):
 
         return await self._issue_code(pending_id, pending, user.id)
 
-    async def _handle_register(
-        self, form, pending_id: str, pending: "_PendingAuth"
-    ) -> Response:
+    async def _handle_register(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
         email = str(form.get("email", "")).strip().lower()
         display_name = str(form.get("display_name", "")).strip()
         password = str(form.get("password", ""))
@@ -361,9 +349,7 @@ class MemlordOAuthProvider(OAuthProvider):
         logger.info("register: created user id=%d email=%s", user.id, email)
         return await self._issue_code(pending_id, pending, user.id)
 
-    async def _issue_code(
-        self, pending_id: str, pending: "_PendingAuth", user_id: int
-    ) -> Response:
+    async def _issue_code(self, pending_id: str, pending: "_PendingAuth", user_id: int) -> Response:
         del self._pending[pending_id]
 
         # Link this OAuth client to the authenticated user
@@ -432,9 +418,7 @@ class MemlordOAuthProvider(OAuthProvider):
             data["token_endpoint_auth_method"] = "client_secret_basic"
         async with self.session() as s:
             existing_data = await s.scalar(
-                sa.select(OAuthClient.data).where(
-                    OAuthClient.client_id == client_info.client_id
-                )
+                sa.select(OAuthClient.data).where(OAuthClient.client_id == client_info.client_id)
             )
             if existing_data:
                 existing_uris: list[str] = existing_data.get("redirect_uris") or []
@@ -519,9 +503,7 @@ class MemlordOAuthProvider(OAuthProvider):
 
         # Check revocation in DB (survives restarts, works cross-instance).
         async with self.session() as s:
-            revoked = await s.scalar(
-                sa.select(RevokedToken.jti).where(RevokedToken.jti == jti)
-            )
+            revoked = await s.scalar(sa.select(RevokedToken.jti).where(RevokedToken.jti == jti))
         if revoked is not None:
             logger.debug("load_access_token: jti revoked jti=%s...", jti[:8])
             return None

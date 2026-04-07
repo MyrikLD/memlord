@@ -23,9 +23,7 @@ def make_session_token(user_id: int) -> str:
     """Return a signed, time-stamped session token for the given user."""
     ts = int(time.time())
     body = f"{user_id}:{ts}"
-    sig = hmac.new(
-        settings.oauth_jwt_secret.encode(), body.encode(), hashlib.sha256
-    ).hexdigest()
+    sig = hmac.new(settings.oauth_jwt_secret.encode(), body.encode(), hashlib.sha256).hexdigest()
     return f"{body}:{sig}"
 
 

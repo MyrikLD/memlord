@@ -84,9 +84,7 @@ async def recall_memory(
     ids = [r.id for r in results]
     tags_map = await MemoryDao(s, uid).fetch_tags(ids)
 
-    rows = await s.execute(
-        select(Memory.id, Memory.created_at).where(Memory.id.in_(ids))
-    )
+    rows = await s.execute(select(Memory.id, Memory.created_at).where(Memory.id.in_(ids)))
     created_map = {row.id: row.created_at for row in rows.fetchall()}
 
     return RecallPage(

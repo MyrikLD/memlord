@@ -5,9 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="MEMLORD_", env_file=".env", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_prefix="MEMLORD_", env_file=".env", extra="ignore")
 
     db_url: str = "postgresql+asyncpg://postgres:postgres@localhost/memlord"
     db_echo: bool = False

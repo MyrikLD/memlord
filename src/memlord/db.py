@@ -16,9 +16,7 @@ from memlord.config import settings
 
 @cache
 def get_engine() -> AsyncEngine:
-    return create_async_engine(
-        settings.db_url, echo=settings.db_echo, pool_pre_ping=True
-    )
+    return create_async_engine(settings.db_url, echo=settings.db_echo, pool_pre_ping=True)
 
 
 @cache

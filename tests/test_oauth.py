@@ -50,9 +50,7 @@ def oauth_client():
 def _pkce_pair() -> tuple[str, str]:
     verifier = secrets.token_urlsafe(32)
     challenge = (
-        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
-        .decode()
-        .rstrip("=")
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
     )
     return verifier, challenge
 

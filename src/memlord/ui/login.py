@@ -126,9 +126,7 @@ def _verify_email_body(token: str) -> str:
 if settings.smtp_host:
 
     @router.get("/verify-email", response_class=HTMLResponse)
-    async def verify_email(
-        request: Request, s: APISessionDep, token: str = ""
-    ) -> Response:
+    async def verify_email(request: Request, s: APISessionDep, token: str = "") -> Response:
         if not token:
             return templates.TemplateResponse(
                 request, "verify_email.html", {"error": "Invalid or missing token."}
@@ -144,9 +142,7 @@ if settings.smtp_host:
             )
 
         await UserDao(s).set_email_verified(user_id)
-        return templates.TemplateResponse(
-            request, "verify_email.html", {"success": True}
-        )
+        return templates.TemplateResponse(request, "verify_email.html", {"success": True})
 
     @router.post("/resend-verification")
     async def resend_verification(user: APIUserDep, s: APISessionDep) -> Response:
@@ -208,9 +204,7 @@ if settings.smtp_host:
                 {"error": "Invalid or missing token."},
                 status_code=400,
             )
-        return templates.TemplateResponse(
-            request, "reset_password.html", {"token": token}
-        )
+        return templates.TemplateResponse(request, "reset_password.html", {"token": token})
 
     @router.post("/reset-password")
     async def reset_password_post(
