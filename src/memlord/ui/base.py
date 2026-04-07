@@ -55,9 +55,7 @@ async def index(
     if workspace == "__personal__":
         personal = next((ws for ws in workspaces if ws.is_personal), None)
         access_filter = (
-            Memory.workspace_id == personal.id
-            if personal
-            else Memory.workspace_id.in_([])
+            Memory.workspace_id == personal.id if personal else Memory.workspace_id.in_([])
         )
     elif workspace:
         ws_obj = next((ws for ws in workspaces if ws.name == workspace), None)
@@ -83,11 +81,7 @@ async def index(
 
     total = await s.scalar(select(sa.func.count()).select_from(q.subquery())) or 0
     rows = (
-        (
-            await s.execute(
-                q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)
-            )
-        )
+        (await s.execute(q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)))
         .mappings()
         .all()
     )
@@ -95,9 +89,7 @@ async def index(
     ids = [row["id"] for row in rows]
     tags_map = await MemoryDao(s, user.id).fetch_tags(ids)
 
-    ws_display = {
-        ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
-    }
+    ws_display = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
 
     memories = [
         {
@@ -153,9 +145,7 @@ async def search(
             created_map = {
                 row.id: row.created_at
                 for row in (
-                    await s.execute(
-                        select(Memory.id, Memory.created_at).where(Memory.id.in_(ids))
-                    )
+                    await s.execute(select(Memory.id, Memory.created_at).where(Memory.id.in_(ids)))
                 ).all()
             }
             ws_ids = {r.workspace_id for r in raw if r.workspace_id}
@@ -195,9 +185,7 @@ async def memory_detail(
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
     writable = [
-        ws
-        for ws in workspaces
-        if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
+        ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
     ]
 
     return templates.TemplateResponse(
@@ -244,9 +232,7 @@ async def update_memory(
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(existing.workspace_id) if existing.workspace_id else None
     writable = [
-        ws
-        for ws in workspaces
-        if ws.role in ("owner", "editor") and ws.id != existing.workspace_id
+        ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != existing.workspace_id
     ]
 
     return templates.TemplateResponse(
@@ -284,11 +270,9 @@ async def move_memory(
     except ValueError as e:
         memory = await dao.get(id)
         if memory is None:
-            raise HTTPException(status_code=404, detail="Memory not found")
+            raise HTTPException(status_code=404, detail="Memory not found") from e
         workspaces = await ws_dao.list_workspaces(user.id)
-        ws_map = {
-            ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces
-        }
+        ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
         ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
         writable = [
             ws
@@ -314,9 +298,7 @@ async def move_memory(
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     ws_name = ws_map.get(memory.workspace_id) if memory.workspace_id else None
     writable = [
-        ws
-        for ws in workspaces
-        if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
+        ws for ws in workspaces if ws.role in ("owner", "editor") and ws.id != memory.workspace_id
     ]
     return templates.TemplateResponse(
         request,
@@ -339,6 +321,6 @@ async def delete_memory_ui(
 ) -> Response:
     try:
         await MemoryDao(s, user.id).delete(id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Memory not found")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="Memory not found") from e
     return Response(content="", status_code=200)

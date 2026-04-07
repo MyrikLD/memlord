@@ -30,7 +30,7 @@ memlord = "memlord.main:main"
 [dependency-groups]
 dev = [
     "alembic-autogen-check",
-    "black",
+    "ruff==0.15.9",
     "httpx",
     "pytest==9.*",
     "pytest-asyncio",
@@ -58,15 +58,3 @@ concurrency = ["thread", "greenlet"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-
-[tool.black]
-target-version = ['py312']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | .venv
-  | migrations
-  | data
-)
-'''
