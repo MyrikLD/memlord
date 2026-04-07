@@ -185,11 +185,6 @@ class MemlordOAuthProvider(OAuthProvider):
         )
 
         self._auth_codes: dict[str, AuthorizationCode] = {}
-        self._access_tokens: dict[str, AccessToken] = {}  # jti → AccessToken
-        self._refresh_tokens: dict[str, RefreshToken] = {}  # raw token → RefreshToken
-        self._token_to_jti: dict[str, str] = {}  # access token str → jti
-        self._access_to_refresh: dict[str, str] = {}  # access str → refresh str
-        self._refresh_to_access: dict[str, str] = {}  # refresh str → access str
         self._pending: dict[str, _PendingAuth] = {}
 
         self.session = session_factory
@@ -513,17 +508,9 @@ class MemlordOAuthProvider(OAuthProvider):
             logger.debug("load_access_token: jti revoked jti=%s...", jti[:8])
             return None
 
-        stored = self._access_tokens.get(jti)
-        if stored is not None:
-            return stored
-        # Fallback: reconstruct from JWT claims after server restart.
         client_id = claims.get("client_id", "")
         scopes = claims.get("scope", "").split() if claims.get("scope") else []
         exp = claims.get("exp")
-        logger.debug(
-            "load_access_token: reconstructing from JWT claims (post-restart) jti=%s...",
-            jti[:8],
-        )
         return AccessToken(
             token=token,
             client_id=client_id,
@@ -534,21 +521,10 @@ class MemlordOAuthProvider(OAuthProvider):
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str
     ) -> RefreshToken | None:
-        entry = self._refresh_tokens.get(refresh_token)
-        if entry:
-            if entry.client_id != client.client_id:
-                return None
-            if entry.expires_at is not None and entry.expires_at < time.time():
-                del self._refresh_tokens[refresh_token]
-                return None
-            return entry
-        # Fallback: verify as JWT and reconstruct after server restart.
         try:
-            claims = self._jwt.verify_token(refresh_token)
+            claims = self._jwt.verify_token(refresh_token, expected_token_use="refresh")
         except JoseError as exc:
             logger.debug("load_refresh_token JWT invalid: %s", exc)
-            return None
-        if claims.get("token_use") != "refresh":
             return None
         token_client_id = claims.get("client_id", "")
         if token_client_id != client.client_id:
@@ -598,19 +574,10 @@ class MemlordOAuthProvider(OAuthProvider):
     # ------------------------------------------------------------------
 
     def _issue_token_pair(self, client_id: str, scopes: list[str]) -> OAuthToken:
-        now = int(time.time())
-
         jti = secrets.token_urlsafe(32)
         access_str = self._jwt.issue_access_token(
             client_id=client_id, scopes=scopes, jti=jti, expires_in=ACCESS_TOKEN_TTL
         )
-        self._access_tokens[jti] = AccessToken(
-            token=access_str,
-            client_id=client_id,
-            scopes=scopes,
-            expires_at=now + ACCESS_TOKEN_TTL,
-        )
-        self._token_to_jti[access_str] = jti
 
         refresh_jti = secrets.token_urlsafe(32)
         refresh_str = self._jwt.issue_refresh_token(
@@ -619,14 +586,6 @@ class MemlordOAuthProvider(OAuthProvider):
             jti=refresh_jti,
             expires_in=REFRESH_TOKEN_TTL,
         )
-        self._refresh_tokens[refresh_str] = RefreshToken(
-            token=refresh_str,
-            client_id=client_id,
-            scopes=scopes,
-            expires_at=now + REFRESH_TOKEN_TTL,
-        )
-        self._access_to_refresh[access_str] = refresh_str
-        self._refresh_to_access[refresh_str] = access_str
 
         return OAuthToken(
             access_token=access_str,
@@ -641,11 +600,15 @@ class MemlordOAuthProvider(OAuthProvider):
         access_token_str: str | None = None,
         refresh_token_str: str | None = None,
     ) -> None:
-        # Collect (jti, expires_at) from JWT claims for DB persistence.
         to_revoke: list[tuple[str, datetime]] = []
-        for token_str in filter(None, [access_token_str, refresh_token_str]):
+        for token_str, token_use in [
+            (access_token_str, "access"),
+            (refresh_token_str, "refresh"),
+        ]:
+            if token_str is None:
+                continue
             try:
-                claims = self._jwt.verify_token(token_str)
+                claims = self._jwt.verify_token(token_str, expected_token_use=token_use)
                 jti = claims.get("jti")
                 exp = claims.get("exp")
                 if jti:
@@ -656,24 +619,6 @@ class MemlordOAuthProvider(OAuthProvider):
                     to_revoke.append((jti, expires_at))
             except JoseError:
                 pass
-
-        if access_token_str:
-            jti = self._token_to_jti.pop(access_token_str, None)
-            if jti:
-                self._access_tokens.pop(jti, None)
-            paired_refresh = self._access_to_refresh.pop(access_token_str, None)
-            if paired_refresh:
-                self._refresh_tokens.pop(paired_refresh, None)
-                self._refresh_to_access.pop(paired_refresh, None)
-
-        if refresh_token_str:
-            self._refresh_tokens.pop(refresh_token_str, None)
-            paired_access = self._refresh_to_access.pop(refresh_token_str, None)
-            if paired_access:
-                jti = self._token_to_jti.pop(paired_access, None)
-                if jti:
-                    self._access_tokens.pop(jti, None)
-                self._access_to_refresh.pop(paired_access, None)
 
         if to_revoke:
             async with self.session() as s:

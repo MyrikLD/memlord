@@ -38,7 +38,14 @@ async def list_memories(
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
-    """Paginated list of memories with optional type/tag filters."""
+    """Browse all memories ordered by creation date (newest first).
+
+    Use to enumerate or audit stored memories without a specific query.
+    For semantic/text search use retrieve_memory(); for time-range queries use recall_memory();
+    for tag-only browsing use search_by_tag().
+    page starts at 1; page_size defaults to 10, capped at 100.
+    tag filter is a case-insensitive exact match on a single tag name.
+    """
     page_size = min(page_size, 100)
     offset = (page - 1) * page_size
 

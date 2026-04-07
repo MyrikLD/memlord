@@ -38,12 +38,12 @@ _TEMPLATES = Path(__file__).parent / "templates"
 
 
 @app.get("/favicon.png", include_in_schema=False)
-async def favicon() -> FileResponse:
+async def favicon_png() -> FileResponse:
     return FileResponse(_TEMPLATES / "icon.png", media_type="image/png")
 
 
 @app.get("/favicon.svg", include_in_schema=False)
-async def favicon() -> FileResponse:
+async def favicon_svg() -> FileResponse:
     return FileResponse(_TEMPLATES / "icon.svg", media_type="image/svg+xml")
 
 

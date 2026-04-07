@@ -10,7 +10,7 @@ pgvector" width="100%">
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-brightgreen.svg" alt="Python"></a>
   <a href="https://github.com/MyrikLD/memlord/releases"><img src="https://img.shields.io/github/v/tag/MyrikLD/memlord?label=version&color=green" alt="Version"></a>
   <a href="https://github.com/modelcontextprotocol/servers"><img src="https://img.shields.io/badge/MCP-compatible-purple.svg" alt="MCP"></a>
-  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
   <a href="https://glama.ai/mcp/servers/MyrikLD/memlord"><img src="https://glama.ai/mcp/servers/MyrikLD/memlord/badges/score.svg" alt="MCP score"></a>
 </p>
 
@@ -204,7 +204,7 @@ Workspace management (create, invite, join, leave) is handled via the Web UI.
 
 ```bash
 pyright src/           # type check
-black .                # format
+ruff format .          # format
 pytest                 # run tests
 alembic-autogen-check  # verify migrations are up to date
 ```

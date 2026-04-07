@@ -36,7 +36,13 @@ async def search_by_tag(
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
-    """Search memories by tags. AND: all tags present. OR: any tag present."""
+    """Find memories by exact tag match. Returns all results (no pagination).
+
+    operation="AND" (default): memory must have ALL specified tags.
+    operation="OR": memory must have AT LEAST ONE of the specified tags.
+    Tags are case-insensitive. Use retrieve_memory() for semantic/text search
+    or list_memories(tag=...) to browse a single tag with pagination.
+    """
     normalized = [t.lower().strip() for t in tags if t.strip()]
     if not normalized:
         return MemoryPage()

@@ -100,7 +100,7 @@ async def workspace_rename_post(
     try:
         await WorkspaceDao(s, user.id).rename(workspace_id=workspace_id, name=name)
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     return RedirectResponse(f"/ui/workspaces/{workspace_id}", status_code=303)
 
 
@@ -120,7 +120,7 @@ async def workspace_description_post(
             description=description.strip() or None,
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     return RedirectResponse(f"/ui/workspaces/{workspace_id}", status_code=303)
 
 
@@ -168,7 +168,7 @@ async def workspace_leave(
     try:
         await dao.remove_member(workspace_id=workspace_id, user_id=user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return RedirectResponse("/ui/workspaces", status_code=303)
 
 
@@ -187,7 +187,7 @@ async def workspace_delete(
     try:
         await dao.delete_workspace(workspace_id=workspace_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return RedirectResponse("/ui/workspaces", status_code=303)
 
 
@@ -223,5 +223,5 @@ async def join_post(
     try:
         ws = await WorkspaceDao(s, user.id).use_invite(token=token)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return RedirectResponse(f"/ui/workspaces/{ws.id}", status_code=303)

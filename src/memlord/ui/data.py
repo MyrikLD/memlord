@@ -83,8 +83,8 @@ async def import_memories_ui(
 ) -> Response:
     try:
         items = json.loads(await file.read())
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from e
     if not isinstance(items, list):
         raise HTTPException(status_code=400, detail="Expected a JSON array")
 

@@ -23,7 +23,7 @@ async def hybrid_search(
 ) -> list[SearchResult]:
     n = (limit or settings.default_limit) * 4
     k = settings.rrf_k
-    threshold = similarity_threshold or settings.sim_threshold
+    threshold = similarity_threshold if similarity_threshold is not None else settings.sim_threshold
 
     # Build access filter: all workspaces the user is a member of
     access = Memory.workspace_id.in_(workspace_ids or [])
