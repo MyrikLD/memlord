@@ -83,8 +83,8 @@ async def import_memories_ui(
 ) -> Response:
     try:
         items = json.loads(await file.read())
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from e
     if not isinstance(items, list):
         raise HTTPException(status_code=400, detail="Expected a JSON array")
 
@@ -92,9 +92,7 @@ async def import_memories_ui(
     ws_id: int | None = int(workspace_id) if workspace_id else None
     if ws_id is not None:
         if not await ws_dao.can_write(ws_id, user.id):
-            raise HTTPException(
-                status_code=403, detail="No write access to this workspace"
-            )
+            raise HTTPException(status_code=403, detail="No write access to this workspace")
         target_ws_id = ws_id
     else:
         personal_ws = await ws_dao.get_personal(user.id)
@@ -122,7 +120,5 @@ async def import_memories_ui(
         else:
             skipped += 1
 
-    redirect_target = (
-        f"/ui/workspaces/{target_ws_id}?imported={imported}&skipped={skipped}"
-    )
+    redirect_target = f"/ui/workspaces/{target_ws_id}?imported={imported}&skipped={skipped}"
     return RedirectResponse(redirect_target, status_code=status.HTTP_303_SEE_OTHER)

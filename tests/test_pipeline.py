@@ -1,6 +1,7 @@
 """Full MCP tool pipeline: store → get → update → search → delete."""
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from memlord.schemas import MemoryType
 
@@ -50,5 +51,5 @@ async def test_pipeline(mcp_client):
     # --- delete ---
     await mcp_client.call_tool("delete_memory", {"id": mid})
 
-    with pytest.raises(Exception):
+    with pytest.raises(ToolError):
         await mcp_client.call_tool("get_memory", {"id": mid})

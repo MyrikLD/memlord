@@ -47,9 +47,7 @@ async def workspace_new_post(
             status_code=400,
         )
     try:
-        ws = await WorkspaceDao(s).create(
-            name=name, owner_id=user.id, description=description_val
-        )
+        ws = await WorkspaceDao(s).create(name=name, owner_id=user.id, description=description_val)
     except IntegrityError:
         return templates.TemplateResponse(
             request,
@@ -98,15 +96,11 @@ async def workspace_rename_post(
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
-        raise HTTPException(
-            status_code=400, detail="Cannot rename a personal workspace"
-        )
+        raise HTTPException(status_code=400, detail="Cannot rename a personal workspace")
     try:
-        await WorkspaceDao(s).rename(
-            workspace_id=workspace_id, owner_id=user.id, name=name
-        )
+        await WorkspaceDao(s).rename(workspace_id=workspace_id, owner_id=user.id, name=name)
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     return RedirectResponse(f"/ui/workspaces/{workspace_id}", status_code=303)
 
 
@@ -127,7 +121,7 @@ async def workspace_description_post(
             description=description.strip() or None,
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     return RedirectResponse(f"/ui/workspaces/{workspace_id}", status_code=303)
 
 
@@ -143,9 +137,7 @@ async def workspace_invite(
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
-        raise HTTPException(
-            status_code=400, detail="Cannot invite to a personal workspace"
-        )
+        raise HTTPException(status_code=400, detail="Cannot invite to a personal workspace")
     try:
         token = await WorkspaceDao(s).create_invite(
             workspace_id=workspace_id,
@@ -153,9 +145,7 @@ async def workspace_invite(
             expires_in_hours=expires_in_hours,
         )
     except ValueError as e:
-        return HTMLResponse(
-            f'<div class="alert alert-error">{e}</div>', status_code=400
-        )
+        return HTMLResponse(f'<div class="alert alert-error">{e}</div>', status_code=400)
     base = str(request.base_url).rstrip("/")
     invite_url = f"{base}/ui/join/{token}"
     return templates.TemplateResponse(
@@ -180,7 +170,7 @@ async def workspace_leave(
     try:
         await dao.remove_member(workspace_id=workspace_id, user_id=user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return RedirectResponse("/ui/workspaces", status_code=303)
 
 
@@ -195,13 +185,11 @@ async def workspace_delete(
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
-        raise HTTPException(
-            status_code=400, detail="Cannot delete a personal workspace"
-        )
+        raise HTTPException(status_code=400, detail="Cannot delete a personal workspace")
     try:
         await dao.delete_workspace(workspace_id=workspace_id, owner_id=user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return RedirectResponse("/ui/workspaces", status_code=303)
 
 
@@ -237,5 +225,5 @@ async def join_post(
     try:
         ws = await WorkspaceDao(s).use_invite(token=token, user_id=user.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return RedirectResponse(f"/ui/workspaces/{ws.id}", status_code=303)
