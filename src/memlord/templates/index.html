@@ -100,7 +100,7 @@
         <select class="filter-input" style="max-width:200px"
                 x-model="memoryType" @change="onFilterChange()">
             <option value="">All types</option>
-            <template x-for="t in ['fact','preference','instruction','feedback']" :key="t">
+            <template x-for="t in ['fact','preference','instruction','feedback','decision']" :key="t">
                 <option :value="t" x-text="t"></option>
             </template>
         </select>
