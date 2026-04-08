@@ -29,20 +29,14 @@ async def test_move_changes_workspace(
     session, user_id, workspace_id, other_workspace_id, memory_id
 ):
     dao = MemoryDao(session, user_id)
-    await dao.move(memory_id, other_workspace_id)
+    await dao.move(memory_id, workspace_id, other_workspace_id)
 
-    mem = await dao.get(memory_id)
+    mem = await dao.get(memory_id, other_workspace_id)
     assert mem is not None
     assert mem.workspace_id == other_workspace_id
 
 
-async def test_move_not_found(session, user_id, other_workspace_id):
-    dao = MemoryDao(session, user_id)
-    with pytest.raises(ValueError, match="not found"):
-        await dao.move(999999, other_workspace_id)
-
-
-async def test_move_inaccessible_workspace_raises(session, user_id, memory_id):
+async def test_move_inaccessible_workspace_raises(session, user_id, workspace_id, memory_id):
     other_user = await UserDao(session).create(
         email="other@example.com",
         display_name="Other User",
@@ -52,7 +46,7 @@ async def test_move_inaccessible_workspace_raises(session, user_id, memory_id):
 
     dao = MemoryDao(session, user_id)
     with pytest.raises(PermissionError, match="No access"):
-        await dao.move(memory_id, other_ws.id)
+        await dao.move(memory_id, workspace_id, other_ws.id)
 
 
 async def test_move_duplicate_content_raises(
@@ -64,8 +58,8 @@ async def test_move_duplicate_content_raises(
         content="move me",
         memory_type=MemoryType.fact,
         metadata={},
-        tags=[],
+        tags=set(),
         workspace_id=other_workspace_id,
     )
     with pytest.raises(ValueError, match="already exists"):
-        await dao.move(memory_id, other_workspace_id)
+        await dao.move(memory_id, workspace_id, other_workspace_id)

@@ -93,7 +93,12 @@
     <div id="invite-result"></div>
     <form hx-post="/ui/workspaces/{{ workspace.id }}/invite"
           hx-target="#invite-result"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
+          style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <select name="role" class="form-input" style="width:auto">
+            <option value="viewer">Read only</option>
+            <option value="editor">Read &amp; write</option>
+        </select>
         <button type="submit" class="btn btn-primary">Generate invite link</button>
     </form>
 </div>

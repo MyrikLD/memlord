@@ -17,7 +17,7 @@
 {% for m in results %}
 <div class="card{% if m.memory_type %} card--{{ m.memory_type }}{% endif %}">
     <div class="card-header">
-        <a href="/memory/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
+        <a href="/memory/{{ m.workspace_id }}/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
             <div class="card-content">{{ m.content | truncate(280) }}</div>
         </a>
         <span class="score-badge">{{ m.rrf_score }}</span>

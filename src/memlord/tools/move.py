@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
-from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
 from memlord.schemas import StoreResult
 
@@ -17,21 +16,16 @@ mcp = FastMCP()
 )
 async def move_memory(
     id: int,
-    workspace: str,
-    s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    to_workspace: str,
+    from_workspace: str | None = None,
+    s: AsyncSession = MCPSessionDep,
+    uid: int = MCPUserDep,
 ) -> StoreResult:
     """Move a memory to a different workspace.
 
     id: memory ID to move.
     workspace: name of the target workspace (must be a member with write access).
     """
-    ws = await WorkspaceDao(s, uid).get_by_name(workspace)
-    if ws is None:
-        raise ValueError(
-            f"Workspace '{workspace}' not found or you are not a member. "
-            "Use list_workspaces() to see available workspaces."
-        )
 
-    await MemoryDao(s, uid).move(id, ws.id)
+    await MemoryDao(s, uid).move_by_name(id, from_workspace, to_workspace)
     return StoreResult(id=id, created=False)

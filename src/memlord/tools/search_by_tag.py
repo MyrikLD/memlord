@@ -9,7 +9,7 @@ from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
-from memlord.models import Memory, MemoryTag, Tag
+from memlord.models import Memory, MemoryTag, Tag, Workspace
 from memlord.schemas import MemoryListItem, MemoryPage
 
 mcp = FastMCP()
@@ -20,7 +20,7 @@ _COLS = (
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
-    Memory.workspace_id,
+    Workspace.name.label("workspace"),
 )
 
 
@@ -41,15 +41,11 @@ async def search_by_tag(
     Tags are case-insensitive. Use retrieve_memory() for semantic/text search
     or list_memories(tag=...) to browse a single tag with pagination.
     """
-    if not tags:
-        return MemoryPage()
-
     normalized = [t.lower().strip() for t in tags if t.strip()]
     if not normalized:
         return MemoryPage()
 
     workspace_ids = await WorkspaceDao(s, uid).get_accessible_workspace_ids()
-    access_filter = Memory.workspace_id.in_(workspace_ids)
 
     if operation == "AND":
         matching_count = (
@@ -62,7 +58,11 @@ async def search_by_tag(
         )
         stmt = (
             select(*_COLS)
-            .where(matching_count == len(normalized), access_filter)
+            .join(Workspace, Memory.workspace_id == Workspace.id)
+            .where(
+                matching_count == len(normalized),
+                Memory.workspace_id.in_(workspace_ids),
+            )
             .order_by(Memory.created_at.desc())
         )
     else:
@@ -70,7 +70,11 @@ async def search_by_tag(
             select(*_COLS)
             .join(MemoryTag, Memory.id == MemoryTag.memory_id)
             .join(Tag, MemoryTag.tag_id == Tag.id)
-            .where(Tag.name.in_(normalized), access_filter)
+            .join(Workspace, Memory.workspace_id == Workspace.id)
+            .where(
+                Tag.name.in_(normalized),
+                Memory.workspace_id.in_(workspace_ids),
+            )
             .distinct()
             .order_by(Memory.created_at.desc())
         )

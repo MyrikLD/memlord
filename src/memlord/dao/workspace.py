@@ -124,7 +124,7 @@ class WorkspaceDao:
         self,
         workspace_id: int,
         user_id: int,
-        role: WorkspaceRole = WorkspaceRole.member,
+        role: WorkspaceRole = WorkspaceRole.viewer,
     ) -> None:
         await self._s.execute(
             insert(WorkspaceMember).values(workspace_id=workspace_id, user_id=user_id, role=role)
@@ -306,9 +306,14 @@ class WorkspaceDao:
             for row in rows
         ]
 
-    async def create_invite(self, workspace_id: int, expires_in_hours: int = 72) -> str:
-        role = await self.get_role(workspace_id, self._uid)
-        if role is None:
+    async def create_invite(
+        self,
+        workspace_id: int,
+        expires_in_hours: int = 72,
+        role: WorkspaceRole = WorkspaceRole.viewer,
+    ) -> str:
+        caller_role = await self.get_role(workspace_id, self._uid)
+        if caller_role is None:
             raise ValueError(f"Not a member of workspace {workspace_id}")
         token = str(uuid.uuid4())
         expires_at = datetime.utcnow() + timedelta(hours=expires_in_hours)
@@ -318,6 +323,7 @@ class WorkspaceDao:
                 workspace_id=workspace_id,
                 created_by=self._uid,
                 expires_at=expires_at,
+                role=role,
             )
         )
         return token
@@ -330,6 +336,7 @@ class WorkspaceDao:
                         WorkspaceInvite.id,
                         WorkspaceInvite.workspace_id,
                         WorkspaceInvite.expires_at,
+                        WorkspaceInvite.role,
                         WorkspaceInvite.used_by,
                         Workspace.name.label("workspace_name"),
                         User.display_name.label("inviter_name"),
@@ -362,7 +369,7 @@ class WorkspaceDao:
             .where(WorkspaceInvite.id == token)
             .values(used_by=self._uid, used_at=datetime.utcnow())
         )
-        await self.add_member(workspace_id, self._uid, role=WorkspaceRole.member)
+        await self.add_member(workspace_id, self._uid, role=WorkspaceRole(row["role"]))
 
         ws_info = await self.get_by_id_for_user(workspace_id)
         assert ws_info is not None

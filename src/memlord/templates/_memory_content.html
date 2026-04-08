@@ -31,11 +31,11 @@
 {% if writable_workspaces %}
 <div class="detail-card">
     <div class="section-title">Move to workspace</div>
-    <form hx-post="/memory/{{ memory.id }}/move"
+    <form hx-post="/memory/{{ memory.workspace_id }}/{{ memory.id }}/move"
           hx-target="#page-content"
           hx-swap="innerHTML"
           style="display:flex;gap:.5rem;align-items:center">
-        <select class="form-input" name="target_workspace_id" style="flex:1">
+        <select class="form-input" name="to_workspace_id" style="flex:1">
             {% for ws in writable_workspaces %}
             <option value="{{ ws.id }}">{{ 'Personal' if ws.is_personal else ws.name }}</option>
             {% endfor %}
@@ -102,7 +102,7 @@
                 tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
                 metadata: metadata,
             };
-            const resp = await fetch('/memory/{{ memory.id }}', {
+            const resp = await fetch('/memory/{{ memory.workspace_id }}/{{ memory.id }}', {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(body),
@@ -113,7 +113,7 @@
 
         document.getElementById('delete-btn-{{ memory.id }}').addEventListener('click', async function () {
             if (!confirm('Delete this memory?')) return;
-            const resp = await fetch('/memory/{{ memory.id }}', {method: 'DELETE'});
+            const resp = await fetch('/memory/{{ memory.workspace_id }}/{{ memory.id }}', {method: 'DELETE'});
             if (resp.ok) window.location.href = '/';
         });
     </script>

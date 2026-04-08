@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
+from memlord.schemas.workspace import WorkspaceRole
 from memlord.ui.utils import templates, APIUserDep
 
 router = APIRouter()
@@ -131,16 +132,20 @@ async def workspace_invite(
     s: APISessionDep,
     user: APIUserDep,
     expires_in_hours: int = Form(default=72),
+    role: str = Form(default="viewer"),
 ) -> HTMLResponse:
     ws = await WorkspaceDao(s, user.id).get_by_id_for_user(workspace_id)
     if ws is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if ws.is_personal:
         raise HTTPException(status_code=400, detail="Cannot invite to a personal workspace")
+    if role not in (WorkspaceRole.viewer, WorkspaceRole.editor):
+        return HTMLResponse('<div class="alert alert-error">Invalid role</div>', status_code=400)
     try:
         token = await WorkspaceDao(s, user.id).create_invite(
             workspace_id=workspace_id,
             expires_in_hours=expires_in_hours,
+            role=WorkspaceRole(role),
         )
     except ValueError as e:
         return HTMLResponse(f'<div class="alert alert-error">{e}</div>', status_code=400)
@@ -149,7 +154,7 @@ async def workspace_invite(
     return templates.TemplateResponse(
         request,
         "_invite_link.html",
-        {"invite_url": invite_url, "expires_in_hours": expires_in_hours},
+        {"invite_url": invite_url, "expires_in_hours": expires_in_hours, "role": role},
     )
 
 
@@ -209,6 +214,7 @@ async def join_get(
             "token": token,
             "workspace_name": row["workspace_name"],
             "inviter_name": row["inviter_name"],
+            "role": row["role"],
             "used": row["used_by"] is not None,
         },
     )

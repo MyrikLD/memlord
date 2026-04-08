@@ -9,7 +9,7 @@ from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
-from memlord.models import Memory, MemoryTag, Tag
+from memlord.models import Memory, MemoryTag, Tag, Workspace
 from memlord.schemas import MemoryListItem, MemoryPage, MemoryType
 
 mcp = FastMCP()
@@ -20,7 +20,7 @@ _COLS = (
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
-    Memory.workspace_id,
+    Workspace.name.label("workspace"),
 )
 
 
@@ -48,7 +48,11 @@ async def list_memories(
     offset = (page - 1) * page_size
 
     workspace_ids = await WorkspaceDao(s, uid).get_accessible_workspace_ids()
-    q = select(*_COLS).where(Memory.workspace_id.in_(workspace_ids))
+    q = (
+        select(*_COLS)
+        .join(Workspace, Memory.workspace_id == Workspace.id)
+        .where(Memory.workspace_id.in_(workspace_ids))
+    )
 
     if memory_type:
         q = q.where(Memory.memory_type == memory_type)
@@ -62,12 +66,9 @@ async def list_memories(
         q = q.where(Memory.id.in_(tag_subq))
 
     total = await s.scalar(select(func.count()).select_from(q.subquery())) or 0
+    q = q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)
 
-    rows = (
-        (await s.execute(q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)))
-        .mappings()
-        .all()
-    )
+    rows = (await s.execute(q)).mappings().all()
 
     total_pages = math.ceil(total / page_size) if total else 0
 
@@ -87,7 +88,7 @@ async def list_memories(
         items=[
             MemoryListItem(
                 **row,
-                tags=tags_map.get(row["id"], []),
+                tags=tags_map.get(row["id"], set()),
             )
             for row in rows
         ],

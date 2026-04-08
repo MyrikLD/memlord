@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 
 from .base import Base
+from ..schemas.workspace import WorkspaceRole
 
 
 class Workspace(Base):
@@ -40,7 +41,7 @@ class WorkspaceMember(Base):
         primary_key=True,
         nullable=False,
     )
-    role = sa.Column(sa.Text, nullable=False, server_default="member")
+    role = sa.Column(sa.Text, nullable=False, server_default=WorkspaceRole.viewer)
     joined_at = sa.Column(sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False)
 
 
@@ -55,5 +56,6 @@ class WorkspaceInvite(Base):
     )
     created_by = sa.Column(sa.Integer, sa.ForeignKey("users.id"), nullable=False)
     expires_at = sa.Column(sa.DateTime(timezone=False), nullable=False)
+    role = sa.Column(sa.Text, nullable=False, server_default=WorkspaceRole.viewer)
     used_by = sa.Column(sa.Integer, sa.ForeignKey("users.id"), nullable=True)
     used_at = sa.Column(sa.DateTime(timezone=False), nullable=True)

@@ -38,11 +38,11 @@ async def test_crud(session, user_id, workspace_id):
     assert meta[mid][0] == {"k": "v"}
 
     # update content + tags
-    await dao.update(id=mid, workspace_ids=[workspace_id], content="updated content", tags={"baz"})
+    await dao.update(id=mid, workspace_id=workspace_id, content="updated content", tags={"baz"})
     tags2 = await dao.fetch_tags([mid])
     assert tags2[mid] == {"baz"}
 
     # delete
-    await dao.delete(mid, workspace_ids=[workspace_id])
+    await dao.delete(mid, workspace_id=workspace_id)
     with pytest.raises(ValueError):
-        await dao.delete(mid, workspace_ids=[workspace_id])
+        await dao.delete(mid, workspace_id=workspace_id)

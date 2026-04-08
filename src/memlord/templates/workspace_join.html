@@ -13,7 +13,8 @@
     {% else %}
     <p style="font-size:.875rem;color:var(--text-3);margin:1rem 0">
         <strong>{{ inviter_name }}</strong> invited you to join
-        <strong>{{ workspace_name }}</strong>.
+        <strong>{{ workspace_name }}</strong>
+        as <strong>{{ 'read only' if role == 'viewer' else 'read &amp; write' }}</strong>.
     </p>
     <form method="post" action="/ui/join/{{ token }}">
         <div class="form-actions">

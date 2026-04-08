@@ -217,12 +217,12 @@ document.getElementById('connect-modal').addEventListener('click', function(e) {
     </div>
     {% endif %}
     <div class="card-header">
-        <a href="/memory/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
+        <a href="/memory/{{ m.workspace_id }}/{{ m.id }}" style="flex:1; min-width:0; color:inherit; text-decoration:none;">
             <div class="card-content">{{ m.content | truncate(280) }}</div>
         </a>
         <div class="card-actions">
             <button class="btn btn-sm btn-danger"
-                    hx-delete="/memory/{{ m.id }}"
+                    hx-delete="/memory/{{ m.workspace_id }}/{{ m.id }}"
                     hx-target="#mem-{{ m.id }}"
                     hx-swap="outerHTML"
                     hx-confirm="Delete this memory?">Delete

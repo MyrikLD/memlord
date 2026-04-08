@@ -7,7 +7,6 @@ from pydantic import BaseModel
 class WorkspaceRole(StrEnum):
     owner = "owner"
     editor = "editor"
-    member = "member"
     viewer = "viewer"
 
 

@@ -63,7 +63,7 @@ async def recall_memory(
     if workspace is not None:
         ws = await ws_dao.get_by_name(workspace)
         if ws is None:
-            raise ValueError(f"Workspace {workspace!r} not found or not accessible")
+            raise ValueError(f"Workspace {workspace!r} not found")
         workspace_ids = [ws.id]
     else:
         workspace_ids = await ws_dao.get_accessible_workspace_ids()
