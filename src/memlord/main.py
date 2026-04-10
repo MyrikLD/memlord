@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from argparse import ArgumentParser
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -73,6 +74,8 @@ def main():
     parser = ArgumentParser(prog="Memlord")
     parser.add_argument("--stdio", action="store_true")
     args = parser.parse_args()
+
+    logging.basicConfig(level=settings.LOG_LEVEL)
 
     if args.stdio:
         asyncio.run(mcp.run_stdio_async())
