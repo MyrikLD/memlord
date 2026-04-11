@@ -18,9 +18,9 @@ mcp = FastMCP()
 async def store_memory(
     content: str,
     memory_type: MemoryType,
-    tags: set[str] | None = None,
-    metadata: dict | None = None,
-    workspace: str | None = None,
+    tags: set[str] = None,
+    metadata: dict = None,
+    workspace: str = None,
     force: bool = False,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]

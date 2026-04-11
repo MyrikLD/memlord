@@ -24,9 +24,9 @@ mcp = FastMCP()
 async def recall_memory(
     query: str,
     n_results: int = 5,
-    memory_type: MemoryType | None = None,
+    memory_type: MemoryType = None,
     snippet_length: int = 200,
-    workspace: str | None = None,
+    workspace: str = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> RecallPage:

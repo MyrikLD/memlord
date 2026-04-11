@@ -17,7 +17,7 @@ mcp = FastMCP()
 async def move_memory(
     id: int,
     to_workspace: str,
-    from_workspace: str | None = None,
+    from_workspace: str = None,
     s: AsyncSession = MCPSessionDep,
     uid: int = MCPUserDep,
 ) -> StoreResult:

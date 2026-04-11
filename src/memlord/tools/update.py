@@ -19,9 +19,9 @@ mcp = FastMCP()
 async def update_memory(
     id: int,
     memory_type: MemoryType,
-    content: str | None = None,
-    tags: set[str] | None = None,
-    metadata: dict | None = None,
+    content: str = None,
+    tags: set[str] = None,
+    metadata: dict = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:

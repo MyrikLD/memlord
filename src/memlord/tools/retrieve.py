@@ -19,9 +19,9 @@ async def retrieve_memory(
     query: str,
     limit: int = 10,
     similarity_threshold: float = settings.sim_threshold,
-    memory_type: MemoryType | None = None,
+    memory_type: MemoryType = None,
     snippet_length: int = 200,
-    workspace: str | None = None,
+    workspace: str = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
