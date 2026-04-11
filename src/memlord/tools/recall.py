@@ -23,7 +23,11 @@ mcp = FastMCP()
     annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
 )
 async def recall_memory(
-    query: str,
+    query: str = Field(
+        ...,
+        description="Query string",
+        examples=["last week", "yesterday", "about Python last month"],
+    ),
     n_results: int = Field(5, ge=1),
     memory_type: MemoryType = None,
     snippet_length: int | None = Field(200, ge=0),
@@ -32,8 +36,6 @@ async def recall_memory(
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> RecallPage:
     """Search memories by time expression + semantics.
-
-    Examples: "last week", "yesterday", "about Python last month".
 
     Returns compact snippets by default (snippet_length=200). To get the full
     content of a specific memory, call get_memory(id).
