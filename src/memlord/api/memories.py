@@ -24,6 +24,7 @@ router = APIRouter(prefix="/memories")
 
 _COLS = (
     Memory.id,
+    Memory.name,
     Memory.content,
     Memory.memory_type,
     Memory.created_at,
@@ -85,6 +86,7 @@ async def list_memories(
     memories = [
         MemoryItem(
             id=row["id"],
+            name=row["name"],
             content=row["content"],
             memory_type=row["memory_type"],
             created_at=row["created_at"].strftime("%Y-%m-%d %H:%M:%S"),
@@ -113,6 +115,7 @@ def _build_detail(memory, workspaces) -> MemoryDetail:
     ]
     return MemoryDetail(
         id=memory.id,
+        name=memory.name,
         content=memory.content,
         memory_type=memory.memory_type,
         created_at=memory.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -164,8 +167,11 @@ async def update_memory(
     }
     if new_content != existing.content:
         data["content"] = new_content
+    if body.name is not None:
+        data["name"] = body.name
 
-    await dao.update(**data)
+    _, final_name = await dao.update(**data)
+    existing.name = final_name  # type: ignore[assignment]
     existing.content = new_content
     existing.memory_type = new_type  # type: ignore[assignment]
     existing.tags = new_tags  # type: ignore[assignment]

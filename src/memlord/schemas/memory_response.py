@@ -17,6 +17,7 @@ class WorkspaceSimple(BaseModel):
 
 class MemoryItem(BaseModel):
     id: int
+    name: str
     content: str
     memory_type: str | None
     created_at: str
@@ -27,6 +28,7 @@ class MemoryItem(BaseModel):
 
 class MemoryDetail(BaseModel):
     id: int
+    name: str
     content: str
     memory_type: str | None
     created_at: str

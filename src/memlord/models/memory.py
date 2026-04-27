@@ -9,7 +9,7 @@ class Memory(Base):
     __tablename__ = "memories"
 
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    name = sa.Column(sa.Text, nullable=False, index=True)
+    name = sa.Column(sa.Text, nullable=False)
     content = sa.Column(sa.Text, nullable=False)
     created_by = sa.Column(sa.Integer, sa.ForeignKey("users.id"), nullable=False)
     memory_type = sa.Column(sa.String(50), nullable=False)

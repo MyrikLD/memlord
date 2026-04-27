@@ -19,6 +19,7 @@
         <div class="card" :class="m.memory_type ? 'card--' + m.memory_type : ''">
             <div class="card-header">
                 <a :href="'/memory/' + m.workspace_id + '/' + m.id" style="flex:1;min-width:0;color:inherit;text-decoration:none;">
+                    <div class="card-name" x-text="m.name"></div>
                     <div class="card-content" x-text="m.content.length > 280 ? m.content.slice(0, 280) + '…' : m.content"></div>
                 </a>
                 <span class="score-badge" x-text="m.rrf_score"></span>

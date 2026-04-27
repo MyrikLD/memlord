@@ -18,7 +18,6 @@ mcp = FastMCP()
 _COLS = (
     Memory.id,
     Memory.name,
-    Memory.content,
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,

@@ -193,16 +193,20 @@ class MemoryDao:
             values["embedding"] = await embed(_embed_text(new_content, new_tags))
 
         if values:
-            await self._s.execute(update(Memory).where(Memory.id == memory_id).values(**values))
+            final_name: str = await self._s.scalar(  # type: ignore[assignment]
+                update(Memory)
+                .where(Memory.id == memory_id)
+                .values(**values)
+                .returning(Memory.name)
+            )
+        else:
+            final_name = await self._s.scalar(  # type: ignore[assignment]
+                select(Memory.name).where(Memory.id == memory_id)
+            )
 
         if tags is not _UNSET:
             await self._replace_tags(memory_id, tags)
 
-        final_name: str = (
-            values["name"]
-            if "name" in values
-            else await self._s.scalar(select(Memory.name).where(Memory.id == memory_id))  # type: ignore[assignment]
-        )
         return memory_id, final_name
 
     async def delete(self, id: int, workspace_id: int | None = None) -> None:
