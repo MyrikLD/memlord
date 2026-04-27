@@ -71,7 +71,7 @@ def upgrade() -> None:
         SET name = CASE 
             WHEN LENGTH(m.content) > 60
             THEN LEFT(TRIM(m.content), 60) || '...'
-            ELSE LEFT(TRIM(m.content), 60) 
+            ELSE m.content
             END
         WHERE m.name IS NULL
     """))
