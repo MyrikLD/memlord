@@ -2,8 +2,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-from ..utils.dt import utcnow
-from .memory_type import MemoryType
+from memlord.utils.dt import utcnow
+
+from ..memory_type import MemoryType
 
 
 class ImportItem(BaseModel):
@@ -20,8 +21,3 @@ class ImportItem(BaseModel):
         if not data.get("name"):
             data["name"] = (data.get("content") or "")[:60].strip()
         return data
-
-
-class StoreResult(BaseModel):
-    name: str
-    created: bool

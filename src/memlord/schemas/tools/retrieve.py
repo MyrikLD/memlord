@@ -1,21 +1,19 @@
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field, NaiveDatetime, field_serializer
+from pydantic import BaseModel, NaiveDatetime, field_serializer
 
-from .memory_type import MemoryType
+from ..memory_type import MemoryType
 
 
-class RecallResult(BaseModel):
+class MemoryResult(BaseModel):
     name: str
-    memory_type: MemoryType | None
+    memory_type: MemoryType
     tags: set[str]
+    metadata: dict
     created_at: NaiveDatetime
+    rrf_score: float
     workspace: str | None = None
 
     @field_serializer("created_at")
     def serialize_created_at(self, v: datetime) -> str:
         return v.replace(tzinfo=UTC).isoformat()
-
-
-class RecallPage(BaseModel):
-    items: list[RecallResult] = Field(default_factory=list)

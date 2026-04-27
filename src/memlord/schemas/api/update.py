@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from .memory_type import MemoryType
+from ..memory_type import MemoryType
 
 
 class UpdateMemoryRequest(BaseModel):

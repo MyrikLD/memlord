@@ -33,7 +33,7 @@ async def test_pipeline(api_client, workspace_id):
     assert resp.status_code == 200
     body = resp.json()
     assert body["total"] == 1
-    mem = body["memories"][0]
+    mem = body["items"][0]
     mid = mem["id"]
     assert mem["content"] == "rest pipeline memory"
     assert mem["memory_type"] == "fact"

@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime, field_serializer
 
-from .memory_type import MemoryType
-from .pagination import Paginated
+from ..memory_type import MemoryType
+from ..pagination import Paginated
 
 
 class MemoryListItem(BaseModel):
@@ -57,4 +57,3 @@ class MemoryDetail(BaseModel):
 
 
 class MemoryPage(Paginated[MemoryItem]): ...
-
