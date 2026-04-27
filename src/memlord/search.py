@@ -57,6 +57,7 @@ async def hybrid_search(
             Memory.name,
             Memory.content,
             Memory.memory_type,
+            Memory.workspace_id,
             Workspace.name.label("workspace"),
             bm25_rank,
         )
@@ -82,6 +83,7 @@ async def hybrid_search(
             Memory.name,
             Memory.content,
             Memory.memory_type,
+            Memory.workspace_id,
             Workspace.name.label("workspace"),
             distance,
             vec_rank,
@@ -97,9 +99,9 @@ async def hybrid_search(
     bm25_ranks: dict[int, int] = {row.id: row.bm25_rank for row in bm25_rows}
     vec_ranks: dict[int, int] = {row.id: row.vec_rank for row in vec_rows}
     vec_distances: dict[int, float] = {row.id: row.distance for row in vec_rows}
-    contents: dict[int, tuple[str, str, MemoryType, str]] = {
-        row.id: (row.name, row.content, row.memory_type, row.workspace) for row in bm25_rows
-    } | {row.id: (row.name, row.content, row.memory_type, row.workspace) for row in vec_rows}
+    contents: dict[int, tuple[str, str, MemoryType, str, int]] = {
+        row.id: (row.name, row.content, row.memory_type, row.workspace, row.workspace_id) for row in bm25_rows
+    } | {row.id: (row.name, row.content, row.memory_type, row.workspace, row.workspace_id) for row in vec_rows}
 
     # RRF fusion
     all_ids = set(bm25_ranks) | set(vec_ranks)
@@ -120,7 +122,7 @@ async def hybrid_search(
         if doc_id not in bm25_ranks and similarity is not None and similarity < threshold:
             continue
 
-        name, content, memory_type, workspace = contents[doc_id]
+        name, content, memory_type, workspace, workspace_id = contents[doc_id]
         scored.append(
             SearchResult(
                 id=doc_id,
@@ -128,6 +130,7 @@ async def hybrid_search(
                 content=content,
                 memory_type=memory_type,  # type: ignore[arg-type]
                 workspace=workspace,
+                workspace_id=workspace_id,
                 rrf_score=rrf,
                 vec_similarity=similarity,
             )

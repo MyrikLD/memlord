@@ -11,3 +11,4 @@ class SearchResult(BaseModel):
     rrf_score: float
     vec_similarity: float | None
     workspace: str | None = None
+    workspace_id: int | None = None

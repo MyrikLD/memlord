@@ -50,7 +50,7 @@ async def search(
             content=r.content,
             memory_type=r.memory_type,
             created_at=created_map[r.id].strftime("%Y-%m-%d %H:%M:%S"),
-            workspace_id=None,
+            workspace_id=r.workspace_id,
             workspace_name=r.workspace,
             tags=sorted(tags_map.get(r.id, set())),
             rrf_score=round(r.rrf_score, 4),
