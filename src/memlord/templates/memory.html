@@ -22,6 +22,10 @@
                     ⬡ <span x-text="memory.workspace_name"></span>
                 </div>
                 <div style="margin-bottom:1.25rem">
+                    <div class="detail-label">Name</div>
+                    <div class="detail-content" style="font-weight:600" x-text="memory.name"></div>
+                </div>
+                <div style="margin-bottom:1.25rem">
                     <div class="detail-label">Content</div>
                     <div class="detail-content" x-text="memory.content"></div>
                 </div>
@@ -58,6 +62,10 @@
 
             <div class="detail-card">
                 <div class="section-title">Edit memory</div>
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input class="form-input" x-model="editName">
+                </div>
                 <div class="form-group">
                     <label class="form-label">Content</label>
                     <textarea class="form-textarea" x-model="editContent" rows="6"></textarea>
@@ -96,6 +104,7 @@ function memoryPage(workspaceId, memoryId) {
         loading: true,
         successMsg: '',
         errorMsg: '',
+        editName: '',
         editContent: '',
         editType: '',
         editTags: '',
@@ -106,6 +115,7 @@ function memoryPage(workspaceId, memoryId) {
             const r = await fetch('/api/memories/' + workspaceId + '/' + memoryId);
             if (!r.ok) { this.loading = false; return; }
             this.memory = await r.json();
+            this.editName = this.memory.name;
             this.editContent = this.memory.content;
             this.editType = this.memory.memory_type || 'fact';
             this.editTags = this.memory.tags.join(', ');
@@ -126,7 +136,7 @@ function memoryPage(workspaceId, memoryId) {
             const r = await fetch('/api/memories/' + this.memory.workspace_id + '/' + this.memory.id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: this.editContent, memory_type: this.editType, tags, metadata }),
+                body: JSON.stringify({ name: this.editName, content: this.editContent, memory_type: this.editType, tags, metadata }),
             });
             if (r.ok) {
                 this.memory = await r.json();

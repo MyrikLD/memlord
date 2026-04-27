@@ -3,14 +3,13 @@ from contextlib import asynccontextmanager
 from unittest.mock import patch
 
 import pytest
-import pytest_asyncio
 from fastmcp import Client
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from memlord.auth import hash_password, MCPUserDep
+from memlord.auth import MCPUserDep, hash_password
 from memlord.config import settings
 from memlord.dao.user import UserDao
 from memlord.dao.workspace import WorkspaceDao
@@ -57,7 +56,7 @@ def test_db_url(worker_id):
         print(f"Warning: failed to drop test database: {e}")
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def session(test_db_url):
     engine = create_async_engine(test_db_url)
     async with engine.connect() as conn:
@@ -66,7 +65,7 @@ async def session(test_db_url):
     await engine.dispose()
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def user_id(session: AsyncSession) -> int:
     """Create a test user (with personal workspace) and return its id."""
     user = await UserDao(session).create(
@@ -77,14 +76,14 @@ async def user_id(session: AsyncSession) -> int:
     return user.id  # type: ignore[return-value]
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def workspace_id(session: AsyncSession, user_id: int) -> int:
     """Return the personal workspace id for the test user."""
     ws = await WorkspaceDao(session, user_id).get_personal()
     return ws.id
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def mcp_client(session, user_id):
     async def _session():
         yield session
@@ -100,7 +99,7 @@ async def mcp_client(session, user_id):
             yield client
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def api_client(session, user_id):
     async def _override_session():
         yield session

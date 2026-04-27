@@ -6,10 +6,9 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.models import Memory
-from memlord.schemas import SearchItem, SearchResponse
+from memlord.schemas.api import SearchItem, SearchResponse
 from memlord.search import hybrid_search
 from memlord.ui.utils import APIUserDep
-from memlord.utils.dt import utcnow
 
 router = APIRouter(prefix="/search")
 
@@ -44,17 +43,15 @@ async def search(
             await s.execute(select(Memory.id, Memory.created_at).where(Memory.id.in_(ids)))
         ).all()
     }
-    ws_ids = {r.workspace_id for r in raw if r.workspace_id}
-    ws_names = await WorkspaceDao(s, user.id).get_names_by_ids(ws_ids) if ws_ids else {}
 
     results = [
         SearchItem(
             id=r.id,
             content=r.content,
             memory_type=r.memory_type,
-            created_at=(created_map.get(r.id) or utcnow()).strftime("%Y-%m-%d %H:%M:%S"),
-            workspace_id=r.workspace_id,
-            workspace_name=ws_names.get(r.workspace_id) if r.workspace_id else None,
+            created_at=created_map[r.id].strftime("%Y-%m-%d %H:%M:%S"),
+            workspace_id=None,
+            workspace_name=r.workspace,
             tags=sorted(tags_map.get(r.id, set())),
             rrf_score=round(r.rrf_score, 4),
         )

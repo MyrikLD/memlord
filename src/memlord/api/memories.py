@@ -1,5 +1,3 @@
-import math
-
 import sqlalchemy as sa
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
@@ -8,12 +6,12 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.models import Memory, MemoryTag, Tag
-from memlord.schemas import (
+from memlord.schemas import MemoryType
+from memlord.schemas.api import (
     MemoriesFilter,
     MemoriesResponse,
     MemoryDetail,
     MemoryItem,
-    MemoryType,
     MoveRequest,
     UpdateMemoryRequest,
     WorkspaceSimple,
@@ -25,6 +23,7 @@ router = APIRouter(prefix="/memories")
 
 _COLS = (
     Memory.id,
+    Memory.name,
     Memory.content,
     Memory.memory_type,
     Memory.created_at,
@@ -78,7 +77,6 @@ async def list_memories(
         .mappings()
         .all()
     )
-    total_pages = math.ceil(total / page_size) if total else 0
     ids = [row["id"] for row in rows]
     tags_map = await MemoryDao(s, user.id).fetch_tags(ids)
     ws_display = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
@@ -86,6 +84,7 @@ async def list_memories(
     memories = [
         MemoryItem(
             id=row["id"],
+            name=row["name"],
             content=row["content"],
             memory_type=row["memory_type"],
             created_at=row["created_at"].strftime("%Y-%m-%d %H:%M:%S"),
@@ -97,11 +96,10 @@ async def list_memories(
     ]
 
     return MemoriesResponse(
-        memories=memories,
+        items=memories,
         total=total,
         page=body.page,
         page_size=page_size,
-        total_pages=total_pages,
     )
 
 
@@ -114,6 +112,7 @@ def _build_detail(memory, workspaces) -> MemoryDetail:
     ]
     return MemoryDetail(
         id=memory.id,
+        name=memory.name,
         content=memory.content,
         memory_type=memory.memory_type,
         created_at=memory.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -132,7 +131,7 @@ async def get_memory(
     s: APISessionDep,
     user: APIUserDep,
 ) -> MemoryDetail:
-    memory = await MemoryDao(s, user.id).get(id, workspace_id)
+    memory = await MemoryDao(s, user.id).get(id=id, workspace_id=workspace_id)
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
     workspaces = await WorkspaceDao(s, user.id).list_workspaces()
@@ -148,7 +147,7 @@ async def update_memory(
     user: APIUserDep,
 ) -> MemoryDetail:
     dao = MemoryDao(s, user.id)
-    existing = await dao.get(id, workspace_id)
+    existing = await dao.get(id=id, workspace_id=workspace_id)
     if existing is None:
         raise HTTPException(status_code=404, detail="Memory not found")
 
@@ -165,8 +164,11 @@ async def update_memory(
     }
     if new_content != existing.content:
         data["content"] = new_content
+    if body.name is not None:
+        data["name"] = body.name
 
-    await dao.update(**data)
+    _, final_name = await dao.update(**data)
+    existing.name = final_name  # type: ignore[assignment]
     existing.content = new_content
     existing.memory_type = new_type  # type: ignore[assignment]
     existing.tags = new_tags  # type: ignore[assignment]
@@ -198,7 +200,7 @@ async def move_memory(
     user: APIUserDep,
 ) -> MemoryDetail:
     dao = MemoryDao(s, user.id)
-    memory = await dao.get(id, workspace_id)
+    memory = await dao.get(id=id, workspace_id=workspace_id)
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
 
@@ -207,7 +209,7 @@ async def move_memory(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    moved = await dao.get(id, body.to_workspace_id)
+    moved = await dao.get(id=id, workspace_id=body.to_workspace_id)
     if moved is None:
         raise HTTPException(status_code=404, detail="Memory not found after move")
     workspaces = await WorkspaceDao(s, user.id).list_workspaces()

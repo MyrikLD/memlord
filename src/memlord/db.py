@@ -5,9 +5,9 @@ from typing import Annotated
 from fastapi import Depends as APIDepends
 from fastmcp.dependencies import Depends as MCPDepends
 from sqlalchemy.ext.asyncio import (
-    async_sessionmaker,
     AsyncEngine,
     AsyncSession,
+    async_sessionmaker,
     create_async_engine,
 )
 

@@ -1,11 +1,10 @@
 from contextlib import asynccontextmanager
 
 import bcrypt
+from fastmcp.dependencies import Depends as MCPDepends
 from fastmcp.server.dependencies import get_access_token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastmcp.dependencies import Depends as MCPDepends
 
 from memlord.config import settings
 from memlord.db import MCPSessionDep

@@ -12,7 +12,8 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
 from memlord.models import Memory
-from memlord.schemas import MemoryType, RecallPage, RecallResult
+from memlord.schemas import MemoryType
+from memlord.schemas.tools import RecallPage, RecallResult
 from memlord.search import hybrid_search
 
 mcp = FastMCP()
@@ -29,17 +30,15 @@ async def recall_memory(
         examples=["last week", "yesterday", "about Python last month"],
     ),
     n_results: int = Field(5, ge=1),
-    memory_type: MemoryType = None,
-    snippet_length: int | None = Field(200, ge=0),
-    workspace: str = None,
+    memory_type: MemoryType | None = None,
+    workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> RecallPage:
-    """Search memories by time expression + semantics.
+    """Search memories by time expression + semantics. Returns names + metadata only.
 
-    Returns compact snippets by default (snippet_length=200). To get the full
-    content of a specific memory, call get_memory(id).
-    Set snippet_length=None to return full content immediately.
+    Examples: "last week", "yesterday", "about Python last month".
+    Use get_memory(name=...) to fetch full content of a specific result.
     Pass workspace=<name> to search only within a specific workspace.
     """
     date_from: datetime | None = None
@@ -93,16 +92,11 @@ async def recall_memory(
     return RecallPage(
         items=[
             RecallResult(
-                id=r.id,
-                content=(
-                    r.content
-                    if len(r.content) <= snippet_length
-                    else r.content[:snippet_length] + "..."
-                ),
+                name=r.name,
                 memory_type=r.memory_type,
                 tags=tags_map.get(r.id, set()),
                 created_at=created_map[r.id],
-                workspace_id=r.workspace_id,
+                workspace=r.workspace,
             )
             for r in results
         ]

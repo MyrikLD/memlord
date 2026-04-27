@@ -13,6 +13,7 @@ async def test_crud(session, user_id, workspace_id):
         memory_type=MemoryType.fact,
         metadata={"k": "v"},
         tags={"foo", "bar"},
+        name="hello world",
         workspace_id=workspace_id,
     )
     assert created is True
@@ -24,6 +25,7 @@ async def test_crud(session, user_id, workspace_id):
         memory_type=MemoryType.fact,
         metadata={},
         tags=set(),
+        name="hello world",
         workspace_id=workspace_id,
     )
     assert created2 is False

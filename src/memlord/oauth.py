@@ -10,22 +10,22 @@ import sqlalchemy as sa
 from authlib.jose.errors import JoseError
 from fastmcp.server.auth import OAuthProvider
 from fastmcp.server.auth.auth import AccessToken
-from starlette.middleware import Middleware
-from fastmcp.server.auth.jwt_issuer import derive_jwt_key, JWTIssuer
+from fastmcp.server.auth.jwt_issuer import JWTIssuer, derive_jwt_key
 from fastmcp.server.auth.redirect_validation import matches_allowed_pattern
 from mcp.server.auth.provider import (
     AuthorizationCode,
     AuthorizationParams,
     AuthorizeError,
-    construct_redirect_uri,
     RefreshToken,
     TokenError,
+    construct_redirect_uri,
 )
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import AnyUrl, BaseModel
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route

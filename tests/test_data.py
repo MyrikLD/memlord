@@ -6,12 +6,14 @@ async def test_export_import(api_client, workspace_id):
         {
             "content": "imported fact",
             "memory_type": "fact",
+            "name": "imported fact",
             "tags": ["x"],
             "metadata": {},
         },
         {
             "content": "imported pref",
             "memory_type": "preference",
+            "name": "imported pref",
             "tags": [],
             "metadata": {"n": 1},
         },

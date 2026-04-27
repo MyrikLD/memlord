@@ -2,10 +2,11 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy.ext.asyncio import create_async_engine
+
 from memlord.config import settings
 from memlord.models import Memory, MemoryTag, OAuthClient, SchemaVersion, Tag  # noqa: F401
 from memlord.models.base import Base
-from sqlalchemy.ext.asyncio import create_async_engine
 
 config = context.config
 

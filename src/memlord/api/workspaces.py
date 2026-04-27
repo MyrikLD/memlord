@@ -12,14 +12,13 @@ from memlord.models import Memory
 from memlord.schemas import (
     CreateWorkspaceRequest,
     DescriptionRequest,
-    ImportItem,
-    ImportResult,
     InviteRequest,
     InviteResponse,
     RenameRequest,
     WorkspaceDetailResponse,
     WorkspaceInfo,
 )
+from memlord.schemas.api import ImportItem, ImportResult
 from memlord.schemas.workspace import WorkspaceRole
 from memlord.ui.utils import APIUserDep
 from memlord.utils.dt import utcnow
@@ -182,6 +181,7 @@ async def export_memories(
             await s.execute(
                 select(
                     Memory.id,
+                    Memory.name,
                     Memory.content,
                     Memory.memory_type,
                     Memory.created_at,
@@ -237,6 +237,7 @@ async def import_memories(
             memory_type=parsed.memory_type,
             metadata=parsed.metadata,
             tags=parsed.tags,
+            name=parsed.name,
             workspace_id=workspace_id,
             force=True,
         )

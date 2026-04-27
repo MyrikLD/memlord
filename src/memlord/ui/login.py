@@ -7,9 +7,10 @@ from memlord.config import settings
 from memlord.dao.email_token import EmailTokenDao
 from memlord.dao.user import UserDao
 from memlord.db import APISessionDep
-from memlord.utils.mail_send import send_email
 from memlord.models.email_token import TokenPurpose
-from .utils import make_session_token, templates, APIUserDep
+from memlord.utils.mail_send import send_email
+
+from .utils import APIUserDep, make_session_token, templates
 
 router = APIRouter()
 

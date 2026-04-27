@@ -54,8 +54,3 @@ class InviteResponse(BaseModel):
     invite_url: str
     expires_in_hours: int
     role: str
-
-
-class ImportResult(BaseModel):
-    imported: int
-    skipped: int

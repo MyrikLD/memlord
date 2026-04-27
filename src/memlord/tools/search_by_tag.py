@@ -10,13 +10,13 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
 from memlord.models import Memory, MemoryTag, Tag, Workspace
-from memlord.schemas import MemoryListItem, MemoryPage
+from memlord.schemas.tools import MemoryItem, MemoryPage
 
 mcp = FastMCP()
 
 _COLS = (
     Memory.id,
-    Memory.content,
+    Memory.name,
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
@@ -88,7 +88,7 @@ async def search_by_tag(
 
     return MemoryPage(
         items=[
-            MemoryListItem(
+            MemoryItem(
                 **row,
                 tags=tags_map.get(row["id"], set()),
             )
@@ -97,5 +97,4 @@ async def search_by_tag(
         total=len(rows),
         page=1,
         page_size=len(rows),
-        total_pages=1,
     )

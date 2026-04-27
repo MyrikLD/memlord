@@ -1,17 +1,16 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field, field_serializer, NaiveDatetime
+from pydantic import BaseModel, Field, NaiveDatetime, field_serializer
 
-from .memory_type import MemoryType
+from ..memory_type import MemoryType
 
 
 class RecallResult(BaseModel):
-    id: int
-    content: str
+    name: str
     memory_type: MemoryType | None
     tags: set[str]
     created_at: NaiveDatetime
-    workspace_id: int | None = None
+    workspace: str | None = None
 
     @field_serializer("created_at")
     def serialize_created_at(self, v: datetime) -> str:

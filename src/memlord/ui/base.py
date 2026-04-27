@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 
 from memlord.ui.utils import APIUserDep, templates
 
-router = APIRouter()
+router = APIRouter(tags=["UI"])
 
 
 @router.get("/", response_class=HTMLResponse)

@@ -7,7 +7,8 @@ from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
-from memlord.schemas import MemoryType, StoreResult
+from memlord.schemas import MemoryType
+from memlord.schemas.tools import StoreResult
 
 mcp = FastMCP()
 
@@ -19,9 +20,10 @@ mcp = FastMCP()
 async def store_memory(
     content: str,
     memory_type: MemoryType,
-    tags: set[str] = None,
-    metadata: dict = None,
-    workspace: str = Field(
+    name: str,
+    tags: set[str] | None = None,
+    metadata: dict | None = None,
+    workspace: str | None = Field(
         None,
         description="Name of the workspace to store into (must be a member). Omit or pass None to store as a personal memory.",
     ),
@@ -29,7 +31,12 @@ async def store_memory(
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
-    """Save a new memory. Idempotent: returns existing if content already stored."""
+    """Save a new memory. Idempotent: returns existing if content already stored.
+
+    name: human-readable name, unique within the workspace.
+    workspace: name of the workspace to store into. Omit to store as a personal memory.
+    force: skip near-duplicate check and store unconditionally.
+    """
     ws_dao = WorkspaceDao(s, uid)
     if workspace is not None:
         ws = await ws_dao.get_by_name(workspace)
@@ -45,12 +52,13 @@ async def store_memory(
     workspace_id = ws.id
 
     dao = MemoryDao(s, uid)
-    memory_id, created = await dao.create(
+    _, created = await dao.create(
         content=content,
         memory_type=memory_type,
         metadata=metadata or {},
-        tags=tags or [],
+        tags=tags or set(),
         workspace_id=workspace_id,
         force=force,
+        name=name,
     )
-    return StoreResult(id=memory_id, created=created)
+    return StoreResult(name=name, created=created)

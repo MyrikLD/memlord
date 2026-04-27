@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 
-from .base import Base
 from ..schemas.workspace import WorkspaceRole
+from .base import Base
 
 
 class Workspace(Base):

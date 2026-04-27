@@ -1,5 +1,3 @@
-import math
-
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -11,13 +9,14 @@ from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
 from memlord.models import Memory, MemoryTag, Tag, Workspace
-from memlord.schemas import MemoryListItem, MemoryPage, MemoryType
+from memlord.schemas import MemoryType
+from memlord.schemas.tools import MemoryItem, MemoryPage
 
 mcp = FastMCP()
 
 _COLS = (
     Memory.id,
-    Memory.content,
+    Memory.name,
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
@@ -32,8 +31,8 @@ _COLS = (
 async def list_memories(
     page: int = Field(1, ge=1),
     page_size: int = Field(10, ge=1, le=100),
-    memory_type: MemoryType = None,
-    tag: str = Field(None, description="Case-insensitive exact match on a single tag name"),
+    memory_type: MemoryType | None = None,
+    tag: str | None = Field(None, description="Case-insensitive exact match on a single tag name"),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
@@ -66,15 +65,12 @@ async def list_memories(
 
     rows = (await s.execute(q)).mappings().all()
 
-    total_pages = math.ceil(total / page_size) if total else 0
-
     if not rows:
         return MemoryPage(
             items=[],
             total=total,
             page=page,
             page_size=page_size,
-            total_pages=total_pages,
         )
 
     ids: list[int] = [row["id"] for row in rows]
@@ -82,7 +78,7 @@ async def list_memories(
 
     return MemoryPage(
         items=[
-            MemoryListItem(
+            MemoryItem(
                 **row,
                 tags=tags_map.get(row["id"], set()),
             )
@@ -91,5 +87,4 @@ async def list_memories(
         total=total,
         page=page,
         page_size=page_size,
-        total_pages=total_pages,
     )

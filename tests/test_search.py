@@ -16,6 +16,7 @@ async def _store(s: AsyncSession, content: str, uid: int, workspace_id: int) -> 
         memory_type=MemoryType.fact,
         metadata={},
         tags=[],
+        name=content[:60].strip(),
         workspace_id=workspace_id,
         force=True,
     )
@@ -141,6 +142,7 @@ async def test_tag_search(session, user_id, workspace_id):
         MemoryType.fact,
         {},
         ["matter", "zigbee2mqtt"],
+        name="Zigbee migration plan",
         workspace_id=workspace_id,
     )
     results = await hybrid_search(

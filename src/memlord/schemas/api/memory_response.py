@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from ..pagination import Paginated
+
 
 class MemoriesFilter(BaseModel):
     page: int = 1
@@ -17,6 +19,7 @@ class WorkspaceSimple(BaseModel):
 
 class MemoryItem(BaseModel):
     id: int
+    name: str
     content: str
     memory_type: str | None
     created_at: str
@@ -27,6 +30,7 @@ class MemoryItem(BaseModel):
 
 class MemoryDetail(BaseModel):
     id: int
+    name: str
     content: str
     memory_type: str | None
     created_at: str
@@ -37,12 +41,7 @@ class MemoryDetail(BaseModel):
     writable_workspaces: list[WorkspaceSimple]
 
 
-class MemoriesResponse(BaseModel):
-    memories: list[MemoryItem]
-    total: int
-    page: int
-    page_size: int
-    total_pages: int
+class MemoriesResponse(Paginated[MemoryItem]): ...
 
 
 class MoveRequest(BaseModel):

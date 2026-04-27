@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any
 
+import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import bindparam, delete, Float, insert, select, update
+from sqlalchemy import Float, bindparam, delete, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,11 +84,21 @@ class MemoryDao:
                 f"Review with get_memory({dup_row['id']}). Pass force=True to store anyway."
             )
 
-    async def _accessible_workspace_ids(self, write: bool = False) -> list[int]:
-        return await self._ws_dao.get_accessible_workspace_ids(write=write)
+    async def get_id_by_name(self, name: str, workspace_id: int | None = None) -> int | None:
+        if workspace_id is None:
+            workspace_id = await self._personal_workspace_id()
+        return await self._s.scalar(
+            select(Memory.id).where(
+                Memory.name == name,
+                Memory.workspace_id == workspace_id,
+            )
+        )
 
     async def _personal_workspace_id(self) -> int:
         return (await self._ws_dao.get_personal()).id
+
+    async def _accessible_workspace_ids(self, write: bool = False) -> list[int]:
+        return await self._ws_dao.get_accessible_workspace_ids(write=write)
 
     async def create(
         self,
@@ -95,6 +106,7 @@ class MemoryDao:
         memory_type: MemoryType,
         metadata: dict,
         tags: set[str],
+        name: str,
         workspace_id: int | None = None,
         force: bool = False,
     ) -> tuple[int, bool]:
@@ -127,6 +139,7 @@ class MemoryDao:
                 embedding=vector,
                 created_by=self._uid,
                 workspace_id=workspace_id,
+                name=name,
             )
             .returning(Memory.id)
         )
@@ -139,12 +152,13 @@ class MemoryDao:
         self,
         id: int,
         workspace_id: int | None = None,
-        content: str = _UNSET,
-        memory_type: MemoryType = _UNSET,
-        metadata: dict = _UNSET,
-        tags: set[str] = _UNSET,
-    ) -> int:
-        """Update memory fields. Pass _UNSET to leave a field unchanged; None sets it to NULL."""
+        content: str = _UNSET,  # type: ignore[assignment]
+        memory_type: MemoryType = _UNSET,  # type: ignore[assignment]
+        metadata: dict = _UNSET,  # type: ignore[assignment]
+        tags: set[str] = _UNSET,  # type: ignore[assignment]
+        name: str | None = _UNSET,  # type: ignore[assignment]
+    ) -> tuple[int, str]:
+        """Update memory fields. Pass _UNSET to leave a field unchanged."""
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
         else:
@@ -162,6 +176,8 @@ class MemoryDao:
             values["memory_type"] = MemoryType(memory_type)
         if metadata is not _UNSET:
             values["extra_data"] = metadata or {}
+        if name is not _UNSET:
+            values["name"] = name
 
         if content is not _UNSET or tags is not _UNSET:
             new_content = (
@@ -177,12 +193,18 @@ class MemoryDao:
             values["embedding"] = await embed(_embed_text(new_content, new_tags))
 
         if values:
-            await self._s.execute(update(Memory).where(Memory.id == memory_id).values(**values))
+            final_name: str = await self._s.scalar(  # type: ignore[assignment]
+                update(Memory).where(Memory.id == memory_id).values(**values).returning(Memory.name)
+            )
+        else:
+            final_name = await self._s.scalar(  # type: ignore[assignment]
+                select(Memory.name).where(Memory.id == memory_id)
+            )
 
         if tags is not _UNSET:
             await self._replace_tags(memory_id, tags)
 
-        return memory_id
+        return memory_id, final_name
 
     async def delete(self, id: int, workspace_id: int | None = None) -> None:
         if workspace_id is None:
@@ -203,49 +225,40 @@ class MemoryDao:
             raise ValueError(f"Memory with id={id} not found")
         await self._cleanup_orphan_tags()
 
-    async def get(self, id: int, workspace_id: int | None = None) -> MemoryListItem | None:
+    async def get(
+        self,
+        *,
+        id: int | None = None,
+        name: str | None = None,
+        workspace_id: int | None = None,
+    ) -> MemoryListItem | None:
+        if id is None and name is None:
+            raise ValueError("Either id or name must be provided")
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
         elif not await self._ws_dao.can_read(workspace_id):
             raise ValueError(f"No read access to workspace {workspace_id}")
 
-        row = (
-            (
-                await self._s.execute(
-                    select(
-                        Memory.id,
-                        Memory.content,
-                        Memory.memory_type,
-                        Memory.extra_data.label("metadata"),
-                        Memory.created_at,
-                        Memory.workspace_id,
-                    ).where(Memory.id == id, Memory.workspace_id == workspace_id)
-                )
-            )
-            .mappings()
-            .one_or_none()
-        )
+        q = select(
+            Memory.id,
+            Memory.name,
+            Memory.content,
+            Memory.memory_type,
+            Memory.extra_data.label("metadata"),
+            Memory.created_at,
+            Memory.workspace_id,
+        ).where(Memory.workspace_id == workspace_id)
+        if id is not None:
+            q = q.where(Memory.id == id)
+        if name is not None:
+            q = q.where(Memory.name == name)
+
+        row = (await self._s.execute(q)).mappings().one_or_none()
         if row is None:
             return None
-        tags = (await self.fetch_tags([id])).get(id, set())
+        memory_id: int = row["id"]
+        tags = (await self.fetch_tags([memory_id])).get(memory_id, set())
         return MemoryListItem(**row, tags=tags)
-
-    async def move_by_name(
-        self, id: int, to_workspace: str, from_workspace: str | None = None
-    ) -> None:
-        if from_workspace is not None:
-            from_ws = await self._ws_dao.get_by_name(from_workspace)
-            if from_ws is None:
-                raise ValueError(f"Workspace {from_workspace!r} not found")
-            from_workspace_id = from_ws.id
-        else:
-            from_workspace_id = await self._personal_workspace_id()
-
-        to_ws = await self._ws_dao.get_by_name(to_workspace)
-        if to_ws is None:
-            raise ValueError(f"Workspace {to_workspace!r} not found")
-
-        return await self.move(id, from_workspace_id, to_ws.id)
 
     async def move(self, id: int, from_workspace_id: int, to_workspace_id: int) -> None:
         """Move memory to a different workspace. Raises ValueError if not found or duplicate."""
@@ -255,7 +268,7 @@ class MemoryDao:
         if from_workspace_id not in workspace_ids:
             raise PermissionError(f"No access to workspace {from_workspace_id}")
 
-        q = select(Memory.id, Memory.content).where(
+        q = select(Memory.id, Memory.name, Memory.content).where(
             Memory.id == id, Memory.workspace_id == from_workspace_id
         )
 
@@ -265,15 +278,19 @@ class MemoryDao:
 
         duplicate = await self._s.scalar(
             select(Memory.id).where(
-                Memory.content == row["content"],
+                sa.or_(
+                    Memory.content == row["content"],
+                    Memory.name == row["name"],
+                ),
                 Memory.workspace_id == to_workspace_id,
                 Memory.id != id,
             )
         )
         if duplicate is not None:
             raise ValueError(
-                "A memory with the same content already exists in the target workspace"
+                "A memory with the same content or name already exists in the target workspace"
             )
+
         await self._s.execute(
             update(Memory).where(Memory.id == id).values(workspace_id=to_workspace_id)
         )
@@ -291,6 +308,10 @@ class MemoryDao:
 
     async def fetch_metadata(self, memory_ids: list[int]) -> dict[int, tuple[dict, datetime]]:
         rows = await self._s.execute(
-            select(Memory.id, Memory.extra_data, Memory.created_at).where(Memory.id.in_(memory_ids))
+            select(
+                Memory.id,
+                Memory.extra_data,
+                Memory.created_at,
+            ).where(Memory.id.in_(memory_ids))
         )
         return {row.id: (row.extra_data, row.created_at) for row in rows.fetchall()}
