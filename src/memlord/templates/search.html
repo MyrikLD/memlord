@@ -55,11 +55,10 @@
 
 <script>
 function searchPage() {
-    const params = new URLSearchParams(window.location.search);
     return {
         results: [],
         loading: false,
-        query: params.get('q') || '',
+        query: '{{ query }}',
 
         async init() {
             if (!this.query) return;

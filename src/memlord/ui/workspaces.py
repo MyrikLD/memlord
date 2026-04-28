@@ -5,20 +5,20 @@ from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.ui.utils import APIUserDep, templates
 
-router = APIRouter()
+router = APIRouter(prefix='/workspaces')
 
 
-@router.get("/workspaces", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
 async def workspaces_list(request: Request, user: APIUserDep) -> HTMLResponse:
     return templates.TemplateResponse(request, "workspaces.html", {"user": user})
 
 
-@router.get("/workspaces/new", response_class=HTMLResponse)
+@router.get("/new", response_class=HTMLResponse)
 async def workspace_new_get(request: Request, user: APIUserDep) -> HTMLResponse:
     return templates.TemplateResponse(request, "workspace_new.html", {"user": user})
 
 
-@router.get("/workspaces/{workspace_id}", response_class=HTMLResponse)
+@router.get("/{workspace_id}", response_class=HTMLResponse)
 async def workspace_detail(
     request: Request,
     workspace_id: int,

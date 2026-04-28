@@ -275,7 +275,7 @@ async def create_invite(
         raise HTTPException(status_code=400, detail=str(e)) from e
     base = str(request.base_url).rstrip("/")
     return InviteResponse(
-        invite_url=f"{base}/ui/join/{token}",
+        invite_url=f"{base}/ui/workspaces/join/{token}",
         expires_in_hours=body.expires_in_hours,
         role=body.role,
     )

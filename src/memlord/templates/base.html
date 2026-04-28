@@ -748,7 +748,7 @@
         <div class="nav-divider"></div>
         <form action="/search" method="get" class="search-form">
             <input class="search-input" name="q" placeholder="Search memories…"
-                   value="{{ q | default('') }}" autocomplete="off">
+                   value="{{ query | default('') }}" autocomplete="off">
             <button type="submit" class="btn-search">Search</button>
         </form>
         {% if user is defined %}
