@@ -5,7 +5,7 @@ from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.ui.utils import APIUserDep, templates
 
-router = APIRouter(prefix='/workspaces')
+router = APIRouter(prefix="/workspaces")
 
 
 @router.get("", response_class=HTMLResponse)

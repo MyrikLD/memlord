@@ -15,7 +15,7 @@ async def index(request: Request, user: APIUserDep) -> HTMLResponse:
 async def search(
     request: Request,
     user: APIUserDep,
-    query: str = Query('', alias="q"),
+    query: str = Query("", alias="q"),
 ) -> HTMLResponse:
     return templates.TemplateResponse(request, "search.html", {"user": user, "query": query})
 
