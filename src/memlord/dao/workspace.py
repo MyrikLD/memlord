@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import sqlalchemy as sa
 from sqlalchemy import delete, insert, select, update
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from memlord.models.user import User
 from memlord.models.workspace import Workspace, WorkspaceInvite, WorkspaceMember
 from memlord.schemas.workspace import WorkspaceInfo, WorkspaceMemberInfo, WorkspaceRole
+from memlord.utils.dt import utcnow
 
 _WS_COLS = (
     Workspace.id,
@@ -313,10 +314,10 @@ class WorkspaceDao:
         role: WorkspaceRole = WorkspaceRole.viewer,
     ) -> str:
         caller_role = await self.get_role(workspace_id, self._uid)
-        if caller_role is None:
+        if caller_role not in (WorkspaceRole.owner, WorkspaceRole.editor):
             raise ValueError(f"Not a member of workspace {workspace_id}")
         token = str(uuid.uuid4())
-        expires_at = datetime.utcnow() + timedelta(hours=expires_in_hours)
+        expires_at = utcnow() + timedelta(hours=expires_in_hours)
         await self._s.execute(
             insert(WorkspaceInvite).values(
                 id=token,
@@ -356,7 +357,7 @@ class WorkspaceDao:
             raise ValueError("Invalid invite token")
         if row["used_by"] is not None:
             raise ValueError("Invite has already been used")
-        if row["expires_at"] < datetime.utcnow():
+        if row["expires_at"] < utcnow():
             raise ValueError("Invite has expired")
 
         workspace_id = row["workspace_id"]
@@ -367,7 +368,7 @@ class WorkspaceDao:
         await self._s.execute(
             update(WorkspaceInvite)
             .where(WorkspaceInvite.id == token)
-            .values(used_by=self._uid, used_at=datetime.utcnow())
+            .values(used_by=self._uid, used_at=utcnow())
         )
         await self.add_member(workspace_id, self._uid, role=WorkspaceRole(row["role"]))
 

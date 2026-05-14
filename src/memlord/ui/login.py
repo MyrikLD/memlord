@@ -15,12 +15,17 @@ from .utils import APIUserDep, make_session_token, templates
 router = APIRouter()
 
 
+def _safe_redirect(next: str) -> str:
+    return next if (next.startswith("/") and not next.startswith("//")) else "/"
+
+
 def _set_session(response: Response, user_id: int) -> None:
     response.set_cookie(
         "memlord_session",
         make_session_token(user_id),
         httponly=True,
         samesite="lax",
+        secure=settings.base_url.startswith("https"),
     )
 
 
@@ -47,8 +52,7 @@ async def login_post(
             status_code=401,
         )
 
-    redirect_url = next if next.startswith("/") else "/"
-    response = RedirectResponse(redirect_url, status_code=303)
+    response = RedirectResponse(_safe_redirect(next), status_code=303)
     _set_session(response, user.id)
     return response
 
@@ -70,9 +74,9 @@ async def register_post(
     request: Request,
     s: APISessionDep,
     email: EmailStr = Form(),
-    display_name: str = Form(),
-    password: str = Form(),
-    password2: str = Form(),
+    display_name: str = Form(min_length=3),
+    password: str = Form(min_length=6),
+    password2: str = Form(min_length=6),
     next: str = Form(default="/"),
 ) -> Response:
     def _err(msg: str) -> HTMLResponse:
@@ -85,8 +89,6 @@ async def register_post(
 
     if not display_name.strip():
         return _err("Display name is required.")
-    if not password:
-        return _err("Password is required.")
     if password != password2:
         return _err("Passwords do not match.")
 
@@ -107,8 +109,7 @@ async def register_post(
             body=_verify_email_body(raw_token),
         )
 
-    redirect_url = next if next.startswith("/") else "/"
-    response = RedirectResponse(redirect_url, status_code=303)
+    response = RedirectResponse(_safe_redirect(next), status_code=303)
     _set_session(response, user.id)
     return response
 
@@ -212,8 +213,8 @@ if settings.smtp_host:
         request: Request,
         s: APISessionDep,
         token: str = Form(),
-        password: str = Form(),
-        password2: str = Form(),
+        password: str = Form(min_length=6),
+        password2: str = Form(min_length=6),
     ) -> Response:
         def _err(msg: str) -> HTMLResponse:
             return templates.TemplateResponse(
@@ -223,8 +224,6 @@ if settings.smtp_host:
                 status_code=400,
             )
 
-        if not password:
-            return _err("Password is required.")
         if password != password2:
             return _err("Passwords do not match.")
 
