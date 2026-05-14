@@ -30,7 +30,7 @@ memlord = "memlord.main:main"
 [dependency-groups]
 dev = [
     "alembic-autogen-check",
-    "ruff==0.15.13",
+    "ruff==0.15.*",
     "httpx",
     "pytest==9.*",
     "pytest-asyncio",
