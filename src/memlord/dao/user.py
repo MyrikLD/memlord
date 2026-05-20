@@ -1,9 +1,13 @@
-from sqlalchemy import insert, select, update
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.auth import verify_password
 from memlord.dao.workspace import WorkspaceDao
+from memlord.models.email_token import EmailToken
+from memlord.models.memory import Memory
+from memlord.models.oauth_client import OAuthClient
 from memlord.models.user import User
+from memlord.models.workspace import Workspace, WorkspaceInvite
 from memlord.schemas.user import UserInfo
 
 
@@ -44,9 +48,12 @@ class UserDao:
         row = (
             (
                 await self._s.execute(
-                    select(User.id, User.display_name, User.email, User.email_verified).where(
-                        User.id == id
-                    )
+                    select(
+                        User.id,
+                        User.display_name,
+                        User.email,
+                        User.email_verified,
+                    ).where(User.id == id)
                 )
             )
             .mappings()
@@ -74,6 +81,23 @@ class UserDao:
         await self._s.execute(
             update(User).where(User.id == user_id).values(hashed_password=hashed_password)
         )
+
+    async def update_display_name(self, user_id: int, display_name: str) -> None:
+        await self._s.execute(
+            update(User).where(User.id == user_id).values(display_name=display_name.strip())
+        )
+
+    async def delete_account(self, user_id: int) -> None:
+        await self._s.execute(delete(OAuthClient).where(OAuthClient.user_id == user_id))
+        await self._s.execute(delete(EmailToken).where(EmailToken.user_id == user_id))
+        await self._s.execute(
+            delete(WorkspaceInvite).where(
+                (WorkspaceInvite.created_by == user_id) | (WorkspaceInvite.used_by == user_id)
+            )
+        )
+        await self._s.execute(delete(Memory).where(Memory.created_by == user_id))
+        await self._s.execute(delete(Workspace).where(Workspace.created_by == user_id))
+        await self._s.execute(delete(User).where(User.id == user_id))
 
     async def create(self, email: str, display_name: str, hashed_password: str) -> UserInfo:
         user_id = await self._s.scalar(

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Account Settings – Memlord{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Account Settings</h1>
+</div>
+
+{% if request.query_params.get('name_updated') %}
+<div class="alert alert-success">Display name updated.</div>
+{% endif %}
+{% if request.query_params.get('pw_updated') %}
+<div class="alert alert-success">Password changed successfully.</div>
+{% endif %}
+
+<!-- Display name -->
+<div class="detail-card" style="margin-bottom:1.25rem;">
+    <div class="section-title">Display name</div>
+    {% if name_error %}
+    <div class="alert alert-error">{{ name_error }}</div>
+    {% endif %}
+    <form method="post" action="/ui/account/display-name">
+        <div class="form-group">
+            <label class="form-label" for="display_name">Name</label>
+            <input class="form-input" id="display_name" name="display_name"
+                   type="text" value="{{ user.display_name }}" minlength="3" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+</div>
+
+<!-- Change password -->
+<div class="detail-card" style="margin-bottom:1.25rem;">
+    <div class="section-title">Change password</div>
+    {% if pw_error %}
+    <div class="alert alert-error">{{ pw_error }}</div>
+    {% endif %}
+    <form method="post" action="/ui/account/change-password">
+        <div class="form-group">
+            <label class="form-label" for="current_password">Current password</label>
+            <input class="form-input" id="current_password" name="current_password"
+                   type="password" autocomplete="current-password" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="new_password">New password</label>
+            <input class="form-input" id="new_password" name="new_password"
+                   type="password" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="new_password2">Confirm new password</label>
+            <input class="form-input" id="new_password2" name="new_password2"
+                   type="password" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Change password</button>
+        </div>
+    </form>
+</div>
+
+<!-- Delete account -->
+<div class="detail-card" style="border-color:var(--danger-border);">
+    <div class="section-title" style="color:var(--danger-text);">Delete account</div>
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
+        This will permanently delete your account, all your memories, and all workspaces you own.
+        This action cannot be undone.
+    </p>
+    {% if delete_error %}
+    <div class="alert alert-error">{{ delete_error }}</div>
+    {% endif %}
+    <form method="post" action="/ui/account/delete"
+          x-data="{ open: false }" @submit.prevent="if(open) $el.submit(); else open=true">
+        <div x-show="open" style="display:none">
+            <div class="form-group">
+                <label class="form-label" for="confirm_password">Enter your password to confirm</label>
+                <input class="form-input" id="confirm_password" name="confirm_password"
+                       type="password" autocomplete="current-password" :required="open">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">
+                <span x-text="open ? 'Confirm deletion' : 'Delete my account'">Delete my account</span>
+            </button>
+            <button type="button" x-show="open" class="btn btn-ghost" @click="open=false">Cancel</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

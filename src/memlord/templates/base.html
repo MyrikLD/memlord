@@ -753,7 +753,7 @@
         </form>
         {% if user is defined %}
         <div class="nav-user">
-            <span class="nav-user-name" title="{{ user.display_name }}">{{ user.display_name }}</span>
+            <a href="/ui/account" class="nav-user-name" title="{{ user.display_name }}" style="color:var(--nav-text);text-decoration:none;">{{ user.display_name }}</a>
             <form method="post" action="/ui/logout" style="margin:0">
                 <button type="submit" class="btn-logout">Sign out</button>
             </form>
