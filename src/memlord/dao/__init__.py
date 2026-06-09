@@ -1,3 +1,4 @@
+from .api_key import ApiKeyDao
 from .email_token import EmailTokenDao
 from .memory import MemoryDao
 from .user import UserDao

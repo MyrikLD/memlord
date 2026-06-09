@@ -30,7 +30,8 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route
 
-from memlord.auth import hash_password
+from memlord.auth import API_KEY_CLIENT_PREFIX, API_KEY_PREFIX, hash_password
+from memlord.dao.api_key import ApiKeyDao
 from memlord.dao.user import UserDao
 from memlord.models.oauth_client import OAuthClient
 from memlord.models.revoked_token import RevokedToken
@@ -492,6 +493,19 @@ class MemlordOAuthProvider(OAuthProvider):
         return token
 
     async def load_access_token(self, token: str) -> AccessToken | None:  # type: ignore[override]
+        if token.startswith(API_KEY_PREFIX):
+            async with self.session() as s:
+                user_id = await ApiKeyDao(s).resolve_user(token)
+            if user_id is None:
+                logger.debug("load_access_token: unknown api key")
+                return None
+            return AccessToken(
+                token=token,
+                client_id=f"{API_KEY_CLIENT_PREFIX}{user_id}",
+                scopes=["mcp"],
+                expires_at=None,
+            )
+
         try:
             claims = self._jwt.verify_token(token)
         except JoseError as exc:

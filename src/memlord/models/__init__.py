@@ -1,3 +1,4 @@
+from .api_key import ApiKey
 from .base import Base
 from .email_token import EmailToken
 from .memory import Memory

@@ -1,3 +1,4 @@
+from .api_key import ApiKeyInfo
 from .memory_list_item import MemoryListItem
 from .memory_type import MemoryType
 from .search import SearchResult
