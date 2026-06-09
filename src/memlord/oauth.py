@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import sqlalchemy as sa
-from authlib.jose.errors import JoseError
 from fastmcp.server.auth import OAuthProvider
 from fastmcp.server.auth.auth import AccessToken
 from fastmcp.server.auth.jwt_issuer import JWTIssuer, derive_jwt_key
 from fastmcp.server.auth.redirect_validation import matches_allowed_pattern
+from joserfc.errors import JoseError
 from mcp.server.auth.provider import (
     AuthorizationCode,
     AuthorizationParams,
