@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from memlord.auth import hash_password, verify_password
+from memlord.auth import hash_password
 from memlord.dao.user import UserDao
 from memlord.db import APISessionDep
 
