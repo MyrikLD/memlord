@@ -3,11 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.auth import verify_password
 from memlord.dao.workspace import WorkspaceDao
-from memlord.models.email_token import EmailToken
-from memlord.models.memory import Memory
-from memlord.models.oauth_client import OAuthClient
 from memlord.models.user import User
-from memlord.models.workspace import Workspace, WorkspaceInvite
 from memlord.schemas.user import UserInfo
 
 
@@ -88,15 +84,6 @@ class UserDao:
         )
 
     async def delete_account(self, user_id: int) -> None:
-        await self._s.execute(delete(OAuthClient).where(OAuthClient.user_id == user_id))
-        await self._s.execute(delete(EmailToken).where(EmailToken.user_id == user_id))
-        await self._s.execute(
-            delete(WorkspaceInvite).where(
-                (WorkspaceInvite.created_by == user_id) | (WorkspaceInvite.used_by == user_id)
-            )
-        )
-        await self._s.execute(delete(Memory).where(Memory.created_by == user_id))
-        await self._s.execute(delete(Workspace).where(Workspace.created_by == user_id))
         await self._s.execute(delete(User).where(User.id == user_id))
 
     async def create(self, email: str, display_name: str, hashed_password: str) -> UserInfo:

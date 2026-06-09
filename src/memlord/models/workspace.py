@@ -9,7 +9,9 @@ class Workspace(Base):
 
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     name = sa.Column(sa.Text, nullable=False, unique=True)
-    created_by = sa.Column(sa.Integer, sa.ForeignKey("users.id"), nullable=False)
+    created_by = sa.Column(
+        sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     created_at = sa.Column(
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )
@@ -54,8 +56,10 @@ class WorkspaceInvite(Base):
         sa.ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
     )
-    created_by = sa.Column(sa.Integer, sa.ForeignKey("users.id"), nullable=False)
+    created_by = sa.Column(
+        sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     expires_at = sa.Column(sa.DateTime(timezone=False), nullable=False)
     role = sa.Column(sa.Text, nullable=False, server_default=WorkspaceRole.viewer)
-    used_by = sa.Column(sa.Integer, sa.ForeignKey("users.id"), nullable=True)
+    used_by = sa.Column(sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     used_at = sa.Column(sa.DateTime(timezone=False), nullable=True)

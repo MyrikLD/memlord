@@ -15,7 +15,7 @@ class EmailToken(Base):
     __table_args__ = (sa.Index("ix_email_tokens_user_purpose", "user_id", "purpose"),)
 
     token_hash = sa.Column(sa.Text, primary_key=True)
-    user_id = sa.Column(sa.Integer, nullable=False)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     purpose = sa.Column(
         sa.Enum(TokenPurpose, name="tokenpurpose", native_enum=False), nullable=False
     )

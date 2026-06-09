@@ -24,7 +24,7 @@ memlord
 pyright src/
 
 # Format
-black .
+ruff format .
 
 # Run tests
 pytest
