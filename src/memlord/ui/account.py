@@ -92,6 +92,8 @@ async def create_api_key(
 
     if not name:
         return await _render(status_code=400, key_error="Name is required.")
+    if await ApiKeyDao(s).name_exists(user.id, name):
+        return await _render(status_code=400, key_error="A key with this name already exists.")
 
     raw, _ = await ApiKeyDao(s).create(user.id, name)
     # The raw token is only available now — surface it once for the user to copy.

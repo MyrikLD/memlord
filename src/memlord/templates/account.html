@@ -70,15 +70,6 @@
         <code>Authorization: Bearer &lt;key&gt;</code>.
     </p>
 
-    {% if new_api_key %}
-    <div class="alert alert-success" style="word-break:break-all;">
-        <div style="margin-bottom:.5rem;">
-            New key <strong>{{ new_api_key_name }}</strong> created. Copy it now —
-            it won't be shown again.
-        </div>
-        <code style="font-size:.875rem;">{{ new_api_key }}</code>
-    </div>
-    {% endif %}
     {% if key_error %}
     <div class="alert alert-error">{{ key_error }}</div>
     {% endif %}
@@ -120,6 +111,49 @@
     <p style="font-size:.875rem;color:var(--text-3);">No API keys yet.</p>
     {% endfor %}
 </div>
+
+{% if new_api_key %}
+<!-- New API key modal: shown once, right after creation. Rendered only when a
+     raw key is present, so it never flashes on a normal page load. -->
+<div x-data="{ open: true, copied: false,
+               copy() {
+                   navigator.clipboard.writeText(this.$refs.key.textContent.trim()).then(() => {
+                       this.copied = true;
+                       setTimeout(() => { this.copied = false; }, 2000);
+                   });
+               } }"
+     x-show="open" @keydown.escape.window="open = false" @click.self="open = false"
+     style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+            align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;
+                max-width:480px;width:100%;box-shadow:var(--shadow-md);margin:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h2 style="font-size:1.0625rem;font-weight:600;letter-spacing:-.02em;margin:0;">
+                API key created
+            </h2>
+            <button type="button" @click="open = false"
+                    style="background:none;border:none;cursor:pointer;color:var(--text-4);
+                           font-size:1.25rem;line-height:1;padding:.125rem .25rem;">&#x2715;</button>
+        </div>
+        <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
+            Key <strong>{{ new_api_key_name }}</strong> created. Copy it now —
+            it won't be shown again.
+        </p>
+        <div style="position:relative;margin-bottom:1.25rem;">
+            <pre x-ref="key" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);
+                       border-radius:var(--radius-sm);padding:.7rem 4.5rem .7rem .75rem;
+                       font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.8125rem;
+                       overflow-x:auto;white-space:pre-wrap;word-break:break-all;line-height:1.5;margin:0;">{{ new_api_key }}</pre>
+            <button type="button" class="btn btn-sm" @click="copy()"
+                    x-text="copied ? 'Copied!' : 'Copy'"
+                    style="position:absolute;top:.45rem;right:.45rem;">Copy</button>
+        </div>
+        <div class="form-actions" style="margin:0;justify-content:flex-end;">
+            <button type="button" class="btn btn-primary" @click="open = false">Done</button>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Delete account -->
 <div class="detail-card" style="border-color:var(--danger-border);">

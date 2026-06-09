@@ -53,6 +53,12 @@ class ApiKeyDao:
         )
         return [ApiKeyInfo(**r) for r in rows.mappings().all()]
 
+    async def name_exists(self, user_id: int, name: str) -> bool:
+        result = await self._s.scalar(
+            select(ApiKey.id).where(ApiKey.user_id == user_id, ApiKey.name == name.strip())
+        )
+        return result is not None
+
     async def delete(self, user_id: int, key_id: int) -> None:
         await self._s.execute(delete(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user_id))
 

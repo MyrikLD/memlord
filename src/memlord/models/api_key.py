@@ -17,3 +17,5 @@ class ApiKey(Base):
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )
     last_used_at = sa.Column(sa.DateTime(timezone=False), nullable=True)
+
+    __table_args__ = (sa.UniqueConstraint("user_id", "name"),)
