@@ -1,8 +1,8 @@
 """api key
 
-Revision ID: 536758499303
+Revision ID: 87cef0037d79
 Revises: 84634a3eaf8d
-Create Date: 2026-06-09 13:43:01.980746
+Create Date: 2026-06-09 14:26:28.100700
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '536758499303'
+revision: str = '87cef0037d79'
 down_revision: Union[str, Sequence[str], None] = '84634a3eaf8d'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -31,7 +31,8 @@ def upgrade() -> None:
     sa.Column('last_used_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_api_keys_user_id_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_api_keys')),
-    sa.UniqueConstraint('token_hash', name=op.f('uq_api_keys_token_hash'))
+    sa.UniqueConstraint('token_hash', name=op.f('uq_api_keys_token_hash')),
+    sa.UniqueConstraint('user_id', 'name', name=op.f('uq_api_keys_user_id_name'))
     )
     op.create_index(op.f('ix_api_keys_user_id'), 'api_keys', ['user_id'], unique=False)
     # ### end Alembic commands ###
