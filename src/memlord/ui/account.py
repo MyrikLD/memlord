@@ -72,40 +72,6 @@ async def change_password(
     return RedirectResponse("/ui/account?pw_updated=1", status_code=303)
 
 
-@router.post("/api-keys")
-async def create_api_key(
-    request: Request,
-    s: APISessionDep,
-    user: APIUserDep,
-    name: str = Form(min_length=1),
-) -> Response:
-    name = name.strip()
-
-    async def _render(status_code: int = 200, **extra) -> HTMLResponse:
-        api_keys = await ApiKeyDao(s).list_for_user(user.id)
-        return templates.TemplateResponse(
-            request,
-            "account.html",
-            {"user": user, "api_keys": api_keys, **extra},
-            status_code=status_code,
-        )
-
-    if not name:
-        return await _render(status_code=400, key_error="Name is required.")
-    if await ApiKeyDao(s).name_exists(user.id, name):
-        return await _render(status_code=400, key_error="A key with this name already exists.")
-
-    raw, _ = await ApiKeyDao(s).create(user.id, name)
-    # The raw token is only available now — surface it once for the user to copy.
-    return await _render(new_api_key=raw, new_api_key_name=name)
-
-
-@router.delete("/api-keys/{key_id}")
-async def delete_api_key(s: APISessionDep, user: APIUserDep, key_id: int) -> Response:
-    await ApiKeyDao(s).delete(user.id, key_id)
-    return Response(status_code=204)
-
-
 @router.post("/delete")
 async def delete_account(
     request: Request,

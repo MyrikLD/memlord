@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Account Settings – Memlord{% endblock %}
 {% block content %}
+<style>[x-cloak]{display:none!important;}</style>
 
 <div class="page-header">
     <h1 class="page-title">Account Settings</h1>
@@ -63,18 +64,16 @@
 </div>
 
 <!-- API keys -->
-<div class="detail-card" style="margin-bottom:1.25rem;">
+<div class="detail-card" style="margin-bottom:1.25rem;" x-data="apiKeysCard()">
     <div class="section-title">API keys</div>
     <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
         Use an API key to authenticate the MCP endpoint. Send it as
         <code>Authorization: Bearer &lt;key&gt;</code>.
     </p>
 
-    {% if key_error %}
-    <div class="alert alert-error">{{ key_error }}</div>
-    {% endif %}
+    <div class="alert alert-error" x-show="error" x-text="error" style="display:none;"></div>
 
-    <form method="post" action="/ui/account/api-keys"
+    <form @submit.prevent="create($event.target)"
           style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:1rem;">
         <div class="form-group" style="flex:1;margin-bottom:0;">
             <label class="form-label" for="key_name">New key name</label>
@@ -82,7 +81,8 @@
                    placeholder="e.g. laptop, ci" required>
         </div>
         <div class="form-actions" style="margin:0;">
-            <button type="submit" class="btn btn-primary">Create key</button>
+            <button type="submit" class="btn btn-primary" :disabled="busy"
+                    x-text="busy ? 'Creating…' : 'Create key'">Create key</button>
         </div>
     </form>
 
@@ -102,58 +102,101 @@
             </div>
         </div>
         <button type="button" class="btn btn-ghost"
-                @click="fetch('/ui/account/api-keys/{{ key.id }}', {method: 'DELETE'})
-                        .then(function () { location.href = '/ui/account?key_deleted=1'; })">
+                onclick="fetch('/api/api-keys/{{ key.id }}', {method: 'DELETE'})
+                         .then(function () { location.href = '/ui/account?key_deleted=1'; })">
             Delete
         </button>
     </div>
     {% else %}
     <p style="font-size:.875rem;color:var(--text-3);">No API keys yet.</p>
     {% endfor %}
-</div>
 
-{% if new_api_key %}
-<!-- New API key modal: shown once, right after creation. Rendered only when a
-     raw key is present, so it never flashes on a normal page load. -->
-<div x-data="{ open: true, copied: false,
-               copy() {
-                   navigator.clipboard.writeText(this.$refs.key.textContent.trim()).then(() => {
-                       this.copied = true;
-                       setTimeout(() => { this.copied = false; }, 2000);
-                   });
-               } }"
-     x-show="open" @keydown.escape.window="open = false" @click.self="open = false"
-     style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
-            align-items:center;justify-content:center;padding:1rem;">
-    <div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;
-                max-width:480px;width:100%;box-shadow:var(--shadow-md);margin:auto;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-            <h2 style="font-size:1.0625rem;font-weight:600;letter-spacing:-.02em;margin:0;">
-                API key created
-            </h2>
-            <button type="button" @click="open = false"
-                    style="background:none;border:none;cursor:pointer;color:var(--text-4);
-                           font-size:1.25rem;line-height:1;padding:.125rem .25rem;">&#x2715;</button>
-        </div>
-        <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
-            Key <strong>{{ new_api_key_name }}</strong> created. Copy it now —
-            it won't be shown again.
-        </p>
-        <div style="position:relative;margin-bottom:1.25rem;">
-            <pre x-ref="key" style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);
-                       border-radius:var(--radius-sm);padding:.7rem 4.5rem .7rem .75rem;
-                       font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.8125rem;
-                       overflow-x:auto;white-space:pre-wrap;word-break:break-all;line-height:1.5;margin:0;">{{ new_api_key }}</pre>
-            <button type="button" class="btn btn-sm" @click="copy()"
-                    x-text="copied ? 'Copied!' : 'Copy'"
-                    style="position:absolute;top:.45rem;right:.45rem;">Copy</button>
-        </div>
-        <div class="form-actions" style="margin:0;justify-content:flex-end;">
-            <button type="button" class="btn btn-primary" @click="open = false">Done</button>
+    <!-- New key modal: filled client-side from the create response, shown once. -->
+    <div x-show="showModal" x-cloak @keydown.escape.window="closeModal()" @click.self="closeModal()"
+         style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+                align-items:center;justify-content:center;padding:1rem;">
+        <div style="background:var(--surface);border-radius:var(--radius-lg);padding:1.5rem;
+                    max-width:480px;width:100%;box-shadow:var(--shadow-md);margin:auto;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                <h2 style="font-size:1.0625rem;font-weight:600;letter-spacing:-.02em;margin:0;">
+                    API key created
+                </h2>
+                <button type="button" @click="closeModal()"
+                        style="background:none;border:none;cursor:pointer;color:var(--text-4);
+                               font-size:1.25rem;line-height:1;padding:.125rem .25rem;">&#x2715;</button>
+            </div>
+            <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
+                Key <strong x-text="newKeyName"></strong> created. Copy it now —
+                it won't be shown again.
+            </p>
+            <div style="position:relative;margin-bottom:1.25rem;">
+                <pre x-text="newKey"
+                     style="background:var(--nav-bg);color:#e2e8f0;border:1px solid var(--nav-border);
+                            border-radius:var(--radius-sm);padding:.7rem 4.5rem .7rem .75rem;
+                            font-family:'Menlo','Cascadia Code','Consolas','Monaco',monospace;font-size:.8125rem;
+                            overflow-x:auto;white-space:pre;line-height:1.5;margin:0;"></pre>
+                <button type="button" class="btn btn-sm" @click="copy()"
+                        x-text="copied ? 'Copied!' : 'Copy'"
+                        style="position:absolute;top:.45rem;right:.45rem;">Copy</button>
+            </div>
+            <div class="form-actions" style="margin:0;justify-content:flex-end;">
+                <button type="button" class="btn btn-primary" @click="closeModal()">Done</button>
+            </div>
         </div>
     </div>
 </div>
-{% endif %}
+
+<script>
+function apiKeysCard() {
+    return {
+        error: "",
+        busy: false,
+        showModal: false,
+        copied: false,
+        newKey: "",
+        newKeyName: "",
+
+        async create(form) {
+            if (this.busy) return;
+            this.busy = true;
+            this.error = "";
+            // The name is read from the form — the server doesn't echo it back.
+            const body = new FormData(form);
+            const name = (body.get("name") || "").toString().trim();
+            try {
+                const r = await fetch("/api/api-keys", { method: "POST", body });
+                if (r.ok) {
+                    const data = await r.json();
+                    this.newKey = data.raw;
+                    this.newKeyName = name;
+                    this.copied = false;
+                    this.showModal = true;
+                    form.reset();
+                } else {
+                    const data = await r.json().catch(() => ({}));
+                    this.error = data.detail || "Failed to create key.";
+                }
+            } catch (e) {
+                this.error = "Network error. Please try again.";
+            } finally {
+                this.busy = false;
+            }
+        },
+
+        copy() {
+            navigator.clipboard.writeText(this.newKey).then(() => {
+                this.copied = true;
+                setTimeout(() => { this.copied = false; }, 2000);
+            });
+        },
+
+        closeModal() {
+            // Reload so the new key shows in the list, with a clean /ui/account URL.
+            window.location.href = "/ui/account";
+        },
+    };
+}
+</script>
 
 <!-- Delete account -->
 <div class="detail-card" style="border-color:var(--danger-border);">

@@ -9,3 +9,7 @@ class ApiKeyInfo(BaseModel):
     prefix: str
     created_at: datetime
     last_used_at: datetime | None = None
+
+
+class ApiKeyCreated(BaseModel):
+    raw: str

@@ -1,4 +1,4 @@
-from .api_key import ApiKeyInfo
+from .api_key import ApiKeyCreated, ApiKeyInfo
 from .memory_list_item import MemoryListItem
 from .memory_type import MemoryType
 from .search import SearchResult
