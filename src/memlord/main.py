@@ -1,6 +1,4 @@
-import asyncio
 import logging
-from argparse import ArgumentParser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -71,16 +69,8 @@ app.mount("/", mcp_app)
 
 
 def main():
-    parser = ArgumentParser(prog="Memlord")
-    parser.add_argument("--stdio", action="store_true")
-    args = parser.parse_args()
-
     logging.basicConfig(level=settings.LOG_LEVEL)
-
-    if args.stdio:
-        asyncio.run(mcp.run_stdio_async())
-    else:
-        uvicorn.run(app, host=settings.host, port=settings.port)
+    uvicorn.run(app, host=settings.host, port=settings.port)
 
 
 if __name__ == "__main__":

@@ -106,38 +106,6 @@ memlord
 
 Open **http://localhost:8000** for the Web UI. The MCP endpoint is at `/mcp`.
 
-### STDIO (local single-user, no OAuth)
-
-STDIO mode runs the MCP server over stdin/stdout — no HTTP port, no OAuth. Ideal for local use with Claude Desktop or
-Claude Code.
-
-Set `MEMLORD_STDIO_USER_ID` to your user ID (created after first HTTP login, or `1` for a fresh DB) so all memories are
-scoped to your account.
-
-```bash
-pip install memlord
-```
-
-Create `.mcp.json` and adjust the paths and env vars:
-
-```json
-{
-  "mcpServers": {
-    "memlord-local": {
-      "command": "python",
-      "args": [
-        "memlord",
-        "--stdio"
-      ],
-      "env": {
-        "MEMLORD_DB_URL": "postgresql+asyncpg://postgres:postgres@localhost/memlord",
-        "MEMLORD_STDIO_USER_ID": "1"
-      }
-    }
-  }
-}
-```
-
 ---
 
 ## 🔍 How It Works
@@ -166,10 +134,8 @@ All settings use the `MEMLORD_` prefix. See [`.env.example`](.env.example) for t
 | `MEMLORD_PORT`             | `8000`                                                     | Server port                                       |
 | `MEMLORD_BASE_URL`         | `http://localhost:8000`                                    | Public URL for OAuth (HTTP mode)                  |
 | `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret (HTTP mode)                    |
-| `MEMLORD_STDIO_USER_ID`    | —                                                          | User ID to use in STDIO mode (required for stdio) |
 
-In HTTP mode, set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` before deploying.
-In STDIO mode, OAuth is skipped — set `MEMLORD_STDIO_USER_ID` to your numeric user ID instead.
+Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` before deploying.
 
 ---
 

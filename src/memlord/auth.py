@@ -6,7 +6,6 @@ from fastmcp.server.dependencies import get_access_token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from memlord.config import settings
 from memlord.db import MCPSessionDep
 from memlord.models.oauth_client import OAuthClient
 
@@ -24,10 +23,7 @@ async def _current_user_gen(
 ):
     access_token = get_access_token()
     if access_token is None:
-        if settings.stdio_user_id is None:
-            raise PermissionError("Authentication required")
-        yield settings.stdio_user_id
-        return
+        raise PermissionError("Authentication required")
     user_id = await s.scalar(
         select(OAuthClient.user_id).where(OAuthClient.client_id == access_token.client_id)
     )
