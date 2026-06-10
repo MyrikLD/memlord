@@ -122,9 +122,7 @@ async def test_update_clears_expiry(session, user_id, workspace_id):
     mid = await _create(session, user_id, workspace_id, "temp fact", "temp", expires_at=future)
 
     # Clearing expiry (back to never-expires) is the DAO/API path: pass expires_at=None.
-    await MemoryDao(session, user_id).update(
-        id=mid, workspace_id=workspace_id, expires_at=None
-    )
+    await MemoryDao(session, user_id).update(id=mid, workspace_id=workspace_id, expires_at=None)
 
     item = await MemoryDao(session, user_id).get(name="temp", workspace_id=workspace_id)
     assert item is not None
