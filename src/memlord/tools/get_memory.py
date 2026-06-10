@@ -46,5 +46,6 @@ async def get_memory(
         metadata=item.metadata,
         tags=item.tags,
         created_at=item.created_at,
+        expires_at=item.expires_at,
         workspace=ws_name,
     )

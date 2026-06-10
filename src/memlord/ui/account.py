@@ -2,6 +2,7 @@ from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from memlord.auth import hash_password
+from memlord.dao import MemoryDao
 from memlord.dao.api_key import ApiKeyDao
 from memlord.dao.user import UserDao
 from memlord.db import APISessionDep
@@ -40,6 +41,12 @@ async def update_display_name(
 
     await UserDao(s).update_display_name(user.id, display_name)
     return RedirectResponse("/ui/account?name_updated=1", status_code=303)
+
+
+@router.post("/purge-expired")
+async def purge_expired(s: APISessionDep, user: APIUserDep) -> RedirectResponse:
+    count = await MemoryDao(s, user.id).purge_expired()
+    return RedirectResponse(f"/ui/account?purged={count}", status_code=303)
 
 
 @router.post("/change-password")

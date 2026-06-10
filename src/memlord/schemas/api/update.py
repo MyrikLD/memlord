@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 from ..memory_type import MemoryType
@@ -9,3 +11,4 @@ class UpdateMemoryRequest(BaseModel):
     memory_type: MemoryType | None = None
     tags: set[str] | None = None
     metadata: dict | None = None
+    expires_at: datetime | None = None

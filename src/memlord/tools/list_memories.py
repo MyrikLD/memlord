@@ -8,6 +8,7 @@ from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
+from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag, Workspace
 from memlord.schemas import MemoryType
 from memlord.schemas.tools import MemoryItem, MemoryPage
@@ -20,6 +21,7 @@ _COLS = (
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
+    Memory.expires_at,
     Workspace.name.label("workspace"),
 )
 
@@ -46,7 +48,7 @@ async def list_memories(
     q = (
         select(*_COLS)
         .join(Workspace, Memory.workspace_id == Workspace.id)
-        .where(Memory.workspace_id.in_(workspace_ids))
+        .where(Memory.workspace_id.in_(workspace_ids), not_expired())
     )
 
     if memory_type:

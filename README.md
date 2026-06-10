@@ -143,13 +143,13 @@ Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` 
 
 | Tool              | Description                                                             |
 |-------------------|-------------------------------------------------------------------------|
-| `store_memory`    | Save a memory (idempotent by content); raises on near-duplicates        |
+| `store_memory`    | Save a memory (idempotent by content); raises on near-duplicates; optional `expires_at` |
 | `retrieve_memory` | Hybrid semantic + full-text search; returns snippets by default         |
 | `recall_memory`   | Search by natural-language time expression; returns snippets by default |
 | `list_memories`   | Paginated list with type/tag filters                                    |
 | `search_by_tag`   | AND/OR tag search                                                       |
 | `get_memory`      | Fetch a single memory by name with full content                         |
-| `update_memory`   | Update content, type, tags, or metadata by name (and optionally rename) |
+| `update_memory`   | Update content, type, tags, metadata, or expiry by name (and optionally rename) |
 | `delete_memory`   | Delete by name                                                          |
 | `move_memory`     | Move a memory to a different workspace                                  |
 | `list_workspaces` | List workspaces you are a member of (including personal)                |
