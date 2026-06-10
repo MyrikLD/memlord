@@ -1,13 +1,14 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
 from memlord.utils.dt import utcnow
 
+from ..base import Schema
 from ..memory_type import MemoryType
 
 
-class ImportItem(BaseModel):
+class ImportItem(Schema):
     content: str
     memory_type: MemoryType
     name: str
@@ -23,6 +24,6 @@ class ImportItem(BaseModel):
         return data
 
 
-class ImportResult(BaseModel):
+class ImportResult(Schema):
     imported: int
     skipped: int

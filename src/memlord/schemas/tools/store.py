@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from ..base import Schema
 
 
-class StoreResult(BaseModel):
+class StoreResult(Schema):
     name: str
     created: bool

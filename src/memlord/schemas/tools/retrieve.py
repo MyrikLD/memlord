@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, NaiveDatetime, field_serializer
+from pydantic import NaiveDatetime, field_serializer
 
+from ..base import Schema
 from ..memory_type import MemoryType
 
 
-class MemoryResult(BaseModel):
+class MemoryResult(Schema):
     name: str
     memory_type: MemoryType
     tags: set[str]

@@ -19,6 +19,7 @@ from memlord.schemas.api import (
 )
 from memlord.schemas.workspace import WorkspaceInfo, WorkspaceRole
 from memlord.ui.utils import APIUserDep
+from memlord.utils.dt import as_naive_utc
 
 router = APIRouter(prefix="/memories")
 
@@ -172,18 +173,19 @@ async def update_memory(
         data["name"] = body.name
     if "expires_at" in body.model_fields_set:
         # Explicit null clears expiry; a value sets it; omitted leaves it unchanged.
-        data["expires_at"] = body.expires_at
-        existing.expires_at = body.expires_at  # type: ignore[assignment]
+        # Normalize to naive UTC to match how timestamps are stored.
+        data["expires_at"] = as_naive_utc(body.expires_at)
 
-    _, final_name = await dao.update(**data)
-    existing.name = final_name  # type: ignore[assignment]
-    existing.content = new_content
-    existing.memory_type = new_type  # type: ignore[assignment]
-    existing.tags = new_tags  # type: ignore[assignment]
-    existing.metadata = body.metadata or {}  # type: ignore[assignment]
+    await dao.update(**data)
 
+    # Re-read the updated row so the response is built from a validated, correctly
+    # typed record (rather than hand-mutating the pre-update DTO).
+    updated = await dao.get(id=id, workspace_id=existing.workspace_id)
+    if updated is None:
+        # The update made it unreadable (e.g. expiry set to a past time).
+        raise HTTPException(status_code=404, detail="Memory not found after update")
     workspaces = await WorkspaceDao(s, user.id).list_workspaces()
-    return _build_detail(existing, workspaces)
+    return _build_detail(updated, workspaces)
 
 
 @router.delete("/{workspace_id}/{id}", status_code=204)

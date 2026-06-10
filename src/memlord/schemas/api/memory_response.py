@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, NaiveDatetime, field_serializer
+from pydantic import NaiveDatetime, field_serializer
 
+from ..base import Schema
 from ..pagination import Paginated
 
 
-class MemoriesFilter(BaseModel):
+class MemoriesFilter(Schema):
     page: int = 1
     page_size: int = 20
     memory_type: str | None = None
@@ -13,7 +14,7 @@ class MemoriesFilter(BaseModel):
     workspace: str = ""
 
 
-class WorkspaceSimple(BaseModel):
+class WorkspaceSimple(Schema):
     id: int
     name: str
     is_personal: bool
@@ -24,7 +25,7 @@ def _iso_utc(v: datetime | None) -> str | None:
     return v.replace(tzinfo=UTC).isoformat() if v else None
 
 
-class MemoryItem(BaseModel):
+class MemoryItem(Schema):
     id: int
     name: str
     content: str
@@ -40,7 +41,7 @@ class MemoryItem(BaseModel):
         return _iso_utc(v)
 
 
-class MemoryDetail(BaseModel):
+class MemoryDetail(Schema):
     id: int
     name: str
     content: str
@@ -61,5 +62,5 @@ class MemoryDetail(BaseModel):
 class MemoriesResponse(Paginated[MemoryItem]): ...
 
 
-class MoveRequest(BaseModel):
+class MoveRequest(Schema):
     to_workspace_id: int

@@ -1,12 +1,13 @@
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime, field_serializer
+from pydantic import ConfigDict, Field, NaiveDatetime, field_serializer
 
+from ..base import Schema
 from ..memory_type import MemoryType
 from ..pagination import Paginated
 
 
-class MemoryItem(BaseModel):
+class MemoryItem(Schema):
     """Slim memory record returned by MCP list/search tools (no id, no content)."""
 
     model_config = ConfigDict(extra="ignore")
@@ -28,7 +29,7 @@ class MemoryItem(BaseModel):
         return v.replace(tzinfo=UTC).isoformat() if v else None
 
 
-class MemoryDetail(BaseModel):
+class MemoryDetail(Schema):
     """Full memory record returned by get_memory MCP tool."""
 
     name: str

@@ -1,9 +1,8 @@
-from pydantic import BaseModel
-
+from .base import Schema
 from .memory_type import MemoryType
 
 
-class SearchResult(BaseModel):
+class SearchResult(Schema):
     id: int
     name: str
     content: str

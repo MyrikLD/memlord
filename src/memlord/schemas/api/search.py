@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from ..base import Schema
 
 
-class SearchItem(BaseModel):
+class SearchItem(Schema):
     id: int
     content: str
     memory_type: str | None
@@ -12,6 +12,6 @@ class SearchItem(BaseModel):
     rrf_score: float
 
 
-class SearchResponse(BaseModel):
+class SearchResponse(Schema):
     results: list[SearchItem]
     query: str

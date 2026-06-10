@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from ..base import Schema
 
 
-class DeleteResult(BaseModel):
+class DeleteResult(Schema):
     success: bool
     name: str

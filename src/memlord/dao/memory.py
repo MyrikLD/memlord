@@ -13,7 +13,7 @@ from memlord.embeddings import embed
 from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag
 from memlord.schemas import MemoryListItem, MemoryType
-from memlord.utils.dt import utcnow
+from memlord.utils.dt import as_naive_utc, utcnow
 
 _UNSET: Any = object()
 
@@ -144,7 +144,7 @@ class MemoryDao:
                 created_by=self._uid,
                 workspace_id=workspace_id,
                 name=name,
-                expires_at=expires_at,
+                expires_at=as_naive_utc(expires_at),
             )
             .returning(Memory.id)
         )
@@ -185,7 +185,7 @@ class MemoryDao:
         if name is not _UNSET:
             values["name"] = name
         if expires_at is not _UNSET:
-            values["expires_at"] = expires_at
+            values["expires_at"] = as_naive_utc(expires_at)
 
         if content is not _UNSET or tags is not _UNSET:
             new_content = (

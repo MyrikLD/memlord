@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel
+from .base import Schema
 
 
 class WorkspaceRole(StrEnum):
@@ -10,7 +10,7 @@ class WorkspaceRole(StrEnum):
     viewer = "viewer"
 
 
-class WorkspaceInfo(BaseModel):
+class WorkspaceInfo(Schema):
     id: int
     name: str
     description: str | None
@@ -19,7 +19,7 @@ class WorkspaceInfo(BaseModel):
     is_personal: bool
 
 
-class WorkspaceMemberInfo(BaseModel):
+class WorkspaceMemberInfo(Schema):
     user_id: int
     display_name: str
     email: str
@@ -27,30 +27,30 @@ class WorkspaceMemberInfo(BaseModel):
     joined_at: datetime
 
 
-class WorkspaceDetailResponse(BaseModel):
+class WorkspaceDetailResponse(Schema):
     workspace: WorkspaceInfo
     members: list[WorkspaceMemberInfo]
 
 
-class CreateWorkspaceRequest(BaseModel):
+class CreateWorkspaceRequest(Schema):
     name: str
     description: str | None = None
 
 
-class RenameRequest(BaseModel):
+class RenameRequest(Schema):
     name: str
 
 
-class DescriptionRequest(BaseModel):
+class DescriptionRequest(Schema):
     description: str | None = None
 
 
-class InviteRequest(BaseModel):
+class InviteRequest(Schema):
     expires_in_hours: int = 72
     role: str = "viewer"
 
 
-class InviteResponse(BaseModel):
+class InviteResponse(Schema):
     invite_url: str
     expires_in_hours: int
     role: str

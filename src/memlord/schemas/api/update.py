@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel
-
+from ..base import Schema
 from ..memory_type import MemoryType
 
 
-class UpdateMemoryRequest(BaseModel):
+class UpdateMemoryRequest(Schema):
     content: str | None = None
     name: str | None = None
     memory_type: MemoryType | None = None

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +7,20 @@ from memlord.dao import MemoryDao
 from memlord.models import Memory, Tag
 from memlord.schemas import MemoryType
 from memlord.search import hybrid_search
-from memlord.utils.dt import utcnow
+from memlord.utils.dt import as_naive_utc, utcnow
+
+
+def test_as_naive_utc_converts_aware_to_naive_utc():
+    aware = datetime(2026, 6, 10, 14, 30, tzinfo=timezone(timedelta(hours=3)))  # 14:30+03:00
+    result = as_naive_utc(aware)
+    assert result == datetime(2026, 6, 10, 11, 30)  # 11:30 UTC, naive
+    assert result.tzinfo is None
+
+
+def test_as_naive_utc_passes_through_none_and_naive():
+    assert as_naive_utc(None) is None
+    naive = datetime(2026, 6, 10, 11, 30)
+    assert as_naive_utc(naive) == naive
 
 
 async def _create(
