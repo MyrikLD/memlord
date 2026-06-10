@@ -1,7 +1,9 @@
+from datetime import datetime
 from typing import Any
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.auth import MCPUserDep
@@ -26,6 +28,9 @@ async def update_memory(
     tags: set[str] | None = None,
     metadata: dict | None = None,
     workspace: str | None = None,
+    expires_at: datetime | None = Field(
+        None, description="Set or extend the UTC expiry. Omit to leave unchanged."
+    ),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
@@ -33,6 +38,7 @@ async def update_memory(
 
     new_name: rename the memory to this name.
     workspace: disambiguate if the name exists in multiple workspaces.
+    expires_at: set or extend the UTC expiry; omit to leave it unchanged.
     """
     ws_id: int | None = None
     if workspace is not None:
@@ -59,6 +65,8 @@ async def update_memory(
         data["tags"] = tags
     if new_name is not None:
         data["name"] = new_name
+    if expires_at is not None:
+        data["expires_at"] = expires_at
 
     _, final_name = await dao.update(**data)
     return StoreResult(name=final_name, created=False)

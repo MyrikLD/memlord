@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
@@ -28,6 +30,11 @@ async def store_memory(
         description="Name of the workspace to store into (must be a member). Omit or pass None to store as a personal memory.",
     ),
     force: bool = Field(False, description="Skip near-duplicate check and store unconditionally."),
+    expires_at: datetime | None = Field(
+        None,
+        description="UTC timestamp after which the memory is hidden from all reads. "
+        "Expired memories are purged via the profile 'clean up expired' button. None = never expires.",
+    ),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
@@ -36,6 +43,7 @@ async def store_memory(
     name: human-readable name, unique within the workspace.
     workspace: name of the workspace to store into. Omit to store as a personal memory.
     force: skip near-duplicate check and store unconditionally.
+    expires_at: optional UTC expiry; after it passes the memory is hidden from reads.
     """
     ws_dao = WorkspaceDao(s, uid)
     if workspace is not None:
@@ -60,5 +68,6 @@ async def store_memory(
         workspace_id=workspace_id,
         force=force,
         name=name,
+        expires_at=expires_at,
     )
     return StoreResult(name=name, created=created)

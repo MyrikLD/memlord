@@ -36,7 +36,10 @@
                     <template x-for="t in memory.tags" :key="t">
                         <a :href="'/?tag=' + t" class="tag" x-text="'#' + t"></a>
                     </template>
-                    <span class="card-date" style="margin-left:auto" x-text="memory.created_at"></span>
+                    <span class="card-date" style="margin-left:auto" x-text="fmtLocal(memory.created_at)"></span>
+                    <template x-if="memory.expires_at">
+                        <span class="card-date" x-text="'· expires ' + fmtLocal(memory.expires_at)"></span>
+                    </template>
                 </div>
                 <template x-if="memory.metadata && Object.keys(memory.metadata).length > 0">
                     <div style="margin-top:1.25rem">
@@ -86,6 +89,10 @@
                     <label class="form-label">Metadata <span class="form-hint">— JSON object</span></label>
                     <textarea class="form-textarea form-mono" x-model="editMetadata" rows="4" placeholder="{}"></textarea>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Expires <span class="form-hint">— local time; leave empty for no expiry</span></label>
+                    <input type="datetime-local" class="form-input" x-model="editExpires">
+                </div>
                 <div class="form-actions">
                     <button class="btn-primary-sm" @click="saveMemory()">Save changes</button>
                     <button class="btn-danger-sm" @click="deleteMemory()">Delete memory</button>
@@ -109,6 +116,7 @@ function memoryPage(workspaceId, memoryId) {
         editType: '',
         editTags: '',
         editMetadata: '',
+        editExpires: '',
         moveTarget: null,
 
         async init() {
@@ -120,6 +128,7 @@ function memoryPage(workspaceId, memoryId) {
             this.editType = this.memory.memory_type || 'fact';
             this.editTags = this.memory.tags.join(', ');
             this.editMetadata = this.memory.metadata ? JSON.stringify(this.memory.metadata, null, 2) : '';
+            this.editExpires = isoToLocalInput(this.memory.expires_at);
             if (this.memory.writable_workspaces.length > 0) {
                 this.moveTarget = this.memory.writable_workspaces[0].id;
             }
@@ -133,14 +142,17 @@ function memoryPage(workspaceId, memoryId) {
                 catch { this.errorMsg = 'Invalid JSON in metadata field.'; return; }
             }
             const tags = this.editTags ? this.editTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+            // datetime-local is local time; send as UTC ISO (or null to clear).
+            const expires_at = this.editExpires ? new Date(this.editExpires).toISOString() : null;
             const r = await fetch('/api/memories/' + this.memory.workspace_id + '/' + this.memory.id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: this.editName, content: this.editContent, memory_type: this.editType, tags, metadata }),
+                body: JSON.stringify({ name: this.editName, content: this.editContent, memory_type: this.editType, tags, metadata, expires_at }),
             });
             if (r.ok) {
                 this.memory = await r.json();
                 this.editTags = this.memory.tags.join(', ');
+                this.editExpires = isoToLocalInput(this.memory.expires_at);
                 this.successMsg = 'Saved.';
                 this.errorMsg = '';
             } else {

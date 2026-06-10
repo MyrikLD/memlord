@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from memlord.config import settings
 from memlord.dao.workspace import WorkspaceDao
 from memlord.embeddings import embed
+from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag
 from memlord.schemas import MemoryListItem, MemoryType
+from memlord.utils.dt import as_naive_utc, utcnow
 
 _UNSET: Any = object()
 
@@ -66,6 +68,7 @@ class MemoryDao:
                     .where(
                         Memory.embedding.isnot(None),
                         Memory.workspace_id == workspace_id,
+                        not_expired(),
                     )
                     .order_by(distance_expr)
                     .limit(1),
@@ -109,6 +112,7 @@ class MemoryDao:
         name: str,
         workspace_id: int | None = None,
         force: bool = False,
+        expires_at: datetime | None = None,
     ) -> tuple[int, bool]:
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
@@ -140,6 +144,7 @@ class MemoryDao:
                 created_by=self._uid,
                 workspace_id=workspace_id,
                 name=name,
+                expires_at=as_naive_utc(expires_at),
             )
             .returning(Memory.id)
         )
@@ -157,6 +162,7 @@ class MemoryDao:
         metadata: dict = _UNSET,  # type: ignore[assignment]
         tags: set[str] = _UNSET,  # type: ignore[assignment]
         name: str | None = _UNSET,  # type: ignore[assignment]
+        expires_at: datetime | None = _UNSET,  # type: ignore[assignment]
     ) -> tuple[int, str]:
         """Update memory fields. Pass _UNSET to leave a field unchanged."""
         if workspace_id is None:
@@ -178,6 +184,8 @@ class MemoryDao:
             values["extra_data"] = metadata or {}
         if name is not _UNSET:
             values["name"] = name
+        if expires_at is not _UNSET:
+            values["expires_at"] = as_naive_utc(expires_at)
 
         if content is not _UNSET or tags is not _UNSET:
             new_content = (
@@ -246,8 +254,9 @@ class MemoryDao:
             Memory.memory_type,
             Memory.extra_data.label("metadata"),
             Memory.created_at,
+            Memory.expires_at,
             Memory.workspace_id,
-        ).where(Memory.workspace_id == workspace_id)
+        ).where(Memory.workspace_id == workspace_id, not_expired())
         if id is not None:
             q = q.where(Memory.id == id)
         if name is not None:
@@ -315,3 +324,23 @@ class MemoryDao:
             ).where(Memory.id.in_(memory_ids))
         )
         return {row.id: (row.extra_data, row.created_at) for row in rows.fetchall()}
+
+    async def purge_expired(self) -> int:
+        """Hard-delete the user's expired memories in write-accessible workspaces.
+
+        Triggered by the profile "clean up expired" button. Returns the count
+        removed. `memory_tags` rows cascade with the memory; orphan `tags` are
+        cleaned up afterwards.
+        """
+        workspace_ids = await self._accessible_workspace_ids(write=True)
+        if not workspace_ids:
+            return 0
+        deleted = await self._s.execute(
+            delete(Memory).where(
+                Memory.workspace_id.in_(workspace_ids),
+                Memory.expires_at.isnot(None),
+                Memory.expires_at <= utcnow(),
+            )
+        )
+        await self._cleanup_orphan_tags()
+        return deleted.rowcount  # type: ignore[attr-defined]

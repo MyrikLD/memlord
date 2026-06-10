@@ -149,7 +149,9 @@ running: `uv run python scripts/download_model.py` (source: HuggingFace `sentenc
 
 **memories** — main table: `id` (PK), `content` (TEXT), `created_by` (FK → `users.id`), `memory_type`, `metadata` (
 JSONB), `workspace_id` (FK → `workspaces.id` NOT NULL, ON DELETE CASCADE), `embedding` (`vector(384)` —
-pgvector), `search_vector` (`TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED`), `created_at`
+pgvector), `search_vector` (`TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED`), `created_at`,
+`expires_at` (nullable — `NULL` = never expires; once past, the memory is hidden from all reads and purged via the
+profile "clean up expired" action)
 
 Unique constraint: `uq_memories_content_workspace (content, workspace_id)` — idempotency per workspace.
 
@@ -227,17 +229,20 @@ Save a memory entry.
 |---------------|----------|----------|----------------------------------------------------------------------|
 | `content`     | string   | ✅        | Memory text                                                          |
 | `memory_type` | string   | ✅        | Type: `fact`, `preference`, `instruction`, `feedback`                |
+| `name`        | string   | ✅        | Human-readable name, unique within the workspace                     |
 | `tags`        | string[] | ❌        | Tags                                                                 |
 | `metadata`    | object   | ❌        | Arbitrary metadata (JSON)                                            |
 | `workspace`   | string   | ❌        | Workspace name (must have write access). `null` → personal workspace |
+| `force`       | bool     | ❌        | Skip the near-duplicate check                                        |
+| `expires_at`  | datetime | ❌        | UTC expiry; once past, the memory is hidden from reads. `null` → never |
 
 **Logic:** if `workspace` is provided — name lookup, `can_write` check → `workspace_id`. If `null` → personal
 workspace resolved via `get_personal(uid)`. Unique constraint `(content, workspace_id)` — idempotent per workspace.
 `MemoryDao.create` → embedding → near-duplicate check → tags.
 
-**Near-duplicate check:** before inserting, computes embedding and finds the closest existing memory in the workspace
-via `<=>` (cosine distance). If `1 - distance >= dedup_threshold` — raises `ValueError` with the duplicate's `id` and
-similarity score. Skipped when `force=True`.
+**Near-duplicate check:** before inserting, computes embedding and finds the closest existing **non-expired** memory in
+the workspace via `<=>` (cosine distance). If `1 - distance >= dedup_threshold` — raises `ValueError` with the
+duplicate's `id` and similarity score. Skipped when `force=True`.
 
 **Returns:** `StoreResult` — `name`, `created` (bool).
 
@@ -292,8 +297,11 @@ Update an existing memory identified by name. Only provided fields are changed.
 | `tags`        | string[] | ❌        | New tags (full replacement)              |
 | `metadata`    | object   | ❌        | New metadata (full replacement)          |
 | `workspace`   | string   | ❌        | Disambiguate if name exists in multiple  |
+| `expires_at`  | datetime | ❌        | Set/extend UTC expiry (no effect unless provided) |
 
 **Logic:** resolve name (+ optional workspace) → access check → update fields → regenerate embedding if `content` changed.
+Only an unexpired memory can be updated (an already-expired one reads as not-found until purged). The MCP tool can only
+set/extend expiry; clearing it (back to never-expires) is done via the web UI / REST `PUT` with an explicit `null`.
 
 **Returns:** `StoreResult` — `name`, `created=False`.
 
@@ -313,7 +321,7 @@ Paginated list with filtering.
 **Logic:** SELECT with LIMIT/OFFSET, access filter (personal + workspaces), sorted by `created_at DESC`.
 
 **Returns:** `MemoryPage` — `items: list[MemoryItem]`, `total`, `page`, `page_size`, `total_pages`. Each `MemoryItem`:
-`name`, `memory_type`, `metadata`, `tags`, `created_at`, `workspace` (no `id`, no `content`).
+`name`, `memory_type`, `metadata`, `tags`, `created_at`, `expires_at`, `workspace` (no `id`, no `content`).
 
 ---
 
@@ -328,7 +336,7 @@ Tag search with boolean logic.
 
 **Logic:** `AND` — all tags present; `OR` — at least one. Access filter applied.
 
-**Returns:** `MemoryPage` — `items: list[MemoryItem]` (`name`, `memory_type`, `metadata`, `tags`, `created_at`, `workspace`).
+**Returns:** `MemoryPage` — `items: list[MemoryItem]` (`name`, `memory_type`, `metadata`, `tags`, `created_at`, `expires_at`, `workspace`).
 
 ---
 
@@ -343,7 +351,7 @@ Fetch a single entry by name.
 
 **Logic:** resolve name (+ optional workspace) → access check (personal or in user's workspace).
 
-**Returns:** `MemoryDetail` — `name`, `content`, `memory_type`, `metadata`, `tags`, `created_at`.
+**Returns:** `MemoryDetail` — `name`, `content`, `memory_type`, `metadata`, `tags`, `created_at`, `expires_at`.
 
 ---
 
@@ -445,6 +453,7 @@ authentication via session cookie (`get_current_user`).
 |            | `POST /ui/workspaces/{id}/delete` — delete workspace (owner, non-personal only)               |
 |            | `GET/POST /ui/join/{token}` — accept invite via token                                         |
 | Login      | `GET/POST /ui/login` — web UI login                                                           |
+| Account    | `GET /ui/account` — profile; `POST /ui/account/purge-expired` — hard-delete the user's expired memories (write-accessible workspaces) |
 | Data       | `GET /ui/export` / `POST /ui/import` — export/import JSON                                     |
 
 ---

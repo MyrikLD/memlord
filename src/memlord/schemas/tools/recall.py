@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field, NaiveDatetime, field_serializer
+from pydantic import Field, NaiveDatetime, field_serializer
 
+from ..base import Schema
 from ..memory_type import MemoryType
 
 
-class RecallResult(BaseModel):
+class RecallResult(Schema):
     name: str
     memory_type: MemoryType | None
     tags: set[str]
@@ -17,5 +18,5 @@ class RecallResult(BaseModel):
         return v.replace(tzinfo=UTC).isoformat()
 
 
-class RecallPage(BaseModel):
+class RecallPage(Schema):
     items: list[RecallResult] = Field(default_factory=list)

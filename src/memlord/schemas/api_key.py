@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from .base import Schema
 
 
-class ApiKeyInfo(BaseModel):
+class ApiKeyInfo(Schema):
     id: int
     name: str
     prefix: str
@@ -11,5 +11,5 @@ class ApiKeyInfo(BaseModel):
     last_used_at: datetime | None = None
 
 
-class ApiKeyCreated(BaseModel):
+class ApiKeyCreated(Schema):
     raw: str

@@ -16,6 +16,12 @@
 {% if request.query_params.get('key_deleted') %}
 <div class="alert alert-success">API key deleted.</div>
 {% endif %}
+{% if request.query_params.get('purged') is not none %}
+<div class="alert alert-success">
+    Removed {{ request.query_params.get('purged') }}
+    expired memor{{ 'y' if request.query_params.get('purged') == '1' else 'ies' }}.
+</div>
+{% endif %}
 
 <!-- Display name -->
 <div class="detail-card" style="margin-bottom:1.25rem;">
@@ -197,6 +203,20 @@ function apiKeysCard() {
     };
 }
 </script>
+
+<!-- Expired memories -->
+<div class="detail-card" style="margin-bottom:1.25rem;">
+    <div class="section-title">Expired memories</div>
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
+        Memories past their expiry are already hidden from search and lists. Use this to
+        permanently delete the expired ones from workspaces you can edit.
+    </p>
+    <form method="post" action="/ui/account/purge-expired">
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Clean up expired memories</button>
+        </div>
+    </form>
+</div>
 
 <!-- Delete account -->
 <div class="detail-card" style="border-color:var(--danger-border);">

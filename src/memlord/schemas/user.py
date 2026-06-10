@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from .base import Schema
 
 
-class UserInfo(BaseModel):
+class UserInfo(Schema):
     id: int
     display_name: str
     email: str = ""

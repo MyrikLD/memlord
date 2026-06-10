@@ -773,5 +773,27 @@
 <main>
     {% block content %}{% endblock %}
 </main>
+<script>
+    // Format an ISO-8601 timestamp from the API into the viewer's local timezone.
+    function fmtLocal(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        return d.toLocaleString([], {
+            year: "numeric", month: "short", day: "numeric",
+            hour: "2-digit", minute: "2-digit", hour12: false,
+        });
+    }
+
+    // Convert an ISO-8601 UTC timestamp into a local value for <input type="datetime-local">.
+    function isoToLocalInput(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return "";
+        const pad = (n) => String(n).padStart(2, "0");
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate())
+            + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    }
+</script>
 </body>
 </html>

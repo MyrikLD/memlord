@@ -2,8 +2,10 @@ import math
 
 from pydantic import BaseModel, Field, computed_field
 
+from .base import Schema
 
-class Paginated[T: BaseModel](BaseModel):
+
+class Paginated[T: BaseModel](Schema):
     items: list[T] = Field(default_factory=list)
     total: int = 0
     page: int = 1

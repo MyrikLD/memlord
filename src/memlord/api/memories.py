@@ -5,8 +5,9 @@ from sqlalchemy import select
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
+from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag
-from memlord.schemas import MemoryType
+from memlord.schemas import MemoryListItem, MemoryType
 from memlord.schemas.api import (
     MemoriesFilter,
     MemoriesResponse,
@@ -16,8 +17,9 @@ from memlord.schemas.api import (
     UpdateMemoryRequest,
     WorkspaceSimple,
 )
-from memlord.schemas.workspace import WorkspaceRole
+from memlord.schemas.workspace import WorkspaceInfo, WorkspaceRole
 from memlord.ui.utils import APIUserDep
+from memlord.utils.dt import as_naive_utc
 
 router = APIRouter(prefix="/memories")
 
@@ -27,6 +29,7 @@ _COLS = (
     Memory.content,
     Memory.memory_type,
     Memory.created_at,
+    Memory.expires_at,
     Memory.workspace_id,
 )
 
@@ -59,7 +62,7 @@ async def list_memories(
     else:
         access_filter = Memory.workspace_id.in_(workspace_ids)
 
-    q = select(*_COLS).where(access_filter)
+    q = select(*_COLS).where(access_filter, not_expired())
 
     if body.memory_type:
         q = q.where(Memory.memory_type == MemoryType(body.memory_type))
@@ -87,7 +90,8 @@ async def list_memories(
             name=row["name"],
             content=row["content"],
             memory_type=row["memory_type"],
-            created_at=row["created_at"].strftime("%Y-%m-%d %H:%M:%S"),
+            created_at=row["created_at"],
+            expires_at=row["expires_at"],
             workspace_id=row["workspace_id"],
             workspace_name=ws_display.get(row["workspace_id"]) if row["workspace_id"] else None,
             tags=sorted(tags_map.get(row["id"], set())),
@@ -103,7 +107,7 @@ async def list_memories(
     )
 
 
-def _build_detail(memory, workspaces) -> MemoryDetail:
+def _build_detail(memory: MemoryListItem, workspaces: list[WorkspaceInfo]) -> MemoryDetail:
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     writable = [
         WorkspaceSimple(id=ws.id, name=ws.name, is_personal=ws.is_personal)
@@ -115,7 +119,8 @@ def _build_detail(memory, workspaces) -> MemoryDetail:
         name=memory.name,
         content=memory.content,
         memory_type=memory.memory_type,
-        created_at=memory.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        created_at=memory.created_at,
+        expires_at=memory.expires_at,
         workspace_id=memory.workspace_id,
         workspace_name=ws_map.get(memory.workspace_id) if memory.workspace_id else None,
         tags=sorted(memory.tags),
@@ -166,16 +171,21 @@ async def update_memory(
         data["content"] = new_content
     if body.name is not None:
         data["name"] = body.name
+    if "expires_at" in body.model_fields_set:
+        # Explicit null clears expiry; a value sets it; omitted leaves it unchanged.
+        # Normalize to naive UTC to match how timestamps are stored.
+        data["expires_at"] = as_naive_utc(body.expires_at)
 
-    _, final_name = await dao.update(**data)
-    existing.name = final_name  # type: ignore[assignment]
-    existing.content = new_content
-    existing.memory_type = new_type  # type: ignore[assignment]
-    existing.tags = new_tags  # type: ignore[assignment]
-    existing.metadata = body.metadata or {}  # type: ignore[assignment]
+    await dao.update(**data)
 
+    # Re-read the updated row so the response is built from a validated, correctly
+    # typed record (rather than hand-mutating the pre-update DTO).
+    updated = await dao.get(id=id, workspace_id=existing.workspace_id)
+    if updated is None:
+        # The update made it unreadable (e.g. expiry set to a past time).
+        raise HTTPException(status_code=404, detail="Memory not found after update")
     workspaces = await WorkspaceDao(s, user.id).list_workspaces()
-    return _build_detail(existing, workspaces)
+    return _build_detail(updated, workspaces)
 
 
 @router.delete("/{workspace_id}/{id}", status_code=204)

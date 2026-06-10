@@ -34,7 +34,7 @@
                 <template x-for="t in m.tags" :key="t">
                     <a :href="'/?tag=' + t" class="tag" x-text="'#' + t"></a>
                 </template>
-                <span class="card-date" x-text="m.created_at"></span>
+                <span class="card-date" x-text="fmtLocal(m.created_at)"></span>
             </div>
         </div>
     </template>

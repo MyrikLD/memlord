@@ -11,6 +11,8 @@ jobs:
     name: Lint & type check
     runs-on: ubuntu-latest
     continue-on-error: true
+    env:
+      RUFF_OUTPUT_FORMAT: github
     steps:
       - uses: actions/checkout@v6
 

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.config import settings
 from memlord.embeddings import embed
+from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag
 from memlord.models.workspace import Workspace
 from memlord.schemas import MemoryType, SearchResult
@@ -28,7 +29,7 @@ async def hybrid_search(
     # Build access filter: all workspaces the user is a member of
     access = Memory.workspace_id.in_(workspace_ids or [])
 
-    conditions = [access]
+    conditions = [access, not_expired()]
     if date_from:
         conditions.append(Memory.created_at >= date_from)
     if date_to:

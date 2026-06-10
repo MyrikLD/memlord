@@ -9,6 +9,7 @@ from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
+from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag, Workspace
 from memlord.schemas.tools import MemoryItem, MemoryPage
 
@@ -20,6 +21,7 @@ _COLS = (
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
+    Memory.expires_at,
     Workspace.name.label("workspace"),
 )
 
@@ -62,6 +64,7 @@ async def search_by_tag(
             .where(
                 matching_count == len(normalized),
                 Memory.workspace_id.in_(workspace_ids),
+                not_expired(),
             )
             .order_by(Memory.created_at.desc())
         )
@@ -74,6 +77,7 @@ async def search_by_tag(
             .where(
                 Tag.name.in_(normalized),
                 Memory.workspace_id.in_(workspace_ids),
+                not_expired(),
             )
             .distinct()
             .order_by(Memory.created_at.desc())
