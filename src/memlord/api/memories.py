@@ -182,7 +182,8 @@ async def update_memory(
     # typed record (rather than hand-mutating the pre-update DTO).
     updated = await dao.get(id=id, workspace_id=existing.workspace_id)
     if updated is None:
-        # The update made it unreadable (e.g. expiry set to a past time).
+        # Only reachable if the row vanished concurrently: get() returns
+        # expired memories, so a past expiry no longer hides the record.
         raise HTTPException(status_code=404, detail="Memory not found after update")
     workspaces = await WorkspaceDao(s, user.id).list_workspaces()
     return _build_detail(updated, workspaces)
