@@ -29,7 +29,8 @@ pgvector" width="100%">
 
 - 🔍 **Hybrid search** — BM25 (full-text) + vector KNN (pgvector) fused via Reciprocal Rank Fusion
 - 📂 **Multi-user** — each user sees only their own memories; workspaces for shared team knowledge
-- 🛠️ **10 MCP tools** — store, retrieve, recall, list, search by tag, get, update, delete, move, list workspaces
+- 🛠️ **11 MCP tools** — store, retrieve, recall, list, search by tag, get, update, delete, move, list workspaces, dream report
+- 💤 **Dreaming** — a guided consolidation pass (`dream` MCP prompt + `dream_report` tool): finds near-duplicate and conflicting memories, merges them into insights non-destructively, driven by the client LLM
 - 🌐 **Web UI** — browse, search, edit and delete memories in the browser; export/import JSON
 - 🔒 **OAuth 2.1** — full in-process authorization server, always enabled
 - 🐘 **PostgreSQL** — pgvector for embeddings, tsvector for full-text search
@@ -50,10 +51,10 @@ pgvector" width="100%">
 | **Workspaces**        | ✅ shared + personal, invite links          | ⚠️ "Apps" namespace                                                   | ⚠️ tags + conversation_id                                                | ✅ per-project flag                                                   |
 | **Authentication**    | ✅ OAuth 2.1                                | ❌ none (self-hosted)                                                  | ✅ OAuth 2.0 + PKCE                                                       | ❌                                                                    |
 | **Web UI**            | ✅ browse, edit, export                     | ✅ Next.js dashboard                                                   | ✅ rich UI, graph viz, quality scores                                     | ❌ local; cloud only                                                  |
-| **MCP tools**         | 10                                         | 5                                                                     | 15+                                                                      | ~20                                                                  |
+| **MCP tools**         | 11                                         | 5                                                                     | 15+                                                                      | ~20                                                                  |
 | **Self-hosted**       | ✅ single process                           | ✅ Docker (3 containers)                                               | ✅                                                                        | ✅                                                                    |
 | **Memory input**      | Manual (explicit store)                    | Auto-extracted by LLM                                                 | Manual                                                                   | Manual (Markdown notes)                                              |
-| **Memory types**      | fact / preference / instruction / feedback | auto-extracted facts                                                  | —                                                                        | observations + wiki links                                            |
+| **Memory types**      | fact / preference / instruction / feedback / decision / insight | auto-extracted facts                                                  | —                                                                        | observations + wiki links                                            |
 | **Time-aware search** | ✅ natural language dates                   | ⚠️ REST only, not in MCP tools                                        | —                                                                        | ✅ recent_activity                                                    |
 | **Token efficiency**  | ✅ progressive disclosure                   | ❌                                                                     | —                                                                        | ✅ build_context traversal                                            |
 | **Import / Export**   | ✅ JSON                                     | ✅ ZIP (JSON + JSONL)                                                  | —                                                                        | ✅ Markdown (human-readable)                                          |
@@ -115,7 +116,7 @@ Each search request runs BM25 and vector KNN **in parallel**, then merges result
 ```mermaid
 flowchart TD
     Q([query]) --> BM25["BM25\nsearch_vector @@ websearch_to_tsquery"]
-    Q --> EMB["ONNX embed\nall-MiniLM-L6-v2 · 384d · local"]
+    Q --> EMB["ONNX embed\nparaphrase-multilingual-MiniLM-L12-v2 · 384d · local"]
     EMB --> KNN["KNN\nembedding <=> query_vector\ncosine distance"]
     BM25 --> RRF["RRF fusion\nscore = 1/(k+rank_bm25) + 1/(k+rank_vec)\nk=60"]
     KNN --> RRF
@@ -148,11 +149,16 @@ Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` 
 | `recall_memory`   | Search by natural-language time expression; returns snippets by default |
 | `list_memories`   | Paginated list with type/tag filters                                    |
 | `search_by_tag`   | AND/OR tag search                                                       |
-| `get_memory`      | Fetch a single memory by name with full content                         |
+| `get_memory`      | Fetch a single memory by name with full content (expired included)      |
 | `update_memory`   | Update content, type, tags, metadata, or expiry by name (and optionally rename) |
 | `delete_memory`   | Delete by name                                                          |
 | `move_memory`     | Move a memory to a different workspace                                  |
 | `list_workspaces` | List workspaces you are a member of (including personal)                |
+| `dream_report`    | Read-only consolidation candidates: similar memory pairs, expired and expiring-soon memories |
+
+The `dream` MCP prompt walks the client LLM through a full consolidation pass over the
+`dream_report` output: classify similar pairs (duplicate / complementary / conflict), merge
+into `insight` memories, retire superseded ones via `expires_at` — never destructively.
 
 Workspace management (create, invite, join, leave) is handled via the Web UI.
 
