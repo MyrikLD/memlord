@@ -24,6 +24,8 @@ async def get_memory(
     which return names in their results alongside compact snippets.
     Do NOT use for search — use retrieve_memory() for semantic/text search
     or recall_memory() for time-based queries like 'last week'.
+    Unlike search, this also returns expired memories (expires_at in the past) —
+    check expires_at to tell; extend it via update_memory to bring one back.
     """
     ws_dao = WorkspaceDao(s, uid)
     ws_id: int | None = None

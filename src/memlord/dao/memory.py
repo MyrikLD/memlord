@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import sqlalchemy as sa
@@ -6,12 +6,14 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import Float, bindparam, delete, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from memlord.config import settings
 from memlord.dao.workspace import WorkspaceDao
 from memlord.embeddings import embed
 from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag
+from memlord.models.workspace import Workspace
 from memlord.schemas import MemoryListItem, MemoryType
 from memlord.utils.dt import as_naive_utc, utcnow
 
@@ -247,6 +249,9 @@ class MemoryDao:
         elif not await self._ws_dao.can_read(workspace_id):
             raise ValueError(f"No read access to workspace {workspace_id}")
 
+        # Direct addressing (by id/name) intentionally skips the not_expired()
+        # filter: expired memories stay reachable for review, expiry extension
+        # and deletion (e.g. the /dream flow), while search/list stay filtered.
         q = select(
             Memory.id,
             Memory.name,
@@ -256,7 +261,7 @@ class MemoryDao:
             Memory.created_at,
             Memory.expires_at,
             Memory.workspace_id,
-        ).where(Memory.workspace_id == workspace_id, not_expired())
+        ).where(Memory.workspace_id == workspace_id)
         if id is not None:
             q = q.where(Memory.id == id)
         if name is not None:
@@ -344,3 +349,90 @@ class MemoryDao:
         )
         await self._cleanup_orphan_tags()
         return deleted.rowcount  # type: ignore[attr-defined]
+
+    async def _writable_workspace_ids(self, workspace_id: int | None) -> list[int]:
+        if workspace_id is None:
+            return await self._accessible_workspace_ids(write=True)
+        if not await self._ws_dao.can_write(workspace_id):
+            raise ValueError(f"No write access to workspace {workspace_id!r}")
+        return [workspace_id]
+
+    async def similar_pairs(
+        self,
+        workspace_id: int | None = None,
+        similarity_threshold: float = 0.6,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Pairs of active memories within one workspace whose embeddings are close.
+
+        Candidates are scoped to a single workspace per pair (never across
+        workspaces) to avoid proposing merges of similar facts about different
+        contexts. Returns rows ordered by similarity, highest first.
+        """
+        workspace_ids = await self._writable_workspace_ids(workspace_id)
+        if not workspace_ids:
+            return []
+
+        other = aliased(Memory)
+        distance = Memory.embedding.op("<=>", return_type=Float)(other.embedding)
+        q = (
+            select(
+                Memory.name.label("name_a"),
+                Memory.memory_type.label("type_a"),
+                Memory.created_at.label("created_at_a"),
+                other.name.label("name_b"),
+                other.memory_type.label("type_b"),
+                other.created_at.label("created_at_b"),
+                Workspace.name.label("workspace"),
+                (1.0 - distance).label("similarity"),
+            )
+            .join(
+                other,
+                sa.and_(other.workspace_id == Memory.workspace_id, other.id > Memory.id),
+            )
+            .join(Workspace, Memory.workspace_id == Workspace.id)
+            .where(
+                Memory.workspace_id.in_(workspace_ids),
+                Memory.embedding.isnot(None),
+                other.embedding.isnot(None),
+                not_expired(),
+                not_expired(other),
+                distance <= 1.0 - similarity_threshold,
+            )
+            .order_by(distance)
+            .limit(limit)
+        )
+        return [dict(r) for r in (await self._s.execute(q)).mappings().all()]
+
+    async def expiry_report(
+        self, workspace_id: int | None = None, soon: timedelta = timedelta(days=7)
+    ) -> tuple[list[dict], list[dict]]:
+        """(expired, expiring_soon) memories in write-accessible workspaces.
+
+        Expired ones are hidden from all reads but still stored; expiring_soon
+        are active memories whose `expires_at` falls within the `soon` window.
+        """
+        workspace_ids = await self._writable_workspace_ids(workspace_id)
+        if not workspace_ids:
+            return [], []
+
+        now = utcnow()
+        q = (
+            select(
+                Memory.name,
+                Memory.memory_type,
+                Memory.expires_at,
+                Workspace.name.label("workspace"),
+            )
+            .join(Workspace, Memory.workspace_id == Workspace.id)
+            .where(
+                Memory.workspace_id.in_(workspace_ids),
+                Memory.expires_at.isnot(None),
+                Memory.expires_at <= now + soon,
+            )
+            .order_by(Memory.expires_at)
+        )
+        rows = (await self._s.execute(q)).mappings().all()
+        expired = [dict(r) for r in rows if r["expires_at"] <= now]
+        expiring_soon = [dict(r) for r in rows if r["expires_at"] > now]
+        return expired, expiring_soon

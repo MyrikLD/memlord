@@ -32,7 +32,8 @@ async def store_memory(
     force: bool = Field(False, description="Skip near-duplicate check and store unconditionally."),
     expires_at: datetime | None = Field(
         None,
-        description="UTC timestamp after which the memory is hidden from all reads. "
+        description="UTC timestamp after which the memory is hidden from search and list results "
+        "(still retrievable by exact name via get_memory). "
         "Expired memories are purged via the profile 'clean up expired' button. None = never expires.",
     ),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]

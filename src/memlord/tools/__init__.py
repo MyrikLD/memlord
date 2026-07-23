@@ -1,4 +1,5 @@
 from .delete import mcp as delete
+from .dream import mcp as dream
 from .get_memory import mcp as get_memory
 from .list_memories import mcp as list_memories
 from .move import mcp as move

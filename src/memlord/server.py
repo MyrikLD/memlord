@@ -5,6 +5,7 @@ from memlord.db import session
 from memlord.oauth import MemlordOAuthProvider
 from memlord.tools import (
     delete,
+    dream,
     get_memory,
     list_memories,
     move,
@@ -44,3 +45,4 @@ mcp.mount(delete)
 mcp.mount(update)
 mcp.mount(move)
 mcp.mount(workspaces)
+mcp.mount(dream)

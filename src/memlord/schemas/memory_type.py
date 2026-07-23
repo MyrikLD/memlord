@@ -8,6 +8,7 @@ class MemoryType(StrEnum):
     instruction: persistent rule Claude must follow.
     feedback: evaluation of Claude's output.
     decision: a choice made with reasoning ('chose X over Y because Z').
+    insight: consolidated conclusion distilled from several existing memories.
     """
 
     fact = "fact"
@@ -15,3 +16,4 @@ class MemoryType(StrEnum):
     instruction = "instruction"
     feedback = "feedback"
     decision = "decision"
+    insight = "insight"

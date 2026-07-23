@@ -1,12 +1,19 @@
-"""Full MCP tool pipeline: store → get → update → search → delete."""
+"""Full MCP tool pipeline: list_workspaces → store → get → update → search → move → delete."""
 
 import pytest
 from fastmcp.exceptions import ToolError
 
+from memlord.dao.workspace import WorkspaceDao
 from memlord.schemas import MemoryType
 
 
-async def test_pipeline(mcp_client):
+async def test_pipeline(mcp_client, session, user_id):
+    # --- list_workspaces (a fresh user has exactly one personal workspace) ---
+    r = await mcp_client.call_tool("list_workspaces", {})
+    personal = [w for w in r.data if w.is_personal]
+    assert len(personal) == 1
+    personal_ws = personal[0].name
+
     # --- store ---
     r = await mcp_client.call_tool(
         "store_memory",
@@ -62,8 +69,24 @@ async def test_pipeline(mcp_client):
     ids = [m.name for m in r.data.items]
     assert mid in ids
 
-    # --- delete ---
-    await mcp_client.call_tool("delete_memory", {"name": mid})
+    # --- move to another workspace ---
+    target_ws = await WorkspaceDao(session, user_id).create(name="pipeline-target")
+    r = await mcp_client.call_tool(
+        "move_memory",
+        {"name": mid, "to_workspace": target_ws.name, "from_workspace": personal_ws},
+    )
+    assert r.data.name == mid
+
+    # gone from the personal workspace, present in the target
+    with pytest.raises(ToolError):
+        await mcp_client.call_tool("get_memory", {"name": mid, "workspace": personal_ws})
+
+    r = await mcp_client.call_tool("get_memory", {"name": mid, "workspace": target_ws.name})
+    assert r.data.content == "updated pipeline memory"
+    assert r.data.workspace == target_ws.name
+
+    # --- delete (from the target workspace) ---
+    await mcp_client.call_tool("delete_memory", {"name": mid, "workspace": target_ws.name})
 
     with pytest.raises(ToolError):
-        await mcp_client.call_tool("get_memory", {"name": mid})
+        await mcp_client.call_tool("get_memory", {"name": mid, "workspace": target_ws.name})

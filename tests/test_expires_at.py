@@ -47,14 +47,17 @@ async def _create(
     return mid
 
 
-async def test_get_hides_expired(session, user_id, workspace_id):
+async def test_get_returns_expired(session, user_id, workspace_id):
     dao = MemoryDao(session, user_id)
     past = utcnow() - timedelta(days=1)
     future = utcnow() + timedelta(days=1)
     await _create(session, user_id, workspace_id, "expired note", "expired", expires_at=past)
     await _create(session, user_id, workspace_id, "active note", "active", expires_at=future)
 
-    assert await dao.get(name="expired", workspace_id=workspace_id) is None
+    expired = await dao.get(name="expired", workspace_id=workspace_id)
+    assert expired is not None
+    assert expired.expires_at is not None
+    assert expired.expires_at <= utcnow()
     active = await dao.get(name="active", workspace_id=workspace_id)
     assert active is not None
     assert active.expires_at is not None
