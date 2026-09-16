@@ -94,9 +94,12 @@ async def totp_setup_get(request: Request, user: APIUserDep) -> Response:
     secret = pyotp.random_base32()
     email = user.email or user.display_name
     uri = pyotp.TOTP(secret).provisioning_uri(email, issuer_name="Memlord")
-    qr_svg = "data:image/svg+xml;base64," + base64.b64encode(
-        qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage).to_string()
-    ).decode()
+    qr_svg = (
+        "data:image/svg+xml;base64,"
+        + base64.b64encode(
+            qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage).to_string()
+        ).decode()
+    )
 
     return templates.TemplateResponse(
         request,
@@ -119,14 +122,22 @@ async def totp_enable(
     if not pyotp.TOTP(secret).verify(code, valid_window=1):
         email = user.email or user.display_name
         uri = pyotp.TOTP(secret).provisioning_uri(email, issuer_name="Memlord")
-        qr_svg = "data:image/svg+xml;base64," + base64.b64encode(
-            qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage).to_string()
-        ).decode()
+        qr_svg = (
+            "data:image/svg+xml;base64,"
+            + base64.b64encode(
+                qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage).to_string()
+            ).decode()
+        )
         return templates.TemplateResponse(
             request,
             "totp_setup.html",
-            {"user": user, "totp_enabled": False, "qr_svg": qr_svg, "secret": secret,
-             "error": "Invalid code. Please try again."},
+            {
+                "user": user,
+                "totp_enabled": False,
+                "qr_svg": qr_svg,
+                "secret": secret,
+                "error": "Invalid code. Please try again.",
+            },
             status_code=400,
         )
 

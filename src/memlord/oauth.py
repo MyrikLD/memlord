@@ -411,7 +411,9 @@ class MemlordOAuthProvider(OAuthProvider):
             secret = await UserDao(s).get_totp_secret(user_id)
 
         if secret is None or not pyotp.TOTP(secret).verify(code, valid_window=1):
-            logger.warning("login: wrong TOTP code user_id=%d client_id=%s", user_id, pending.client_id)
+            logger.warning(
+                "login: wrong TOTP code user_id=%d client_id=%s", user_id, pending.client_id
+            )
             return HTMLResponse(
                 _TOTP_HTML.format(
                     style=_CARD_STYLE,

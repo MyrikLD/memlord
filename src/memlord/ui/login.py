@@ -49,6 +49,7 @@ def _parse_totp_pending(token: str) -> int | None:
         return None
     return user_id
 
+
 router = APIRouter()
 
 
