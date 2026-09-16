@@ -6,6 +6,7 @@ from contextlib import AbstractAsyncContextManager
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
+import pyotp
 import sqlalchemy as sa
 from fastmcp.server.auth import OAuthProvider
 from fastmcp.server.auth.auth import AccessToken
@@ -147,12 +148,44 @@ _REGISTER_HTML = """\
 </html>
 """
 
+_TOTP_HTML = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memlord — Two-factor authentication</title>
+  <style>{style}
+input[type=text] {{ letter-spacing: .2em; text-align: center; font-size: 1.25rem; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Two-factor authentication</h1>
+    <p class="hint">Enter the 6-digit code from your authenticator app.</p>
+    <form method="post">
+      <input type="hidden" name="id" value="{pending_id}">
+      <input type="hidden" name="action" value="totp">
+      <label for="code">Authentication code</label>
+      <input type="text" id="code" name="code" inputmode="numeric"
+             maxlength="6" autofocus required autocomplete="one-time-code"
+             placeholder="000000">
+      <button type="submit">Verify</button>
+      {error_block}
+    </form>
+    <p class="meta">Client: {client_id}</p>
+  </div>
+</body>
+</html>
+"""
+
 
 class _PendingAuth(BaseModel):
     client_id: str
     params: AuthorizationParams
     scopes: list[str]
     expires_at: float
+    authenticated_user_id: int | None = None
 
 
 class MemlordOAuthProvider(OAuthProvider):
@@ -277,6 +310,8 @@ class MemlordOAuthProvider(OAuthProvider):
 
         if action == "register":
             return await self._handle_register(form, pending_id, pending)
+        if action == "totp":
+            return await self._handle_totp(form, pending_id, pending)
         return await self._handle_login(form, pending_id, pending)
 
     async def _handle_login(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
@@ -309,6 +344,19 @@ class MemlordOAuthProvider(OAuthProvider):
                     error_block='<p class="error">Incorrect password.</p>',
                 ),
                 status_code=401,
+            )
+
+        if user.totp_enabled:
+            pending.authenticated_user_id = user.id
+            self._pending[pending_id] = pending
+            logger.info("login: TOTP required user_id=%d client_id=%s", user.id, pending.client_id)
+            return HTMLResponse(
+                _TOTP_HTML.format(
+                    style=_CARD_STYLE,
+                    pending_id=pending_id,
+                    client_id=pending.client_id,
+                    error_block="",
+                )
             )
 
         return await self._issue_code(pending_id, pending, user.id)
@@ -349,6 +397,32 @@ class MemlordOAuthProvider(OAuthProvider):
 
         logger.info("register: created user id=%d email=%s", user.id, email)
         return await self._issue_code(pending_id, pending, user.id)
+
+    async def _handle_totp(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
+        user_id = pending.authenticated_user_id
+        if user_id is None:
+            return HTMLResponse(
+                "<h3>Authorization request expired. Please try again.</h3>",
+                status_code=400,
+            )
+
+        code = str(form.get("code", "")).strip()
+        async with self.session() as s:
+            secret = await UserDao(s).get_totp_secret(user_id)
+
+        if secret is None or not pyotp.TOTP(secret).verify(code, valid_window=1):
+            logger.warning("login: wrong TOTP code user_id=%d client_id=%s", user_id, pending.client_id)
+            return HTMLResponse(
+                _TOTP_HTML.format(
+                    style=_CARD_STYLE,
+                    pending_id=pending_id,
+                    client_id=pending.client_id,
+                    error_block='<p class="error">Invalid code. Please try again.</p>',
+                ),
+                status_code=401,
+            )
+
+        return await self._issue_code(pending_id, pending, user_id)
 
     async def _issue_code(self, pending_id: str, pending: "_PendingAuth", user_id: int) -> Response:
         del self._pending[pending_id]

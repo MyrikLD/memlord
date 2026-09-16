@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Two-factor authentication – Memlord{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1 class="page-title">Two-factor authentication</h1>
+</div>
+
+{% if request.query_params.get('totp_enabled') %}
+<div class="alert alert-success">Two-factor authentication has been enabled.</div>
+{% endif %}
+{% if request.query_params.get('totp_disabled') %}
+<div class="alert alert-success">Two-factor authentication has been disabled.</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if totp_enabled %}
+<div class="detail-card" style="margin-bottom:1.25rem;">
+    <div class="section-title">Status</div>
+    <div class="alert alert-success" style="margin-bottom:1rem;">2FA is active on your account.</div>
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
+        To disable two-factor authentication, enter your current password below.
+    </p>
+    <form method="post" action="/ui/account/2fa/disable">
+        <div class="form-group">
+            <label class="form-label" for="current_password">Current password</label>
+            <input class="form-input" id="current_password" name="current_password"
+                   type="password" autocomplete="current-password" required>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">Disable 2FA</button>
+            <a href="/ui/account" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="detail-card" style="margin-bottom:1.25rem;">
+    <div class="section-title">Enable 2FA</div>
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1.25rem;">
+        Scan the QR code with Apple Passwords, Google Authenticator, Authy, or any
+        TOTP-compatible app. Then enter the 6-digit code to confirm.
+    </p>
+
+    {% if qr_svg %}
+    <div style="display:flex;justify-content:center;margin-bottom:1.25rem;">
+        <img src="{{ qr_svg }}" alt="QR code"
+             style="width:200px;height:200px;background:#fff;border-radius:10px;padding:.5rem;">
+    </div>
+    {% endif %}
+
+    {% if secret %}
+    <div style="margin-bottom:1.25rem;">
+        <p style="font-size:.8125rem;color:var(--text-3);margin-bottom:.375rem;">
+            Or enter this key manually:
+        </p>
+        <code style="display:block;background:var(--surface-2);border:1px solid var(--border);
+                     border-radius:6px;padding:.5rem .75rem;font-size:.8125rem;
+                     letter-spacing:.05em;word-break:break-all;">{{ secret }}</code>
+    </div>
+    {% endif %}
+
+    <form method="post" action="/ui/account/2fa/enable">
+        <input type="hidden" name="secret" value="{{ secret }}">
+        <div class="form-group">
+            <label class="form-label" for="code">Verification code</label>
+            <input class="form-input" id="code" name="code" type="text"
+                   inputmode="numeric" maxlength="6" required autocomplete="one-time-code"
+                   placeholder="000000"
+                   style="letter-spacing:.2em;text-align:center;font-size:1.125rem;">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Enable 2FA</button>
+            <a href="/ui/account" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+{% endblock %}
