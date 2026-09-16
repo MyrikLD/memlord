@@ -22,6 +22,8 @@ dependencies = [
     "email-validator>=2.3.0",
     "bcrypt>=5.0.0",
     "aiosmtplib>=5.1.0",
+    "pyotp>=2.9.0",
+    "qrcode[svg]>=8.0",
 ]
 
 [project.scripts]

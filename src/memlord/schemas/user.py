@@ -6,3 +6,4 @@ class UserInfo(Schema):
     display_name: str
     email: str = ""
     email_verified: bool = False
+    totp_enabled: bool = False

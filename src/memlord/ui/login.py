@@ -1,3 +1,8 @@
+import hashlib
+import hmac
+import time
+
+import pyotp
 from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import EmailStr
@@ -11,6 +16,39 @@ from memlord.models.email_token import TokenPurpose
 from memlord.utils.mail_send import send_email
 
 from .utils import APIUserDep, make_session_token, templates
+
+TOTP_PENDING_TTL = 300  # 5 minutes
+
+
+def _make_totp_pending(user_id: int) -> str:
+    ts = int(time.time())
+    body = f"{user_id}:{ts}"
+    key = f"{settings.oauth_jwt_secret}:totp-pending"
+    sig = hmac.new(key.encode(), body.encode(), hashlib.sha256).hexdigest()
+    return f"{body}:{sig}"
+
+
+def _parse_totp_pending(token: str) -> int | None:
+    idx = token.rfind(":")
+    if idx < 0:
+        return None
+    body, sig = token[:idx], token[idx + 1 :]
+    key = f"{settings.oauth_jwt_secret}:totp-pending"
+    expected = hmac.new(key.encode(), body.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return None
+    parts = body.split(":", 1)
+    if len(parts) != 2:
+        return None
+    try:
+        user_id = int(parts[0])
+        ts = int(parts[1])
+    except ValueError:
+        return None
+    if time.time() - ts > TOTP_PENDING_TTL:
+        return None
+    return user_id
+
 
 router = APIRouter()
 
@@ -52,8 +90,50 @@ async def login_post(
             status_code=401,
         )
 
+    if user.totp_enabled:
+        return templates.TemplateResponse(
+            request, "totp.html", {"token": _make_totp_pending(user.id), "next": next}
+        )
+
     response = RedirectResponse(_safe_redirect(next), status_code=303)
     _set_session(response, user.id)
+    return response
+
+
+@router.get("/totp", response_class=HTMLResponse)
+async def totp_get(request: Request, next: str = "/", token: str = "") -> HTMLResponse:
+    return templates.TemplateResponse(request, "totp.html", {"next": next, "token": token})
+
+
+@router.post("/totp")
+async def totp_post(
+    request: Request,
+    s: APISessionDep,
+    code: str = Form(),
+    next: str = Form(default="/"),
+    token: str = Form(default=""),
+) -> Response:
+    user_id = _parse_totp_pending(token)
+
+    if user_id is None:
+        return templates.TemplateResponse(
+            request,
+            "totp.html",
+            {"next": next, "token": token, "error": "Session expired. Please sign in again."},
+            status_code=401,
+        )
+
+    secret = await UserDao(s).get_totp_secret(user_id)
+    if secret is None or not pyotp.TOTP(secret).verify(code, valid_window=1):
+        return templates.TemplateResponse(
+            request,
+            "totp.html",
+            {"next": next, "token": token, "error": "Invalid code. Please try again."},
+            status_code=401,
+        )
+
+    response = RedirectResponse(_safe_redirect(next), status_code=303)
+    _set_session(response, user_id)
     return response
 
 

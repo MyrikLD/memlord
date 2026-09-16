@@ -21,6 +21,7 @@ class UserDao:
                         User.email,
                         User.email_verified,
                         User.hashed_password,
+                        User.totp_secret,
                     ).where(User.email == email.strip().lower())
                 )
             )
@@ -34,6 +35,7 @@ class UserDao:
             display_name=row["display_name"],
             email=row["email"],
             email_verified=row["email_verified"],
+            totp_enabled=bool(row["totp_secret"]),
         )
 
     async def exists_by_email(self, email: str) -> bool:
@@ -49,6 +51,7 @@ class UserDao:
                         User.display_name,
                         User.email,
                         User.email_verified,
+                        User.totp_secret,
                     ).where(User.id == id)
                 )
             )
@@ -62,10 +65,8 @@ class UserDao:
             display_name=row["display_name"],
             email=row["email"],
             email_verified=row["email_verified"],
+            totp_enabled=bool(row["totp_secret"]),
         )
-
-    async def get_email_by_id(self, id: int) -> str | None:
-        return await self._s.scalar(select(User.email).where(User.id == id))
 
     async def get_id_by_email(self, email: str) -> int | None:
         return await self._s.scalar(select(User.id).where(User.email == email.strip().lower()))
@@ -82,6 +83,12 @@ class UserDao:
         await self._s.execute(
             update(User).where(User.id == user_id).values(display_name=display_name.strip())
         )
+
+    async def get_totp_secret(self, user_id: int) -> str | None:
+        return await self._s.scalar(select(User.totp_secret).where(User.id == user_id))
+
+    async def set_totp_secret(self, user_id: int, secret: str | None) -> None:
+        await self._s.execute(update(User).where(User.id == user_id).values(totp_secret=secret))
 
     async def delete_account(self, user_id: int) -> None:
         await self._s.execute(delete(User).where(User.id == user_id))

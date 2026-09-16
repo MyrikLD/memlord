@@ -1,3 +1,8 @@
+import base64
+
+import pyotp
+import qrcode
+import qrcode.image.svg
 from fastapi import APIRouter, Form, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
@@ -77,6 +82,87 @@ async def change_password(
 
     await UserDao(s).set_password(user.id, hash_password(new_password))
     return RedirectResponse("/ui/account?pw_updated=1", status_code=303)
+
+
+@router.get("/2fa", response_class=HTMLResponse)
+async def totp_setup_get(request: Request, user: APIUserDep) -> Response:
+    if user.totp_enabled:
+        return templates.TemplateResponse(
+            request, "totp_setup.html", {"user": user, "totp_enabled": True}
+        )
+
+    secret = pyotp.random_base32()
+    email = user.email or user.display_name
+    uri = pyotp.TOTP(secret).provisioning_uri(email, issuer_name="Memlord")
+    qr_svg = (
+        "data:image/svg+xml;base64,"
+        + base64.b64encode(
+            qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage).to_string()
+        ).decode()
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "totp_setup.html",
+        {"user": user, "totp_enabled": False, "qr_svg": qr_svg, "secret": secret},
+    )
+
+
+@router.post("/2fa/enable")
+async def totp_enable(
+    request: Request,
+    s: APISessionDep,
+    user: APIUserDep,
+    code: str = Form(),
+    secret: str = Form(default=""),
+) -> Response:
+    if not secret:
+        return RedirectResponse("/ui/account/2fa", status_code=303)
+
+    if not pyotp.TOTP(secret).verify(code, valid_window=1):
+        email = user.email or user.display_name
+        uri = pyotp.TOTP(secret).provisioning_uri(email, issuer_name="Memlord")
+        qr_svg = (
+            "data:image/svg+xml;base64,"
+            + base64.b64encode(
+                qrcode.make(uri, image_factory=qrcode.image.svg.SvgImage).to_string()
+            ).decode()
+        )
+        return templates.TemplateResponse(
+            request,
+            "totp_setup.html",
+            {
+                "user": user,
+                "totp_enabled": False,
+                "qr_svg": qr_svg,
+                "secret": secret,
+                "error": "Invalid code. Please try again.",
+            },
+            status_code=400,
+        )
+
+    await UserDao(s).set_totp_secret(user.id, secret)
+    return RedirectResponse("/ui/account/2fa?totp_enabled=1", status_code=303)
+
+
+@router.post("/2fa/disable")
+async def totp_disable(
+    request: Request,
+    s: APISessionDep,
+    user: APIUserDep,
+    current_password: str = Form(),
+) -> Response:
+    auth = await UserDao(s).authenticate(user.email, current_password)
+    if auth is None:
+        return templates.TemplateResponse(
+            request,
+            "totp_setup.html",
+            {"user": user, "totp_enabled": True, "error": "Incorrect password."},
+            status_code=400,
+        )
+
+    await UserDao(s).set_totp_secret(user.id, None)
+    return RedirectResponse("/ui/account/2fa?totp_disabled=1", status_code=303)
 
 
 @router.post("/delete")

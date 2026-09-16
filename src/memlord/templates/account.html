@@ -69,6 +69,20 @@
     </form>
 </div>
 
+<!-- Two-factor authentication -->
+<div class="detail-card" style="margin-bottom:1.25rem;">
+    <div class="section-title">Two-factor authentication</div>
+    {% if user.totp_enabled %}
+    <div class="alert alert-success" style="margin-bottom:1rem;">2FA is active on your account.</div>
+    <a href="/ui/account/2fa" class="btn btn-ghost">Manage 2FA</a>
+    {% else %}
+    <p style="font-size:.875rem;color:var(--text-3);margin-bottom:1rem;">
+        Add an extra layer of security with a time-based one-time password.
+    </p>
+    <a href="/ui/account/2fa" class="btn btn-primary">Enable 2FA</a>
+    {% endif %}
+</div>
+
 <!-- API keys -->
 <div class="detail-card" style="margin-bottom:1.25rem;" x-data="apiKeysCard()">
     <div class="section-title">API keys</div>
