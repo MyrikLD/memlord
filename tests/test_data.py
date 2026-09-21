@@ -30,6 +30,7 @@ async def test_export_import(api_client, workspace_id):
     resp = await api_client.get(f"/api/workspaces/{workspace_id}/export")
     assert resp.status_code == 200
     data = resp.json()
-    for i in data:
+    for i in data["memories"]:
         del i["created_at"]
-    assert items == data
+    assert items == data["memories"]
+    assert data["tag_aliases"] == []

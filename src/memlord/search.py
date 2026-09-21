@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from memlord.config import settings
 from memlord.embeddings import embed
-from memlord.filters import not_expired
-from memlord.models import Memory, MemoryTag, Tag
+from memlord.filters import has_tag, not_expired
+from memlord.models import Memory
 from memlord.models.workspace import Workspace
 from memlord.schemas import MemoryType, SearchResult
 
@@ -42,15 +42,7 @@ async def hybrid_search(
     ts_rank_expr = func.ts_rank(Memory.search_vector, tsquery)
     bm25_rank = func.row_number().over(order_by=ts_rank_expr.desc()).label("bm25_rank")
 
-    tag_match = (
-        select(MemoryTag.memory_id)
-        .join(Tag, MemoryTag.tag_id == Tag.id)
-        .where(
-            MemoryTag.memory_id == Memory.id,
-            func.to_tsvector("simple", Tag.name).op("@@")(tsquery),
-        )
-        .exists()
-    )
+    tag_match = has_tag(lambda t: func.to_tsvector("simple", t.name).op("@@")(tsquery))
 
     bm25_q = (
         select(

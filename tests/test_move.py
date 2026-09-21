@@ -1,9 +1,11 @@
 import pytest
+from sqlalchemy import select
 
 from memlord.auth import hash_password
 from memlord.dao import MemoryDao
 from memlord.dao.user import UserDao
 from memlord.dao.workspace import WorkspaceDao
+from memlord.models import MemoryTag, Tag
 from memlord.schemas import MemoryType
 
 
@@ -65,3 +67,29 @@ async def test_move_duplicate_content_raises(
     )
     with pytest.raises(ValueError, match="already exists"):
         await dao.move(memory_id, workspace_id, other_workspace_id)
+
+
+async def test_move_reattaches_tags_in_target_workspace(
+    session, user_id, workspace_id, other_workspace_id, memory_id
+):
+    dao = MemoryDao(session, user_id)
+    await dao.move(memory_id, workspace_id, other_workspace_id)
+
+    mem = await dao.get(id=memory_id, workspace_id=other_workspace_id)
+    assert mem is not None
+    assert mem.tags == {"x"}
+
+    rows = (
+        (
+            await session.execute(
+                select(Tag.workspace_id)
+                .join(MemoryTag, MemoryTag.tag_id == Tag.id)
+                .where(MemoryTag.memory_id == memory_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert rows == [other_workspace_id]
+    # The source workspace no longer holds the now-orphaned tag.
+    assert await session.scalar(select(Tag.id).where(Tag.workspace_id == workspace_id)) is None
