@@ -4,20 +4,26 @@
 <h1>Create account</h1>
 <p class="hint">No account found for <strong>{{ email }}</strong>. Create one to continue.</p>
 <form method="post">
-  <input type="hidden" name="id" value="{{ pending_id }}">
-  <input type="hidden" name="action" value="register">
-  <input type="hidden" name="email" value="{{ email }}">
-  <label for="display_name">Display name</label>
-  <input type="text" id="display_name" name="display_name" autofocus required
-         autocomplete="name">
-  <label for="pw">Password</label>
-  <input type="password" id="pw" name="password" required
-         autocomplete="new-password">
-  <label for="pw2">Confirm password</label>
-  <input type="password" id="pw2" name="password2" required
-         autocomplete="new-password">
-  <button type="submit">Create account</button>
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <input type="hidden" name="id" value="{{ pending_id }}">
+    <input type="hidden" name="action" value="register">
+    <input type="hidden" name="email" value="{{ email }}">
+    <div class="form-group">
+        <label for="display_name">Display name</label>
+        <input type="text" id="display_name" name="display_name" autofocus required
+               autocomplete="name">
+    </div>
+    <div class="form-group">
+        <label for="pw">Password</label>
+        <input type="password" id="pw" name="password" required
+               autocomplete="new-password">
+    </div>
+    <div class="form-group">
+        <label for="pw2">Confirm password</label>
+        <input type="password" id="pw2" name="password2" required
+               autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn-submit">Create account</button>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
 </form>
 <p class="meta">Client: {{ client_id }}</p>
 {% endblock %}
