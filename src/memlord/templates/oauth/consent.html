@@ -1,0 +1,29 @@
+{% extends "oauth/base.html" %}
+{% block title %}Authorize access{% endblock %}
+{% block style %}
+.app { font-weight: 600; word-break: break-word; }
+.host { margin: 0.75rem 0 1rem; padding: 0.625rem 0.75rem; background: #f9fafb;
+        border: 1px solid #e5e7eb; border-radius: 6px;
+        font-family: ui-monospace, monospace; font-size: 0.875rem; word-break: break-all; }
+.actions { display: flex; gap: 0.5rem; }
+.deny { background: #fff; color: #111; border: 1px solid #d1d5db; }
+.deny:hover { background: #f3f4f6; }
+{% endblock %}
+{% block content %}
+<h1>Authorize access</h1>
+<p class="hint"><span class="app">{{ client_name }}</span> wants to read and write
+  your Memlord memories.</p>
+<label>After approval you will be redirected to</label>
+<div class="host">{{ redirect_host }}</div>
+<p class="hint">Only allow this if you started the connection yourself
+  and trust this address.</p>
+<form method="post">
+  <input type="hidden" name="id" value="{{ pending_id }}">
+  <input type="hidden" name="action" value="consent">
+  <div class="actions">
+    <button type="submit" name="decision" value="deny" class="deny">Deny</button>
+    <button type="submit" name="decision" value="allow">Allow</button>
+  </div>
+</form>
+<p class="meta">Signed in as {{ email }} · Client: {{ client_id }}</p>
+{% endblock %}

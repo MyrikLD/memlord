@@ -193,3 +193,12 @@ async def test_consent_requires_full_login(provider, pending_id, user_id):
 
     assert resp.status_code == 400
     assert provider._auth_codes == {}
+
+
+async def test_login_page_escapes_email(provider, pending_id):
+    form = {"email": '"><script>alert(1)</script>', "password": "x"}
+    resp = await provider._handle_login(form, pending_id, provider._pending[pending_id])
+
+    body = bytes(resp.body).decode()
+    assert "<script>" not in body
+    assert "&lt;script&gt;" in body

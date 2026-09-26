@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memlord — {% block title %}{% endblock %}</title>
+  <style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #111;
+       display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+        padding: 2rem; width: 100%; max-width: 380px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #111; }
+label { display: block; font-size: 0.875rem; color: #555; margin-bottom: 0.375rem; }
+input[type=email], input[type=password], input[type=text] {
+    width: 100%; padding: 0.625rem 0.75rem;
+    border: 1px solid #d1d5db; border-radius: 6px; color: #111;
+    font-size: 0.875rem; outline: none; margin-bottom: 1rem; }
+input:focus { border-color: #6366f1; }
+button { width: 100%; margin-top: 0.25rem; padding: 0.625rem;
+         background: #6366f1; border: none; border-radius: 6px;
+         color: #fff; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+button:hover { background: #4f46e5; }
+.error { margin-top: 1rem; padding: 0.5rem 0.75rem; background: #fef2f2;
+         border: 1px solid #f87171; border-radius: 6px;
+         color: #dc2626; font-size: 0.8125rem; }
+.meta { margin-top: 1rem; font-size: 0.75rem; color: #9ca3af; }
+.hint { margin-bottom: 1rem; font-size: 0.8125rem; color: #6b7280; }
+{% block style %}{% endblock %}
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

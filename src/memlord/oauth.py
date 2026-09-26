@@ -1,4 +1,3 @@
-import html
 import logging
 import secrets
 import time
@@ -37,6 +36,7 @@ from memlord.dao.api_key import ApiKeyDao
 from memlord.dao.user import UserDao
 from memlord.models.oauth_client import OAuthClient
 from memlord.models.revoked_token import RevokedToken
+from memlord.ui.utils import templates
 from memlord.utils.inject_client_id import InjectClientIdMiddleware
 
 logger = logging.getLogger(__name__)
@@ -59,173 +59,18 @@ REFRESH_TOKEN_TTL = 30 * 24 * 3600  # 30 days
 AUTH_CODE_TTL = 300  # 5 minutes
 PENDING_TTL = 600  # 10 minutes to complete login
 
-_CARD_STYLE = """\
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #111;
-       display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
-        padding: 2rem; width: 100%; max-width: 380px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; color: #111; }
-label { display: block; font-size: 0.875rem; color: #555; margin-bottom: 0.375rem; }
-input[type=email], input[type=password], input[type=text] {
-    width: 100%; padding: 0.625rem 0.75rem;
-    border: 1px solid #d1d5db; border-radius: 6px; color: #111;
-    font-size: 0.875rem; outline: none; margin-bottom: 1rem; }
-input:focus { border-color: #6366f1; }
-button { width: 100%; margin-top: 0.25rem; padding: 0.625rem;
-         background: #6366f1; border: none; border-radius: 6px;
-         color: #fff; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
-button:hover { background: #4f46e5; }
-.error { margin-top: 1rem; padding: 0.5rem 0.75rem; background: #fef2f2;
-         border: 1px solid #f87171; border-radius: 6px;
-         color: #dc2626; font-size: 0.8125rem; }
-.meta { margin-top: 1rem; font-size: 0.75rem; color: #9ca3af; }
-.hint { margin-bottom: 1rem; font-size: 0.8125rem; color: #6b7280; }
-"""
-
-_LOGIN_HTML = """\
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Memlord — Sign in</title>
-  <style>{style}</style>
-</head>
-<body>
-  <div class="card">
-    <h1>Memlord</h1>
-    <form method="post">
-      <input type="hidden" name="id" value="{pending_id}">
-      <input type="hidden" name="action" value="login">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" autofocus required
-             autocomplete="email" value="{email}">
-      <label for="pw">Password</label>
-      <input type="password" id="pw" name="password" required
-             autocomplete="current-password">
-      <button type="submit">Sign in</button>
-      {error_block}
-    </form>
-    <p class="meta">Client: {client_id}</p>
-  </div>
-</body>
-</html>
-"""
-
-_REGISTER_HTML = """\
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Memlord — Create account</title>
-  <style>{style}</style>
-</head>
-<body>
-  <div class="card">
-    <h1>Create account</h1>
-    <p class="hint">No account found for <strong>{email}</strong>. Create one to continue.</p>
-    <form method="post">
-      <input type="hidden" name="id" value="{pending_id}">
-      <input type="hidden" name="action" value="register">
-      <input type="hidden" name="email" value="{email}">
-      <label for="display_name">Display name</label>
-      <input type="text" id="display_name" name="display_name" autofocus required
-             autocomplete="name">
-      <label for="pw">Password</label>
-      <input type="password" id="pw" name="password" required
-             autocomplete="new-password">
-      <label for="pw2">Confirm password</label>
-      <input type="password" id="pw2" name="password2" required
-             autocomplete="new-password">
-      <button type="submit">Create account</button>
-      {error_block}
-    </form>
-    <p class="meta">Client: {client_id}</p>
-  </div>
-</body>
-</html>
-"""
-
-_TOTP_HTML = """\
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Memlord — Two-factor authentication</title>
-  <style>{style}
-input[type=text] {{ letter-spacing: .2em; text-align: center; font-size: 1.25rem; }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Two-factor authentication</h1>
-    <p class="hint">Enter the 6-digit code from your authenticator app.</p>
-    <form method="post">
-      <input type="hidden" name="id" value="{pending_id}">
-      <input type="hidden" name="action" value="totp">
-      <label for="code">Authentication code</label>
-      <input type="text" id="code" name="code" inputmode="numeric"
-             maxlength="6" autofocus required autocomplete="one-time-code"
-             placeholder="000000">
-      <button type="submit">Verify</button>
-      {error_block}
-    </form>
-    <p class="meta">Client: {client_id}</p>
-  </div>
-</body>
-</html>
-"""
-
-
-_CONSENT_HTML = """\
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Memlord — Authorize access</title>
-  <style>{style}
-.app {{ font-weight: 600; word-break: break-word; }}
-.host {{ margin: 0.75rem 0 1rem; padding: 0.625rem 0.75rem; background: #f9fafb;
-         border: 1px solid #e5e7eb; border-radius: 6px;
-         font-family: ui-monospace, monospace; font-size: 0.875rem; word-break: break-all; }}
-.actions {{ display: flex; gap: 0.5rem; }}
-.deny {{ background: #fff; color: #111; border: 1px solid #d1d5db; }}
-.deny:hover {{ background: #f3f4f6; }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Authorize access</h1>
-    <p class="hint"><span class="app">{client_name}</span> wants to read and write
-      your Memlord memories.</p>
-    <label>After approval you will be redirected to</label>
-    <div class="host">{redirect_host}</div>
-    <p class="hint">Only allow this if you started the connection yourself
-      and trust this address.</p>
-    <form method="post">
-      <input type="hidden" name="id" value="{pending_id}">
-      <input type="hidden" name="action" value="consent">
-      <div class="actions">
-        <button type="submit" name="decision" value="deny" class="deny">Deny</button>
-        <button type="submit" name="decision" value="allow">Allow</button>
-      </div>
-    </form>
-    <p class="meta">Signed in as {email} · Client: {client_id}</p>
-  </div>
-</body>
-</html>
-"""
-
 # Consent page must not be framed, otherwise the Allow button can be clickjacked.
 _NO_FRAME_HEADERS = {
     "X-Frame-Options": "DENY",
     "Content-Security-Policy": "frame-ancestors 'none'",
 }
+
+
+def _render(
+    name: str, status_code: int = 200, headers: dict[str, str] | None = None, **context
+) -> HTMLResponse:
+    html = templates.get_template(name).render(**context)
+    return HTMLResponse(html, status_code=status_code, headers=headers)
 
 
 class _PendingAuth(BaseModel):
@@ -331,19 +176,8 @@ class MemlordOAuthProvider(OAuthProvider):
         pending = self._pending.get(pending_id)
         if not pending or pending.expires_at < time.time():
             logger.warning("login GET: invalid/expired pending_id=%s...", pending_id[:8])
-            return HTMLResponse(
-                "<h3>Authorization request expired. Please try again.</h3>",
-                status_code=400,
-            )
-        return HTMLResponse(
-            _LOGIN_HTML.format(
-                style=_CARD_STYLE,
-                pending_id=pending_id,
-                client_id=pending.client_id,
-                email="",
-                error_block="",
-            )
-        )
+            return _render("oauth/expired.html", status_code=400)
+        return _render("oauth/login.html", pending_id=pending_id, client_id=pending.client_id)
 
     async def _login_post(self, request: Request) -> Response:
         form = await request.form()
@@ -354,10 +188,7 @@ class MemlordOAuthProvider(OAuthProvider):
         if not pending or pending.expires_at < time.time():
             self._pending.pop(pending_id, None)
             logger.warning("login POST: invalid/expired pending_id=%s...", pending_id[:8])
-            return HTMLResponse(
-                "<h3>Authorization request expired. Please try again.</h3>",
-                status_code=400,
-            )
+            return _render("oauth/expired.html", status_code=400)
 
         if action == "register":
             return await self._handle_register(form, pending_id, pending)
@@ -375,42 +206,30 @@ class MemlordOAuthProvider(OAuthProvider):
             exists = await UserDao(s).exists_by_email(email)
             if not exists:
                 logger.info("login: email not found, showing register form email=%s", email)
-                return HTMLResponse(
-                    _REGISTER_HTML.format(
-                        style=_CARD_STYLE,
-                        pending_id=pending_id,
-                        client_id=pending.client_id,
-                        email=html.escape(email),
-                        error_block="",
-                    )
+                return _render(
+                    "oauth/register.html",
+                    pending_id=pending_id,
+                    client_id=pending.client_id,
+                    email=email,
                 )
             user = await UserDao(s).authenticate(email, password)
 
         if user is None:
             logger.warning("login: wrong password email=%s client_id=%s", email, pending.client_id)
-            return HTMLResponse(
-                _LOGIN_HTML.format(
-                    style=_CARD_STYLE,
-                    pending_id=pending_id,
-                    client_id=pending.client_id,
-                    email=html.escape(email),
-                    error_block='<p class="error">Incorrect password.</p>',
-                ),
+            return _render(
+                "oauth/login.html",
                 status_code=401,
+                pending_id=pending_id,
+                client_id=pending.client_id,
+                email=email,
+                error="Incorrect password.",
             )
 
         if user.totp_enabled:
             pending.authenticated_user_id = user.id
             pending.email = email
             logger.info("login: TOTP required user_id=%d client_id=%s", user.id, pending.client_id)
-            return HTMLResponse(
-                _TOTP_HTML.format(
-                    style=_CARD_STYLE,
-                    pending_id=pending_id,
-                    client_id=pending.client_id,
-                    error_block="",
-                )
-            )
+            return _render("oauth/totp.html", pending_id=pending_id, client_id=pending.client_id)
 
         pending.email = email
         return await self._show_consent(pending_id, pending, user.id)
@@ -422,15 +241,13 @@ class MemlordOAuthProvider(OAuthProvider):
         password2 = str(form.get("password2", ""))
 
         def _reg_error(msg: str) -> Response:
-            return HTMLResponse(
-                _REGISTER_HTML.format(
-                    style=_CARD_STYLE,
-                    pending_id=pending_id,
-                    client_id=pending.client_id,
-                    email=html.escape(email),
-                    error_block=f'<p class="error">{msg}</p>',
-                ),
+            return _render(
+                "oauth/register.html",
                 status_code=400,
+                pending_id=pending_id,
+                client_id=pending.client_id,
+                email=email,
+                error=msg,
             )
 
         if not display_name:
@@ -456,10 +273,7 @@ class MemlordOAuthProvider(OAuthProvider):
     async def _handle_totp(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
         user_id = pending.authenticated_user_id
         if user_id is None:
-            return HTMLResponse(
-                "<h3>Authorization request expired. Please try again.</h3>",
-                status_code=400,
-            )
+            return _render("oauth/expired.html", status_code=400)
 
         code = str(form.get("code", "")).strip()
         async with self.session() as s:
@@ -469,14 +283,12 @@ class MemlordOAuthProvider(OAuthProvider):
             logger.warning(
                 "login: wrong TOTP code user_id=%d client_id=%s", user_id, pending.client_id
             )
-            return HTMLResponse(
-                _TOTP_HTML.format(
-                    style=_CARD_STYLE,
-                    pending_id=pending_id,
-                    client_id=pending.client_id,
-                    error_block='<p class="error">Invalid code. Please try again.</p>',
-                ),
+            return _render(
+                "oauth/totp.html",
                 status_code=401,
+                pending_id=pending_id,
+                client_id=pending.client_id,
+                error="Invalid code. Please try again.",
             )
 
         return await self._show_consent(pending_id, pending, user_id)
@@ -497,25 +309,20 @@ class MemlordOAuthProvider(OAuthProvider):
             pending.client_id,
             redirect_host,
         )
-        return HTMLResponse(
-            _CONSENT_HTML.format(
-                style=_CARD_STYLE,
-                pending_id=pending_id,
-                client_id=html.escape(pending.client_id),
-                client_name=html.escape(client_name),
-                redirect_host=html.escape(redirect_host),
-                email=html.escape(pending.email),
-            ),
+        return _render(
+            "oauth/consent.html",
             headers=_NO_FRAME_HEADERS,
+            pending_id=pending_id,
+            client_id=pending.client_id,
+            client_name=client_name,
+            redirect_host=redirect_host,
+            email=pending.email,
         )
 
     async def _handle_consent(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
         user_id = pending.consent_user_id
         if user_id is None:
-            return HTMLResponse(
-                "<h3>Authorization request expired. Please try again.</h3>",
-                status_code=400,
-            )
+            return _render("oauth/expired.html", status_code=400)
 
         if str(form.get("decision", "")) != "allow":
             del self._pending[pending_id]
