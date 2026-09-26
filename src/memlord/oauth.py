@@ -1,10 +1,11 @@
+import html
 import logging
 import secrets
 import time
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import pyotp
 import sqlalchemy as sa
@@ -180,12 +181,62 @@ input[type=text] {{ letter-spacing: .2em; text-align: center; font-size: 1.25rem
 """
 
 
+_CONSENT_HTML = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memlord — Authorize access</title>
+  <style>{style}
+.app {{ font-weight: 600; word-break: break-word; }}
+.host {{ margin: 0.75rem 0 1rem; padding: 0.625rem 0.75rem; background: #f9fafb;
+         border: 1px solid #e5e7eb; border-radius: 6px;
+         font-family: ui-monospace, monospace; font-size: 0.875rem; word-break: break-all; }}
+.actions {{ display: flex; gap: 0.5rem; }}
+.deny {{ background: #fff; color: #111; border: 1px solid #d1d5db; }}
+.deny:hover {{ background: #f3f4f6; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Authorize access</h1>
+    <p class="hint"><span class="app">{client_name}</span> wants to read and write
+      your Memlord memories.</p>
+    <label>After approval you will be redirected to</label>
+    <div class="host">{redirect_host}</div>
+    <p class="hint">Only allow this if you started the connection yourself
+      and trust this address.</p>
+    <form method="post">
+      <input type="hidden" name="id" value="{pending_id}">
+      <input type="hidden" name="action" value="consent">
+      <div class="actions">
+        <button type="submit" name="decision" value="deny" class="deny">Deny</button>
+        <button type="submit" name="decision" value="allow">Allow</button>
+      </div>
+    </form>
+    <p class="meta">Signed in as {email} · Client: {client_id}</p>
+  </div>
+</body>
+</html>
+"""
+
+# Consent page must not be framed, otherwise the Allow button can be clickjacked.
+_NO_FRAME_HEADERS = {
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+}
+
+
 class _PendingAuth(BaseModel):
     client_id: str
     params: AuthorizationParams
     scopes: list[str]
     expires_at: float
     authenticated_user_id: int | None = None
+    # Set only after every login step (password and TOTP) has passed.
+    consent_user_id: int | None = None
+    email: str = ""
 
 
 class MemlordOAuthProvider(OAuthProvider):
@@ -312,6 +363,8 @@ class MemlordOAuthProvider(OAuthProvider):
             return await self._handle_register(form, pending_id, pending)
         if action == "totp":
             return await self._handle_totp(form, pending_id, pending)
+        if action == "consent":
+            return await self._handle_consent(form, pending_id, pending)
         return await self._handle_login(form, pending_id, pending)
 
     async def _handle_login(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
@@ -327,7 +380,7 @@ class MemlordOAuthProvider(OAuthProvider):
                         style=_CARD_STYLE,
                         pending_id=pending_id,
                         client_id=pending.client_id,
-                        email=email,
+                        email=html.escape(email),
                         error_block="",
                     )
                 )
@@ -340,7 +393,7 @@ class MemlordOAuthProvider(OAuthProvider):
                     style=_CARD_STYLE,
                     pending_id=pending_id,
                     client_id=pending.client_id,
-                    email=email,
+                    email=html.escape(email),
                     error_block='<p class="error">Incorrect password.</p>',
                 ),
                 status_code=401,
@@ -348,7 +401,7 @@ class MemlordOAuthProvider(OAuthProvider):
 
         if user.totp_enabled:
             pending.authenticated_user_id = user.id
-            self._pending[pending_id] = pending
+            pending.email = email
             logger.info("login: TOTP required user_id=%d client_id=%s", user.id, pending.client_id)
             return HTMLResponse(
                 _TOTP_HTML.format(
@@ -359,7 +412,8 @@ class MemlordOAuthProvider(OAuthProvider):
                 )
             )
 
-        return await self._issue_code(pending_id, pending, user.id)
+        pending.email = email
+        return await self._show_consent(pending_id, pending, user.id)
 
     async def _handle_register(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
         email = str(form.get("email", "")).strip().lower()
@@ -373,7 +427,7 @@ class MemlordOAuthProvider(OAuthProvider):
                     style=_CARD_STYLE,
                     pending_id=pending_id,
                     client_id=pending.client_id,
-                    email=email,
+                    email=html.escape(email),
                     error_block=f'<p class="error">{msg}</p>',
                 ),
                 status_code=400,
@@ -396,7 +450,8 @@ class MemlordOAuthProvider(OAuthProvider):
             )
 
         logger.info("register: created user id=%d email=%s", user.id, email)
-        return await self._issue_code(pending_id, pending, user.id)
+        pending.email = email
+        return await self._show_consent(pending_id, pending, user.id)
 
     async def _handle_totp(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
         user_id = pending.authenticated_user_id
@@ -423,6 +478,55 @@ class MemlordOAuthProvider(OAuthProvider):
                 ),
                 status_code=401,
             )
+
+        return await self._show_consent(pending_id, pending, user_id)
+
+    async def _show_consent(
+        self, pending_id: str, pending: "_PendingAuth", user_id: int
+    ) -> Response:
+        pending.consent_user_id = user_id
+
+        client = await self.get_client(pending.client_id)
+        client_name = (client.client_name if client else None) or "Unknown application"
+        redirect_uri = str(pending.params.redirect_uri)
+        redirect_host = urlparse(redirect_uri).netloc or redirect_uri
+
+        logger.info(
+            "consent: asking user_id=%d client_id=%s redirect_host=%s",
+            user_id,
+            pending.client_id,
+            redirect_host,
+        )
+        return HTMLResponse(
+            _CONSENT_HTML.format(
+                style=_CARD_STYLE,
+                pending_id=pending_id,
+                client_id=html.escape(pending.client_id),
+                client_name=html.escape(client_name),
+                redirect_host=html.escape(redirect_host),
+                email=html.escape(pending.email),
+            ),
+            headers=_NO_FRAME_HEADERS,
+        )
+
+    async def _handle_consent(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
+        user_id = pending.consent_user_id
+        if user_id is None:
+            return HTMLResponse(
+                "<h3>Authorization request expired. Please try again.</h3>",
+                status_code=400,
+            )
+
+        if str(form.get("decision", "")) != "allow":
+            del self._pending[pending_id]
+            logger.info("consent: denied user_id=%d client_id=%s", user_id, pending.client_id)
+            redirect = construct_redirect_uri(
+                str(pending.params.redirect_uri),
+                error="access_denied",
+                error_description="User denied access",
+                state=pending.params.state,
+            )
+            return RedirectResponse(redirect, status_code=302)
 
         return await self._issue_code(pending_id, pending, user_id)
 
