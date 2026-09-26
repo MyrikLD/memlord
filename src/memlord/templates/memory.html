@@ -2,7 +2,7 @@
 {% block title %}Memlord — Memory{% endblock %}
 {% block content %}
 
-<div x-data="memoryPage({{ workspace_id }}, {{ memory_id }})" x-init="init()">
+<div x-data="memoryPage({{ workspace_id }}, {{ memory_id }})">
 
     <div class="breadcrumb">
         <a href="/" class="btn btn-ghost btn-sm">← All memories</a>
@@ -126,7 +126,7 @@ function memoryPage(workspaceId, memoryId) {
             this.editName = this.memory.name;
             this.editContent = this.memory.content;
             this.editType = this.memory.memory_type || 'fact';
-            this.editTags = this.memory.tags.join(', ');
+            this.editTags = this.memory.original_tags.join(', ');
             this.editMetadata = this.memory.metadata ? JSON.stringify(this.memory.metadata, null, 2) : '';
             this.editExpires = isoToLocalInput(this.memory.expires_at);
             if (this.memory.writable_workspaces.length > 0) {
@@ -151,7 +151,7 @@ function memoryPage(workspaceId, memoryId) {
             });
             if (r.ok) {
                 this.memory = await r.json();
-                this.editTags = this.memory.tags.join(', ');
+                this.editTags = this.memory.original_tags.join(', ');
                 this.editExpires = isoToLocalInput(this.memory.expires_at);
                 this.successMsg = 'Saved.';
                 this.errorMsg = '';

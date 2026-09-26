@@ -6,6 +6,7 @@ from memlord.utils.dt import utcnow
 
 from ..base import Schema
 from ..memory_type import MemoryType
+from ..tag import TagAlias
 
 
 class ImportItem(Schema):
@@ -24,6 +25,14 @@ class ImportItem(Schema):
         return data
 
 
+class ExportFile(Schema):
+    """Workspace export: memories plus the alias edges of its tag dictionary."""
+
+    memories: list[ImportItem]
+    tag_aliases: list[TagAlias] = Field(default_factory=list)
+
+
 class ImportResult(Schema):
     imported: int
     skipped: int
+    aliases_applied: int = 0

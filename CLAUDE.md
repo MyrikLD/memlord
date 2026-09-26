@@ -73,6 +73,8 @@ src/memlord/
 ├── db.py              # async SQLAlchemy engine (asyncpg)
 ├── embeddings.py      # ONNX session, tokenize, mean pool, L2 norm
 ├── search.py          # BM25 + vector KNN + RRF fusion (PostgreSQL Core queries)
+├── tags.py            # tag name normalization (NFKC, casefold, whitespace)
+├── filters.py         # reusable SQL conditions: not_expired, has_tag (alias-group aware)
 ├── oauth.py           # custom OAuthProvider (fastmcp.server.auth)
 ├── main.py            # FastAPI app + mount MCP + uvicorn entrypoint
 ├── models/            # table definitions (no relationships)
