@@ -146,6 +146,8 @@ async def logout() -> Response:
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_get(request: Request, next: str = "/") -> HTMLResponse:
+    if not settings.allow_registration:
+        return HTMLResponse("Registration is disabled.", status_code=403)
     return templates.TemplateResponse(request, "register.html", {"next": next})
 
 
@@ -159,6 +161,9 @@ async def register_post(
     password2: str = Form(min_length=6),
     next: str = Form(default="/"),
 ) -> Response:
+    if not settings.allow_registration:
+        return HTMLResponse("Registration is disabled.", status_code=403)
+
     def _err(msg: str) -> HTMLResponse:
         return templates.TemplateResponse(
             request,

@@ -32,6 +32,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route
 
 from memlord.auth import API_KEY_CLIENT_PREFIX, API_KEY_PREFIX, hash_password
+from memlord.config import settings
 from memlord.dao.api_key import ApiKeyDao
 from memlord.dao.user import UserDao
 from memlord.models.oauth_client import OAuthClient
@@ -235,6 +236,8 @@ class MemlordOAuthProvider(OAuthProvider):
         return await self._show_consent(pending_id, pending, user.id)
 
     async def _handle_register(self, form, pending_id: str, pending: "_PendingAuth") -> Response:
+        if not settings.allow_registration:
+            return Response("Registration is disabled.", status_code=403)
         email = str(form.get("email", "")).strip().lower()
         display_name = str(form.get("display_name", "")).strip()
         password = str(form.get("password", ""))

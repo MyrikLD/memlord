@@ -26,7 +26,8 @@ async def retrieve_memory(
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
-    """Hybrid semantic + full-text search. Returns names + metadata only.
+    """Hybrid semantic + full-text search. Returns names, metadata and a
+    ~160-char snippet around the first matched term.
 
     Use get_memory(name=...) to fetch full content of a specific result.
     Pass workspace=<name> to search only within a specific workspace.
@@ -64,6 +65,7 @@ async def retrieve_memory(
             metadata=meta_map.get(r.id, ({}, utcnow()))[0],
             created_at=meta_map.get(r.id, ({}, utcnow()))[1],
             rrf_score=r.rrf_score,
+            snippet=r.snippet,
             workspace=r.workspace,
         )
         for r in results

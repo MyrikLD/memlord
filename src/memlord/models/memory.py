@@ -28,7 +28,11 @@ class Memory(Base):
     embedding = sa.Column(Vector(384), nullable=True)
     search_vector = sa.Column(
         TSVECTOR,
-        sa.Computed("to_tsvector('simple', content)", persisted=True),
+        sa.Computed(
+            "setweight(to_tsvector('memlord'::regconfig, name), 'A') || "
+            "setweight(to_tsvector('memlord'::regconfig, content), 'B')",
+            persisted=True,
+        ),
         nullable=False,
     )
 

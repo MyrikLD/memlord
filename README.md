@@ -135,8 +135,17 @@ All settings use the `MEMLORD_` prefix. See [`.env.example`](.env.example) for t
 | `MEMLORD_PORT`             | `8000`                                                     | Server port                                       |
 | `MEMLORD_BASE_URL`         | `http://localhost:8000`                                    | Public URL for OAuth (HTTP mode)                  |
 | `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret (HTTP mode)                    |
+| `MEMLORD_ALLOW_REGISTRATION` | `true`                                                   | Allow self-registration (web UI and OAuth form)   |
 
 Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` before deploying.
+
+### Chinese full-text search (optional)
+
+Full-text search uses a `memlord` text search configuration created by the migrations.
+If the PostgreSQL server has the [zhparser](https://github.com/amutu/zhparser) extension
+available, it is used for Chinese word segmentation; otherwise the config falls back to
+`simple` (the default behaviour). No setting is required, just run the migrations on a
+zhparser-enabled PostgreSQL image.
 
 ---
 

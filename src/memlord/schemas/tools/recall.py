@@ -12,6 +12,7 @@ class RecallResult(Schema):
     tags: set[str]
     created_at: NaiveDatetime
     workspace: str | None = None
+    snippet: str | None = None
 
     @field_serializer("created_at")
     def serialize_created_at(self, v: datetime) -> str:

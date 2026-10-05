@@ -18,6 +18,7 @@ mcp = FastMCP()
 _COLS = (
     Memory.id,
     Memory.name,
+    Memory.content,
     Memory.memory_type,
     Memory.extra_data.label("metadata"),
     Memory.created_at,
@@ -40,7 +41,7 @@ async def list_memories(
 ) -> MemoryPage:
     """
     Browse all memories ordered by creation date (newest first).
-    Returns full content (not snippets). Use to enumerate or audit without a specific query.
+    Returns full content for each memory. Use to enumerate or audit without a specific query.
     """
     offset = (page - 1) * page_size
 

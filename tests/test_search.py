@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from memlord.dao import MemoryDao
 from memlord.models import Memory
 from memlord.schemas import MemoryType
-from memlord.search import hybrid_search
+from memlord.search import hybrid_search, make_snippet
 
 
 async def _store(s: AsyncSession, content: str, uid: int, workspace_id: int) -> int:
@@ -161,3 +161,31 @@ def test_dateparser_today_truncates_before_now():
     truncated = found[0][1].replace(hour=0, minute=0, second=0, microsecond=0)
     assert truncated <= datetime.now()
     assert truncated.hour == 0 and truncated.minute == 0 and truncated.second == 0
+
+
+def test_make_snippet_centres_on_match():
+    content = "x" * 300 + " needle " + "y" * 300
+    snippet = make_snippet(content, ["needle"], length=40)
+    assert "needle" in snippet
+    assert snippet.startswith("…") and snippet.endswith("…")
+    assert make_snippet("short text", ["missing"]) == "short text"
+
+
+async def test_title_match_ranks_first_and_has_snippet(session, user_id, workspace_id):
+    dao = MemoryDao(session, user_id)
+    target, _ = await dao.create(
+        content="Host 10.0.0.1, user deploy, region eu-west.",
+        memory_type=MemoryType.fact,
+        metadata={},
+        tags=[],
+        name="staging server",
+        workspace_id=workspace_id,
+        force=True,
+    )
+    await _store(session, "The staging environment mirrors production", user_id, workspace_id)
+
+    results = await hybrid_search(
+        session, "staging server", workspace_ids=[workspace_id], similarity_threshold=0.0
+    )
+    assert results[0].id == target
+    assert results[0].snippet

@@ -13,6 +13,7 @@ class MemoryResult(Schema):
     metadata: dict
     created_at: NaiveDatetime
     rrf_score: float
+    snippet: str | None = None
     workspace: str | None = None
 
     @field_serializer("created_at")

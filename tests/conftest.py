@@ -14,6 +14,7 @@ from memlord.config import settings
 from memlord.dao.user import UserDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep, session_dep
+from memlord.fts import ENSURE_TS_CONFIG_SQL
 from memlord.main import app
 from memlord.models import Base
 from memlord.server import mcp
@@ -37,6 +38,9 @@ def test_db_url(worker_id):
         engine = create_async_engine(url.set(database=test_db_name))
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            # Memory.search_vector uses the 'memlord' text search config, which a
+            # migration normally creates; create_all skips migrations.
+            await conn.execute(text(ENSURE_TS_CONFIG_SQL))
             await conn.run_sync(Base.metadata.create_all)
         await engine.dispose()
 

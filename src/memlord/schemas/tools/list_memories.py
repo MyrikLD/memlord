@@ -8,12 +8,13 @@ from ..pagination import Paginated
 
 
 class MemoryItem(Schema):
-    """Slim memory record returned by MCP list/search tools (no id, no content)."""
+    """Memory record returned by MCP list/search tools (no id). content is filled by list_memories."""
 
     model_config = ConfigDict(extra="ignore")
 
     name: str
     memory_type: MemoryType
+    content: str | None = None
     metadata: dict = Field(default_factory=dict)
     tags: set[str]
     created_at: NaiveDatetime

@@ -11,3 +11,4 @@ class SearchResult(Schema):
     vec_similarity: float | None
     workspace: str | None = None
     workspace_id: int | None = None
+    snippet: str | None = None

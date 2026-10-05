@@ -35,7 +35,7 @@ async def recall_memory(
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> RecallPage:
-    """Search memories by time expression + semantics. Returns names + metadata only.
+    """Search memories by time expression + semantics. Returns names, metadata and a short snippet.
 
     Examples: "last week", "yesterday", "about Python last month".
     Use get_memory(name=...) to fetch full content of a specific result.
@@ -97,6 +97,7 @@ async def recall_memory(
                 tags=tags_map.get(r.id, set()),
                 created_at=created_map[r.id],
                 workspace=r.workspace,
+                snippet=r.snippet,
             )
             for r in results
         ]
