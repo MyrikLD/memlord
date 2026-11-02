@@ -135,6 +135,7 @@ All settings use the `MEMLORD_` prefix. See [`.env.example`](.env.example) for t
 | `MEMLORD_PORT`             | `8000`                                                     | Server port                                       |
 | `MEMLORD_BASE_URL`         | `http://localhost:8000`                                    | Public URL for OAuth (HTTP mode)                  |
 | `MEMLORD_OAUTH_JWT_SECRET` | `memlord-dev-secret-please-change`                         | JWT signing secret (HTTP mode)                    |
+| `MEMLORD_ALLOW_REGISTRATION` | `true`                                                   | Set to `false` to close self-service sign-up      |
 
 Set `MEMLORD_BASE_URL` to your public URL and change `MEMLORD_OAUTH_JWT_SECRET` before deploying.
 
