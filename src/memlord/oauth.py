@@ -32,6 +32,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route
 
 from memlord.auth import API_KEY_CLIENT_PREFIX, API_KEY_PREFIX, hash_password
+from memlord.config import settings
 from memlord.dao.api_key import ApiKeyDao
 from memlord.dao.user import UserDao
 from memlord.models.oauth_client import OAuthClient
@@ -204,6 +205,16 @@ class MemlordOAuthProvider(OAuthProvider):
 
         async with self.session() as s:
             exists = await UserDao(s).exists_by_email(email)
+            if not exists and not settings.allow_registration:
+                logger.warning("login: unknown email, registration closed email=%s", email)
+                return _render(
+                    "oauth/login.html",
+                    status_code=401,
+                    pending_id=pending_id,
+                    client_id=pending.client_id,
+                    email=email,
+                    error="Incorrect email or password.",
+                )
             if not exists:
                 logger.info("login: email not found, showing register form email=%s", email)
                 return _render(
@@ -250,6 +261,9 @@ class MemlordOAuthProvider(OAuthProvider):
                 error=msg,
             )
 
+        if not settings.allow_registration:
+            logger.warning("register: attempt while registration closed email=%s", email)
+            return _render("oauth/expired.html", status_code=403)
         if not display_name:
             return _reg_error("Display name is required.")
         if not password:
