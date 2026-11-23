@@ -69,7 +69,7 @@
             {% if request.query_params.get('reset') %}<p style="margin-top:.875rem;padding:.625rem .875rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#16a34a;font-size:.8125rem;">Password updated — you can now sign in.</p>{% endif %}
         </form>
         {% if smtp_configured %}<p class="register-link" style="margin-top:.625rem;"><a href="/ui/forgot-password" style="color:#8b8fa8;font-size:.8125rem;">Forgot password?</a></p>{% endif %}
-        <p class="register-link">No account? <a href="/ui/register?next={{ next }}">Create one</a></p>
+        {% if allow_registration %}<p class="register-link">No account? <a href="/ui/register?next={{ next }}">Create one</a></p>{% endif %}
     </div>
 </div>
 </body>

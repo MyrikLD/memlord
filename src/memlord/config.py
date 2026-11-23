@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     sim_threshold: float = Field(0.25, ge=0.0, le=1.0)
     dedup_threshold: float = Field(0.85, ge=0.0, le=1.0)
     oauth_jwt_secret: str = "memlord-dev-secret-please-change"
+    # Set to false to close self-service sign-up (OAuth login flow and Web UI).
+    allow_registration: bool = True
 
     smtp_host: str | None = None
     smtp_port: int = 587
