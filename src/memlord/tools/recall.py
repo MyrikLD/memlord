@@ -21,7 +21,12 @@ mcp = FastMCP()
 
 @mcp.tool(
     output_schema=RecallPage.model_json_schema(),
-    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    ),
 )
 async def recall_memory(
     query: str = Field(

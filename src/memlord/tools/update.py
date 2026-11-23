@@ -18,7 +18,12 @@ mcp = FastMCP()
 
 @mcp.tool(
     output_schema=StoreResult.model_json_schema(),
-    annotations=ToolAnnotations(idempotentHint=False, destructiveHint=False),
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=True,
+        idempotentHint=True,
+        openWorldHint=False,
+    ),
 )
 async def update_memory(
     name: str,

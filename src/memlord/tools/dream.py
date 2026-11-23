@@ -14,7 +14,12 @@ mcp = FastMCP()
 
 @mcp.tool(
     output_schema=DreamReport.model_json_schema(),
-    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    ),
 )
 async def dream_report(
     workspace: str | None = Field(

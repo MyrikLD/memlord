@@ -13,7 +13,12 @@ mcp = FastMCP()
 
 @mcp.tool(
     output_schema=DeleteResult.model_json_schema(),
-    annotations=ToolAnnotations(destructiveHint=True, idempotentHint=False),
+    annotations=ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=True,
+        idempotentHint=True,
+        openWorldHint=False,
+    ),
 )
 async def delete_memory(
     name: str,

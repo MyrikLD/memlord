@@ -16,7 +16,14 @@ from memlord.utils.dt import utcnow
 mcp = FastMCP()
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 async def retrieve_memory(
     query: str = Field(..., description="Query string"),
     limit: int = Field(10, ge=1),
