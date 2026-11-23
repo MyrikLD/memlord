@@ -3,7 +3,7 @@ import hmac
 import time
 
 import pyotp
-from fastapi import APIRouter, Form, Request, Response
+from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import EmailStr
 
@@ -146,6 +146,8 @@ async def logout() -> Response:
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_get(request: Request, next: str = "/") -> HTMLResponse:
+    if not settings.allow_registration:
+        raise HTTPException(status_code=404)
     return templates.TemplateResponse(request, "register.html", {"next": next})
 
 
@@ -159,6 +161,9 @@ async def register_post(
     password2: str = Form(min_length=6),
     next: str = Form(default="/"),
 ) -> Response:
+    if not settings.allow_registration:
+        raise HTTPException(status_code=404)
+
     def _err(msg: str) -> HTMLResponse:
         return templates.TemplateResponse(
             request,

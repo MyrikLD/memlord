@@ -1,0 +1,30 @@
+{% extends "oauth/base.html" %}
+{% block title %}Authorize access{% endblock %}
+{% block style %}
+        .app { color: #e2e8f0; font-weight: 600; word-break: break-word; }
+        .host { margin-bottom: 1rem; padding: 0.625rem 0.75rem; background: #10101e;
+                border: 1px solid #1f1f38; border-radius: 6px; color: #a78bfa;
+                font-family: 'Menlo', 'Consolas', monospace; font-size: 0.875rem; word-break: break-all; }
+        .warn { font-size: 0.8125rem; color: #8b8fa8; margin-bottom: 1.25rem; }
+        .actions { display: flex; gap: 0.5rem; }
+        .btn-deny { background: transparent; border-color: #2a2a4a; color: #c4c9db; }
+        .btn-deny:hover { background: #1f1f38; border-color: #2a2a4a; }
+{% endblock %}
+{% block content %}
+<h1>Authorize access</h1>
+<p class="hint"><span class="app">{{ client_name }}</span> wants to read and write
+    your Memlord memories.</p>
+<label>After approval you will be redirected to</label>
+<div class="host">{{ redirect_host }}</div>
+<p class="warn">Only allow this if you started the connection yourself
+    and trust this address.</p>
+<form method="post">
+    <input type="hidden" name="id" value="{{ pending_id }}">
+    <input type="hidden" name="action" value="consent">
+    <div class="actions">
+        <button type="submit" name="decision" value="deny" class="btn-submit btn-deny">Deny</button>
+        <button type="submit" name="decision" value="allow" class="btn-submit">Allow</button>
+    </div>
+</form>
+<p class="meta">Signed in as {{ email }} · Client: {{ client_id }}</p>
+{% endblock %}

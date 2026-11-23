@@ -1,0 +1,23 @@
+{% extends "oauth/base.html" %}
+{% block title %}Two-factor authentication{% endblock %}
+{% block style %}
+        #code { font-size: 1.25rem; font-family: 'Menlo', 'Consolas', monospace;
+                letter-spacing: 0.2em; text-align: center; }
+{% endblock %}
+{% block content %}
+<h1>Two-factor authentication</h1>
+<p class="hint">Enter the 6-digit code from your authenticator app.</p>
+<form method="post">
+    <input type="hidden" name="id" value="{{ pending_id }}">
+    <input type="hidden" name="action" value="totp">
+    <div class="form-group">
+        <label for="code">Authentication code</label>
+        <input type="text" id="code" name="code" inputmode="numeric"
+               maxlength="6" autofocus required autocomplete="one-time-code"
+               placeholder="000000">
+    </div>
+    <button type="submit" class="btn-submit">Verify</button>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+</form>
+<p class="meta">Client: {{ client_id }}</p>
+{% endblock %}

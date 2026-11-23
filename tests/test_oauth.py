@@ -123,3 +123,82 @@ async def test_full_auth_pipeline_jwt_audience(provider, oauth_client, session):
     assert access_token is not None, "load_access_token must accept the issued token"
     assert "mcp" in access_token.scopes
     assert access_token.client_id == oauth_client.client_id
+
+
+@pytest.fixture
+async def pending_id(provider, oauth_client):
+    oauth_client.client_name = '<b>Evil</b> "App"'
+    await provider.register_client(oauth_client)
+    _, challenge = _pkce_pair()
+    params = AuthorizationParams(
+        state="st",
+        scopes=["mcp"],
+        code_challenge=challenge,
+        redirect_uri=AnyUrl("https://client.example.com/callback"),
+        redirect_uri_provided_explicitly=True,
+        resource=RESOURCE_URL,
+    )
+    login_url = await provider.authorize(oauth_client, params)
+    return login_url.split("id=")[1]
+
+
+async def _login(provider, pending_id: str):
+    form = {"email": "test@example.com", "password": "test-password"}
+    return await provider._handle_login(form, pending_id, provider._pending[pending_id])
+
+
+async def _consent(provider, pending_id: str, decision: str):
+    form = {"decision": decision}
+    return await provider._handle_consent(form, pending_id, provider._pending[pending_id])
+
+
+async def test_login_shows_consent_instead_of_code(provider, pending_id, user_id):
+    resp = await _login(provider, pending_id)
+
+    assert resp.status_code == 200
+    body = bytes(resp.body).decode()
+    assert "Authorize access" in body
+    assert "client.example.com" in body
+    assert "&lt;b&gt;Evil&lt;/b&gt;" in body
+    assert "<b>Evil</b>" not in body
+    assert resp.headers["x-frame-options"] == "DENY"
+    assert provider._auth_codes == {}
+
+
+async def test_consent_allow_issues_code(provider, pending_id, user_id):
+    await _login(provider, pending_id)
+    resp = await _consent(provider, pending_id, "allow")
+
+    assert resp.status_code == 302
+    assert resp.headers["location"].startswith("https://client.example.com/callback?code=")
+    assert len(provider._auth_codes) == 1
+    assert pending_id not in provider._pending
+
+
+async def test_consent_deny_redirects_with_error(provider, pending_id, user_id):
+    await _login(provider, pending_id)
+    resp = await _consent(provider, pending_id, "deny")
+
+    assert resp.status_code == 302
+    assert "error=access_denied" in resp.headers["location"]
+    assert "state=st" in resp.headers["location"]
+    assert provider._auth_codes == {}
+    assert pending_id not in provider._pending
+
+
+async def test_consent_requires_full_login(provider, pending_id, user_id):
+    # Password passed but TOTP not yet verified: consent must be refused.
+    provider._pending[pending_id].authenticated_user_id = user_id
+    resp = await _consent(provider, pending_id, "allow")
+
+    assert resp.status_code == 400
+    assert provider._auth_codes == {}
+
+
+async def test_login_page_escapes_email(provider, pending_id):
+    form = {"email": '"><script>alert(1)</script>', "password": "x"}
+    resp = await provider._handle_login(form, pending_id, provider._pending[pending_id])
+
+    body = bytes(resp.body).decode()
+    assert "<script>" not in body
+    assert "&lt;script&gt;" in body
