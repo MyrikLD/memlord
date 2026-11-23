@@ -127,7 +127,7 @@ async def test_outputs_report_canonical_name(
     resp = await api_client.get(f"/api/memories/{workspace_id}/{mid}")
     assert resp.json()["tags"] == ["dima", "x"]
     res = await mcp_client.call_tool("get_memory", {"name": "cyr"})
-    assert res.data.tags == {"dima", "x"}
+    assert sorted(res.data.tags) == ["dima", "x"]
 
 
 async def test_detail_exposes_original_tags(session, user_id, workspace_id, api_client):
