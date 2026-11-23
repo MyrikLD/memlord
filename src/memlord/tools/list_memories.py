@@ -28,7 +28,12 @@ _COLS = (
 
 @mcp.tool(
     output_schema=MemoryPage.model_json_schema(),
-    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False),
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    ),
 )
 async def list_memories(
     page: int = Field(1, ge=1),

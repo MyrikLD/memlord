@@ -11,7 +11,14 @@ from memlord.schemas.tools import MemoryDetail
 mcp = FastMCP()
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
 async def get_memory(
     name: str,
     workspace: str | None = None,
