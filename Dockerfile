@@ -32,6 +32,13 @@ COPY scripts/ scripts/
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
+# Safe to run as any non-root UID: everything readable (independent of the
+# build host's umask), and the default model directory writable so the model
+# can be downloaded without a volume. Mount a volume there to persist it.
+RUN chmod -R a+rX /app /docker-entrypoint.sh \
+    && mkdir -p /app/src/memlord/onnx \
+    && chmod 1777 /app/src/memlord/onnx
+
 ENV PATH="/app/.venv/bin:$PATH"
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
