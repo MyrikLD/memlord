@@ -9,9 +9,10 @@ from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
-from memlord.filters import not_expired
-from memlord.models import Memory, MemoryTag, Tag, Workspace
+from memlord.filters import has_tag, not_expired, tag_group_select
+from memlord.models import Memory, Workspace
 from memlord.schemas.tools import MemoryItem, MemoryPage
+from memlord.tags import normalize_tag
 
 mcp = FastMCP()
 
@@ -36,52 +37,37 @@ async def search_by_tag(
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
-    """Find memories by exact tag match. Returns all results (no pagination).
+    """Find memories by tag. Returns all results (no pagination).
 
     operation="AND" (default): memory must have ALL specified tags.
     operation="OR": memory must have AT LEAST ONE of the specified tags.
-    Tags are case-insensitive. Use retrieve_memory() for semantic/text search
-    or list_memories(tag=...) to browse a single tag with pagination.
+    Tags are case-insensitive and match through their aliases. Use retrieve_memory()
+    for semantic/text search or list_memories(tag=...) to browse a single tag with pagination.
     """
-    normalized = [t.lower().strip() for t in tags if t.strip()]
+    normalized = sorted({normalize_tag(t) for t in tags} - {""})
     if not normalized:
         return MemoryPage()
 
     workspace_ids = await WorkspaceDao(s, uid).get_accessible_workspace_ids()
 
     if operation == "AND":
+        # Requested names covered by the memory's tag groups, one per name.
+        group_q, requested = tag_group_select()
         matching_count = (
-            select(func.count(Tag.id.distinct()))
-            .select_from(MemoryTag)
-            .join(Tag, MemoryTag.tag_id == Tag.id)
-            .where(MemoryTag.memory_id == Memory.id)
-            .where(Tag.name.in_(normalized))
+            group_q.with_only_columns(func.count(func.distinct(requested.name)))
+            .where(requested.name.in_(normalized))
             .scalar_subquery()
         )
-        stmt = (
-            select(*_COLS)
-            .join(Workspace, Memory.workspace_id == Workspace.id)
-            .where(
-                matching_count == len(normalized),
-                Memory.workspace_id.in_(workspace_ids),
-                not_expired(),
-            )
-            .order_by(Memory.created_at.desc())
-        )
+        tag_filter = matching_count == len(normalized)
     else:
-        stmt = (
-            select(*_COLS)
-            .join(MemoryTag, Memory.id == MemoryTag.memory_id)
-            .join(Tag, MemoryTag.tag_id == Tag.id)
-            .join(Workspace, Memory.workspace_id == Workspace.id)
-            .where(
-                Tag.name.in_(normalized),
-                Memory.workspace_id.in_(workspace_ids),
-                not_expired(),
-            )
-            .distinct()
-            .order_by(Memory.created_at.desc())
-        )
+        tag_filter = has_tag(lambda t: t.name.in_(normalized))
+
+    stmt = (
+        select(*_COLS)
+        .join(Workspace, Memory.workspace_id == Workspace.id)
+        .where(tag_filter, Memory.workspace_id.in_(workspace_ids), not_expired())
+        .order_by(Memory.created_at.desc())
+    )
 
     rows = (await s.execute(stmt)).mappings().all()
     if not rows:

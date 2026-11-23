@@ -5,7 +5,7 @@ from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFil
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from memlord.dao import MemoryDao
+from memlord.dao import MemoryDao, TagDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
 from memlord.models import Memory
@@ -18,7 +18,8 @@ from memlord.schemas import (
     WorkspaceDetailResponse,
     WorkspaceInfo,
 )
-from memlord.schemas.api import ImportItem, ImportResult
+from memlord.schemas.api import ExportFile, ImportItem, ImportResult
+from memlord.schemas.tag import TagAlias
 from memlord.schemas.workspace import WorkspaceRole
 from memlord.ui.utils import APIUserDep
 from memlord.utils.dt import utcnow
@@ -195,12 +196,13 @@ async def export_memories(
         .all()
     )
     ids = [r["id"] for r in rows]
-    tags_map = await MemoryDao(s, user.id).fetch_tags(ids) if ids else {}
-    data = [
-        ImportItem(**r, tags=tags_map.get(r["id"], set())).model_dump(mode="json") for r in rows
-    ]
+    tags_map = await MemoryDao(s, user.id).fetch_original_tags(ids) if ids else {}
+    data = ExportFile(
+        memories=[ImportItem(**r, tags=tags_map.get(r["id"], set())) for r in rows],
+        tag_aliases=await TagDao(s, user.id).aliases(workspace_id),
+    )
     return Response(
-        content=json.dumps(data, ensure_ascii=False, indent=2),
+        content=json.dumps(data.model_dump(mode="json"), ensure_ascii=False, indent=2),
         media_type="application/json",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
@@ -217,11 +219,16 @@ async def import_memories(
     if not await ws_dao.can_write(workspace_id):
         raise HTTPException(status_code=403, detail="No write access to this workspace")
     try:
-        items = json.loads(await file.read())
+        payload = json.loads(await file.read())
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail="Invalid JSON") from e
-    if not isinstance(items, list):
-        raise HTTPException(status_code=400, detail="Expected a JSON array")
+    # A bare array is the pre-alias export format.
+    if isinstance(payload, list):
+        items, aliases = payload, []
+    elif isinstance(payload, dict) and isinstance(payload.get("memories"), list):
+        items, aliases = payload["memories"], payload.get("tag_aliases") or []
+    else:
+        raise HTTPException(status_code=400, detail="Expected a JSON array or an export object")
 
     dao = MemoryDao(s, user.id)
     imported = skipped = 0
@@ -246,7 +253,17 @@ async def import_memories(
         else:
             skipped += 1
 
-    return ImportResult(imported=imported, skipped=skipped)
+    tag_dao = TagDao(s, user.id)
+    aliases_applied = 0
+    for edge in aliases:
+        try:
+            alias = TagAlias.model_validate(edge)
+            if await tag_dao.ensure_alias(workspace_id, alias.alias, alias.canonical):
+                aliases_applied += 1
+        except (ValueError, PermissionError) as e:
+            logging.warning(f"Error {e} during alias import: {edge}")
+
+    return ImportResult(imported=imported, skipped=skipped, aliases_applied=aliases_applied)
 
 
 @router.post("/{workspace_id}/invite", response_model=InviteResponse)

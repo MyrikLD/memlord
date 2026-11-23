@@ -8,10 +8,11 @@ from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import MCPSessionDep
-from memlord.filters import not_expired
-from memlord.models import Memory, MemoryTag, Tag, Workspace
+from memlord.filters import has_tag, not_expired
+from memlord.models import Memory, Workspace
 from memlord.schemas import MemoryType
 from memlord.schemas.tools import MemoryItem, MemoryPage
+from memlord.tags import normalize_tag
 
 mcp = FastMCP()
 
@@ -34,7 +35,7 @@ async def list_memories(
     page: int = Field(1, ge=1),
     page_size: int = Field(10, ge=1, le=100),
     memory_type: MemoryType | None = None,
-    tag: str | None = Field(None, description="Case-insensitive exact match on a single tag name"),
+    tag: str | None = Field(None, description="Single tag name; matches the tag and its aliases"),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
     uid: int = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
@@ -55,12 +56,8 @@ async def list_memories(
         q = q.where(Memory.memory_type == memory_type)
 
     if tag:
-        tag_subq = (
-            select(MemoryTag.memory_id)
-            .join(Tag, MemoryTag.tag_id == Tag.id)
-            .where(Tag.name == tag.lower().strip())
-        )
-        q = q.where(Memory.id.in_(tag_subq))
+        wanted = normalize_tag(tag)
+        q = q.where(has_tag(lambda t: t.name == wanted))
 
     total = await s.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Memory.created_at.desc()).limit(page_size).offset(offset)

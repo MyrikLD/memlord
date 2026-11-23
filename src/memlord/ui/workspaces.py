@@ -31,6 +31,19 @@ async def workspace_detail(
     )
 
 
+@router.get("/{workspace_id}/tags", response_class=HTMLResponse)
+async def workspace_tags(
+    request: Request,
+    workspace_id: int,
+    user: APIUserDep,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "workspace_tags.html",
+        {"user": user, "workspace_id": workspace_id},
+    )
+
+
 @router.get("/join/{token}", response_class=HTMLResponse)
 async def join_get(
     request: Request,

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Tags — Memlord{% endblock %}
+{% block content %}
+
+<div x-data="workspaceTagsPage({{ workspace_id }})">
+
+    <div class="breadcrumb">
+        <a :href="'/ui/workspaces/' + workspaceId" class="btn btn-ghost btn-sm">← Workspace</a>
+    </div>
+
+    <div x-show="loading" style="text-align:center;padding:3rem;color:var(--text-4)">Loading…</div>
+
+    <template x-if="!loading && ws">
+        <div>
+            <div class="page-header">
+                <h1 class="page-title">Tags · <span x-text="ws.is_personal ? 'Personal' : ws.name"></span></h1>
+                <span class="badge badge-type" x-text="groups.length"></span>
+            </div>
+
+            <div x-show="msg" class="alert" :class="msgError ? 'alert-error' : 'alert-success'" x-text="msg"></div>
+
+            <!-- All tags -->
+            <div class="detail-card">
+                <div class="section-title" style="display:flex;align-items:center;gap:.75rem">
+                    <span>All tags</span>
+                    <input class="form-input" type="search" placeholder="filter…" x-model="filter"
+                           style="width:auto;max-width:14rem;margin-left:auto;padding:.25rem .5rem;font-size:.8125rem">
+                </div>
+                <template x-if="groups.length === 0">
+                    <p style="font-size:.875rem;color:var(--text-4);margin:0">No tags in this workspace.</p>
+                </template>
+                <div class="tag-groups">
+                    <template x-for="g in visibleGroups" :key="g.id">
+                        <div class="tag-group"
+                             :class="{'tag-group--over': over === g.id, 'tag-group--dim': dragging && dragging.name === g.name}"
+                             @dragover.prevent="over = g.id"
+                             @dragleave="over === g.id && (over = null)"
+                             @drop.prevent="drop(g)">
+                            <a :href="memoriesUrl(g.name)" class="tag tag--canonical tag--drag" :draggable="canWrite"
+                               @dragstart="start($event, g.name)" @dragend="dragging = null; over = null"
+                               x-text="'#' + g.name"></a>
+                            <span class="tag-count" x-text="g.memory_count"></span>
+                            <template x-if="g.aliases.length">
+                                <span class="tag-sep"></span>
+                            </template>
+                            <template x-for="a in g.aliases" :key="a">
+                                <span class="tag tag--alias tag--drag" :draggable="canWrite" title="alias"
+                                      @dragstart="start($event, a)" @dragend="dragging = null; over = null">
+                                    <span x-text="'#' + a"></span>
+                                    <template x-if="canWrite">
+                                        <button type="button" class="tag-x" title="Detach alias" @click="detach(a)">×</button>
+                                    </template>
+                                </span>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+                <template x-if="canWrite">
+                    <div class="drop-hint" :class="{'drop-hint--active': dragging, 'drop-hint--over': over === 'detach'}"
+                         @dragover.prevent="over = 'detach'" @dragleave="over === 'detach' && (over = null)"
+                         @drop.prevent="dropDetach()">
+                        <span x-show="!dragging">Drag a tag onto another tag to merge them. Drag an alias here to detach it.</span>
+                        <span x-show="dragging && dragging.alias" x-text="'Drop to detach #' + (dragging && dragging.name)"></span>
+                        <span x-show="dragging && !dragging.alias" x-text="'Drop #' + (dragging && dragging.name) + ' onto a tag to merge'"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+
+</div>
+
+<style>
+    .tag-groups { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .tag-group {
+        display: inline-flex; align-items: center; gap: .25rem; padding: .25rem .375rem;
+        border: 1px solid var(--border); border-radius: var(--radius-pill);
+        transition: background .12s, border-color .12s;
+    }
+    .tag-group--over { background: var(--accent-soft); border-color: var(--accent-text); }
+    .tag-group--dim { opacity: .4; }
+    .tag--drag[draggable="true"] { cursor: grab; }
+    .tag--drag[draggable="true"]:active { cursor: grabbing; }
+    .tag--canonical { color: var(--text-2); font-weight: 600; }
+    .tag-sep { width: 1px; align-self: stretch; margin: 0 .25rem; background: var(--border); }
+    .tag--alias { opacity: .75; }
+    .tag-count { font-size: .75rem; color: var(--text-4); padding-right: .25rem; }
+    .tag-x { margin-left: .375rem; background: none; border: 0; color: var(--text-4); cursor: pointer; padding: 0 .125rem; font-size: .875rem; line-height: 1; }
+    .tag-x:hover { color: var(--danger-text); }
+    .drop-hint {
+        margin-top: .75rem; padding: .75rem; text-align: center; font-size: .8125rem; color: var(--text-4);
+        border: 1px dashed var(--border); border-radius: var(--radius-sm); transition: background .12s, border-color .12s;
+    }
+    .drop-hint--active { border-color: var(--accent-text); color: var(--text-3); }
+    .drop-hint--over { background: var(--accent-soft); }
+</style>
+
+<script>
+function workspaceTagsPage(workspaceId) {
+    const base = '/api/workspaces/' + workspaceId + '/tags';
+    const json = { 'Content-Type': 'application/json' };
+    return {
+        workspaceId,
+        ws: null,
+        loading: true,
+        groups: [],
+        filter: '',
+        dragging: null,
+        over: null,
+        msg: '',
+        msgError: false,
+
+        get canWrite() { return this.ws && (this.ws.role === 'owner' || this.ws.role === 'editor'); },
+        get visibleGroups() {
+            const f = this.filter.trim().toLowerCase();
+            if (!f) return this.groups;
+            return this.groups.filter(g => g.name.includes(f) || g.aliases.some(a => a.includes(f)));
+        },
+
+        memoriesUrl(name) {
+            const ws = this.ws.is_personal ? '__personal__' : this.ws.name;
+            return '/?tag=' + encodeURIComponent(name) + '&workspace=' + encodeURIComponent(ws);
+        },
+
+        async init() {
+            const r = await fetch('/api/workspaces/' + workspaceId);
+            if (!r.ok) { this.loading = false; return; }
+            this.ws = (await r.json()).workspace;
+            await this.reload();
+            this.loading = false;
+        },
+
+        async reload() {
+            const r = await fetch(base);
+            if (r.ok) this.groups = await r.json();
+        },
+
+        async post(path, body, okMsg) {
+            const r = await fetch(base + path, { method: 'POST', headers: json, body: JSON.stringify(body) });
+            if (r.ok) { this.msg = okMsg; this.msgError = false; await this.reload(); }
+            else { this.msg = (await r.json()).detail; this.msgError = true; }
+        },
+
+        start(event, name) {
+            const alias = this.groups.every(g => g.name !== name);
+            this.dragging = { name, alias };
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', name);
+        },
+
+        async drop(target) {
+            const d = this.dragging;
+            this.dragging = null; this.over = null;
+            if (!d || d.name === target.name || target.aliases.includes(d.name)) return;
+            await this.post('/merge', { source: d.name, target: target.name }, `#${d.name} → #${target.name}`);
+        },
+
+        async dropDetach() {
+            const d = this.dragging;
+            this.dragging = null; this.over = null;
+            if (d && d.alias) await this.detach(d.name);
+        },
+
+        async detach(alias) {
+            await this.post('/detach', { alias }, `#${alias} detached`);
+        },
+    };
+}
+</script>
+
+{% endblock %}

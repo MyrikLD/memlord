@@ -1,5 +1,6 @@
 from .api_key import ApiKeyDao
 from .email_token import EmailTokenDao
 from .memory import MemoryDao
+from .tag import TagDao
 from .user import UserDao
 from .workspace import WorkspaceDao

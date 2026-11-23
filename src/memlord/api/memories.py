@@ -5,8 +5,8 @@ from sqlalchemy import select
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.db import APISessionDep
-from memlord.filters import not_expired
-from memlord.models import Memory, MemoryTag, Tag
+from memlord.filters import has_tag, not_expired
+from memlord.models import Memory
 from memlord.schemas import MemoryListItem, MemoryType
 from memlord.schemas.api import (
     MemoriesFilter,
@@ -18,6 +18,7 @@ from memlord.schemas.api import (
     WorkspaceSimple,
 )
 from memlord.schemas.workspace import WorkspaceInfo, WorkspaceRole
+from memlord.tags import normalize_tag
 from memlord.ui.utils import APIUserDep
 from memlord.utils.dt import as_naive_utc
 
@@ -67,12 +68,8 @@ async def list_memories(
     if body.memory_type:
         q = q.where(Memory.memory_type == MemoryType(body.memory_type))
     if body.tag:
-        tag_subq = (
-            select(MemoryTag.memory_id)
-            .join(Tag, MemoryTag.tag_id == Tag.id)
-            .where(Tag.name == body.tag.lower().strip())
-        )
-        q = q.where(Memory.id.in_(tag_subq))
+        wanted = normalize_tag(body.tag)
+        q = q.where(has_tag(lambda t: t.name == wanted))
 
     total = await s.scalar(select(sa.func.count()).select_from(q.subquery())) or 0
     rows = (
@@ -107,7 +104,9 @@ async def list_memories(
     )
 
 
-def _build_detail(memory: MemoryListItem, workspaces: list[WorkspaceInfo]) -> MemoryDetail:
+def _build_detail(
+    memory: MemoryListItem, original_tags: set[str], workspaces: list[WorkspaceInfo]
+) -> MemoryDetail:
     ws_map = {ws.id: ("Personal" if ws.is_personal else ws.name) for ws in workspaces}
     writable = [
         WorkspaceSimple(id=ws.id, name=ws.name, is_personal=ws.is_personal)
@@ -124,9 +123,16 @@ def _build_detail(memory: MemoryListItem, workspaces: list[WorkspaceInfo]) -> Me
         workspace_id=memory.workspace_id,
         workspace_name=ws_map.get(memory.workspace_id) if memory.workspace_id else None,
         tags=sorted(memory.tags),
+        original_tags=sorted(original_tags),
         metadata=memory.metadata or None,
         writable_workspaces=writable,
     )
+
+
+async def _detail(s, dao: MemoryDao, memory: MemoryListItem, uid: int) -> MemoryDetail:
+    original = (await dao.fetch_original_tags([memory.id]))[memory.id]
+    workspaces = await WorkspaceDao(s, uid).list_workspaces()
+    return _build_detail(memory, original, workspaces)
 
 
 @router.get("/{workspace_id}/{id}", response_model=MemoryDetail)
@@ -136,11 +142,11 @@ async def get_memory(
     s: APISessionDep,
     user: APIUserDep,
 ) -> MemoryDetail:
-    memory = await MemoryDao(s, user.id).get(id=id, workspace_id=workspace_id)
+    dao = MemoryDao(s, user.id)
+    memory = await dao.get(id=id, workspace_id=workspace_id)
     if memory is None:
         raise HTTPException(status_code=404, detail="Memory not found")
-    workspaces = await WorkspaceDao(s, user.id).list_workspaces()
-    return _build_detail(memory, workspaces)
+    return await _detail(s, dao, memory, user.id)
 
 
 @router.put("/{workspace_id}/{id}", response_model=MemoryDetail)
@@ -157,16 +163,16 @@ async def update_memory(
         raise HTTPException(status_code=404, detail="Memory not found")
 
     new_content = (body.content or "").strip() or existing.content
-    new_type = (body.memory_type or "").strip() or None
-    new_tags = {t.lower().strip() for t in (body.tags or set()) if t.strip()}
-
+    new_type = (body.memory_type or "").strip()
     data: dict = {
         "id": id,
         "workspace_id": existing.workspace_id,
-        "memory_type": new_type,
         "metadata": body.metadata,
-        "tags": new_tags,
     }
+    if new_type:
+        data["memory_type"] = new_type
+    if body.tags is not None:
+        data["tags"] = {normalize_tag(t) for t in body.tags} - {""}
     if new_content != existing.content:
         data["content"] = new_content
     if body.name is not None:
@@ -185,8 +191,7 @@ async def update_memory(
         # Only reachable if the row vanished concurrently: get() returns
         # expired memories, so a past expiry no longer hides the record.
         raise HTTPException(status_code=404, detail="Memory not found after update")
-    workspaces = await WorkspaceDao(s, user.id).list_workspaces()
-    return _build_detail(updated, workspaces)
+    return await _detail(s, dao, updated, user.id)
 
 
 @router.delete("/{workspace_id}/{id}", status_code=204)
@@ -223,5 +228,4 @@ async def move_memory(
     moved = await dao.get(id=id, workspace_id=body.to_workspace_id)
     if moved is None:
         raise HTTPException(status_code=404, detail="Memory not found after move")
-    workspaces = await WorkspaceDao(s, user.id).list_workspaces()
-    return _build_detail(moved, workspaces)
+    return await _detail(s, dao, moved, user.id)

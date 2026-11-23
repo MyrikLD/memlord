@@ -3,18 +3,20 @@ from typing import Any
 
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Float, bindparam, delete, insert, select, update
+from sqlalchemy import Float, bindparam, delete, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from memlord.config import settings
+from memlord.dao.tag import TagDao
 from memlord.dao.workspace import WorkspaceDao
 from memlord.embeddings import embed
 from memlord.filters import not_expired
 from memlord.models import Memory, MemoryTag, Tag
 from memlord.models.workspace import Workspace
 from memlord.schemas import MemoryListItem, MemoryType
+from memlord.tags import normalize_tag
 from memlord.utils.dt import as_naive_utc, utcnow
 
 _UNSET: Any = object()
@@ -29,34 +31,33 @@ class MemoryDao:
         self._s = s
         self._uid = uid
         self._ws_dao = WorkspaceDao(s, uid)
+        self._tag_dao = TagDao(s, uid)
 
-    async def _upsert_tags(self, memory_id: int, tags: set[str]) -> None:
+    async def _upsert_tags(self, memory_id: int, workspace_id: int, tags: set[str]) -> None:
         for tag_name in tags:
-            normalized = tag_name.lower().strip()
+            normalized = normalize_tag(tag_name)
             if not normalized:
                 continue
-            await self._s.execute(pg_insert(Tag).values(name=normalized).on_conflict_do_nothing())
-            tag_id = await self._s.scalar(select(Tag.id).where(Tag.name == normalized))
+            await self._s.execute(
+                pg_insert(Tag)
+                .values(name=normalized, workspace_id=workspace_id)
+                .on_conflict_do_nothing()
+            )
+            tag_id = await self._s.scalar(
+                select(Tag.id).where(Tag.name == normalized, Tag.workspace_id == workspace_id)
+            )
             await self._s.execute(
                 pg_insert(MemoryTag)
                 .values(memory_id=memory_id, tag_id=tag_id)
                 .on_conflict_do_nothing()
             )
 
-    async def _fetch_tag_names(self, memory_id: int) -> set[str]:
-        rows = await self._s.execute(
-            select(Tag.name)
-            .join(MemoryTag, MemoryTag.tag_id == Tag.id)
-            .where(MemoryTag.memory_id == memory_id)
-        )
-        return {row[0] for row in rows.fetchall()}
-
     async def _cleanup_orphan_tags(self) -> None:
-        await self._s.execute(delete(Tag).where(~Tag.id.in_(select(MemoryTag.tag_id))))
+        await self._tag_dao.cleanup_orphans()
 
-    async def _replace_tags(self, memory_id: int, tags: set[str]) -> None:
+    async def _replace_tags(self, memory_id: int, workspace_id: int, tags: set[str]) -> None:
         await self._s.execute(delete(MemoryTag).where(MemoryTag.memory_id == memory_id))
-        await self._upsert_tags(memory_id, tags)
+        await self._upsert_tags(memory_id, workspace_id, tags)
         await self._cleanup_orphan_tags()
 
     async def _check_near_duplicate(self, vector: list[float], workspace_id: int) -> None:
@@ -152,7 +153,7 @@ class MemoryDao:
         )
         assert memory_id is not None
 
-        await self._upsert_tags(memory_id, tags or set())
+        await self._upsert_tags(memory_id, workspace_id, tags or set())
         return memory_id, True
 
     async def update(
@@ -197,7 +198,11 @@ class MemoryDao:
                     await self._s.scalar(select(Memory.content).where(Memory.id == memory_id)) or ""
                 )
             )
-            new_tags = set(tags) if tags is not _UNSET else await self._fetch_tag_names(memory_id)
+            new_tags = (
+                set(tags)
+                if tags is not _UNSET
+                else (await self.fetch_original_tags([memory_id]))[memory_id]
+            )
             if content is not _UNSET:
                 values["content"] = content
             values["embedding"] = await embed(_embed_text(new_content, new_tags))
@@ -212,7 +217,7 @@ class MemoryDao:
             )
 
         if tags is not _UNSET:
-            await self._replace_tags(memory_id, tags)
+            await self._replace_tags(memory_id, workspace_id, tags)
 
         return memory_id, final_name
 
@@ -308,15 +313,32 @@ class MemoryDao:
         await self._s.execute(
             update(Memory).where(Memory.id == id).values(workspace_id=to_workspace_id)
         )
+        # Tags are workspace-scoped, so re-attach by name in the target workspace.
+        tag_names = (await self.fetch_original_tags([id]))[id]
+        await self._replace_tags(id, to_workspace_id, tag_names)
 
-    async def fetch_tags(self, memory_ids: list[int]) -> dict[int, set[str]]:
+    async def _tag_names(self, memory_ids: list[int]):
+        """(memory_id, stored name, canonical name) for every tag link."""
+        parent = aliased(Tag)
         rows = await self._s.execute(
-            select(MemoryTag.memory_id, Tag.name)
+            select(MemoryTag.memory_id, Tag.name, func.coalesce(parent.name, Tag.name))
             .join(Tag, MemoryTag.tag_id == Tag.id)
+            .outerjoin(parent, parent.id == Tag.parent_id)
             .where(MemoryTag.memory_id.in_(memory_ids))
         )
-        result = {i: set() for i in memory_ids}
-        for mid, name in rows.fetchall():
+        return rows.fetchall()
+
+    async def fetch_tags(self, memory_ids: list[int]) -> dict[int, set[str]]:
+        """Tags per memory under their canonical names (an alias reads as its parent)."""
+        result: dict[int, set[str]] = {i: set() for i in memory_ids}
+        for mid, _, canonical in await self._tag_names(memory_ids):
+            result[mid].add(canonical)
+        return result
+
+    async def fetch_original_tags(self, memory_ids: list[int]) -> dict[int, set[str]]:
+        """Tags per memory exactly as stored."""
+        result: dict[int, set[str]] = {i: set() for i in memory_ids}
+        for mid, name, _ in await self._tag_names(memory_ids):
             result[mid].add(name)
         return result
 

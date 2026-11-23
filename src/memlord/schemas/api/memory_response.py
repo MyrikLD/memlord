@@ -51,6 +51,7 @@ class MemoryDetail(Schema):
     workspace_id: int | None
     workspace_name: str | None
     tags: list[str]
+    original_tags: list[str]
     metadata: dict | None
     writable_workspaces: list[WorkspaceSimple]
 
