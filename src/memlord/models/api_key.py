@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
 
 from .base import Base
 
@@ -16,6 +17,7 @@ class ApiKey(Base):
     created_at = sa.Column(
         sa.DateTime(timezone=False), server_default=sa.func.now(), nullable=False
     )
+    workspace_grants = sa.Column(JSONB(none_as_null=True), nullable=True)
     last_used_at = sa.Column(sa.DateTime(timezone=False), nullable=True)
 
     __table_args__ = (sa.UniqueConstraint("user_id", "name"),)

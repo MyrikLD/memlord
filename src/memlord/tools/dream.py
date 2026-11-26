@@ -3,6 +3,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
@@ -35,7 +36,7 @@ async def dream_report(
     ),
     max_pairs: int = Field(20, ge=1, le=100),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> DreamReport:
     """Candidates for memory consolidation: similar pairs, expired and expiring memories.
 

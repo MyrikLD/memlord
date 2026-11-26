@@ -7,6 +7,7 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
@@ -38,7 +39,7 @@ async def recall_memory(
     memory_type: MemoryType | None = None,
     workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> RecallPage:
     """Search memories by time expression + semantics. Returns names + metadata only.
 

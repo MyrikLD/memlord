@@ -5,6 +5,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
@@ -42,7 +43,7 @@ async def store_memory(
         "Expired memories are purged via the profile 'clean up expired' button. None = never expires.",
     ),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
     """Save a new memory. Idempotent: returns existing if content already stored.
 

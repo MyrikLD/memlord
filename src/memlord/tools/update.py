@@ -6,6 +6,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
@@ -37,7 +38,7 @@ async def update_memory(
         None, description="Set or extend the UTC expiry. Omit to leave unchanged."
     ),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
     """Update an existing memory identified by name. Only provided fields are changed.
 

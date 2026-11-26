@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from memlord.access import Principal
 from memlord.config import settings
 from memlord.dao.workspace import WorkspaceDao
 from memlord.embeddings import embed
@@ -25,9 +26,9 @@ def _embed_text(content: str, tags: set[str]) -> str:
 
 
 class MemoryDao:
-    def __init__(self, s: AsyncSession, uid: int) -> None:
+    def __init__(self, s: AsyncSession, uid: int | Principal) -> None:
         self._s = s
-        self._uid = uid
+        self._uid = uid.user_id if isinstance(uid, Principal) else uid
         self._ws_dao = WorkspaceDao(s, uid)
 
     async def _upsert_tags(self, memory_id: int, tags: set[str]) -> None:
@@ -118,9 +119,8 @@ class MemoryDao:
     ) -> tuple[int, bool]:
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
-        else:
-            if not await self._ws_dao.can_write(workspace_id):
-                raise ValueError(f"No write access to workspace {workspace_id!r}")
+        if not await self._ws_dao.can_write(workspace_id):
+            raise ValueError(f"No write access to workspace {workspace_id!r}")
 
         memory_id = await self._s.scalar(
             select(Memory.id).where(
@@ -169,12 +169,13 @@ class MemoryDao:
         """Update memory fields. Pass _UNSET to leave a field unchanged."""
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
-        else:
-            if not await self._ws_dao.can_write(workspace_id):
-                raise ValueError(f"No write access to workspace {workspace_id!r}")
+        if not await self._ws_dao.can_write(workspace_id):
+            raise ValueError(f"No write access to workspace {workspace_id!r}")
 
         memory_id = await self._s.scalar(
-            select(Memory.id).where(Memory.id == id, Memory.workspace_id == workspace_id)
+            select(Memory.id)
+            .where(Memory.id == id, Memory.workspace_id == workspace_id)
+            .with_for_update()
         )
         if memory_id is None:
             raise ValueError(f"Memory with id={id} not found")
@@ -219,9 +220,8 @@ class MemoryDao:
     async def delete(self, id: int, workspace_id: int | None = None) -> None:
         if workspace_id is None:
             workspace_id = await self._personal_workspace_id()
-        else:
-            if not await self._ws_dao.can_write(workspace_id):
-                raise ValueError(f"No write access to workspace {workspace_id!r}")
+        if not await self._ws_dao.can_write(workspace_id):
+            raise ValueError(f"No write access to workspace {workspace_id!r}")
 
         result = await self._s.scalar(
             delete(Memory)
@@ -284,7 +284,7 @@ class MemoryDao:
 
         q = select(Memory.id, Memory.name, Memory.content).where(
             Memory.id == id, Memory.workspace_id == from_workspace_id
-        )
+        ).with_for_update()
 
         row = (await self._s.execute(q)).mappings().one_or_none()
         if row is None:
@@ -305,9 +305,14 @@ class MemoryDao:
                 "A memory with the same content or name already exists in the target workspace"
             )
 
-        await self._s.execute(
-            update(Memory).where(Memory.id == id).values(workspace_id=to_workspace_id)
+        moved = await self._s.scalar(
+            update(Memory)
+            .where(Memory.id == id, Memory.workspace_id == from_workspace_id)
+            .values(workspace_id=to_workspace_id)
+            .returning(Memory.id)
         )
+        if moved is None:
+            raise ValueError(f"Memory with id={id} not found")
 
     async def fetch_tags(self, memory_ids: list[int]) -> dict[int, set[str]]:
         rows = await self._s.execute(

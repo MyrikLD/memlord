@@ -8,7 +8,9 @@ from fastmcp.server.dependencies import get_access_token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal, WorkspaceGrant
 from memlord.db import MCPSessionDep
+from memlord.models.api_key import ApiKey
 from memlord.models.oauth_client import OAuthClient
 
 
@@ -23,8 +25,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 # API keys are opaque random tokens sent as `Authorization: Bearer mk_...`.
 # Only their SHA-256 hash is stored; the raw key is shown once at creation.
 API_KEY_PREFIX = "mk_"
-# Synthetic OAuth client_id we stamp onto the AccessToken so the user resolves
-# without a second DB lookup in _current_user_gen.
+# Synthetic client ID for authenticated API keys.
 API_KEY_CLIENT_PREFIX = "apikey:"
 
 
@@ -42,16 +43,29 @@ async def _current_user_gen(
     access_token = get_access_token()
     if access_token is None:
         raise PermissionError("Authentication required")
-    # API-key auth stamps the user id into client_id (see oauth.load_access_token).
-    if access_token.client_id.startswith(API_KEY_CLIENT_PREFIX):
-        yield int(access_token.client_id.removeprefix(API_KEY_CLIENT_PREFIX))
+    if access_token.token.startswith(API_KEY_PREFIX):
+        if not access_token.client_id.startswith(API_KEY_CLIENT_PREFIX):
+            raise PermissionError("Unauthenticated")
+        key_id = int(access_token.client_id.removeprefix(API_KEY_CLIENT_PREFIX))
+        row = (
+            await s.execute(select(ApiKey.user_id, ApiKey.workspace_grants).where(ApiKey.id == key_id))
+        ).one_or_none()
+        if row is None:
+            raise PermissionError("Unauthenticated")
+        stored = row.workspace_grants
+        grants = (
+            {int(workspace_id): WorkspaceGrant(mode) for workspace_id, mode in stored.items()}
+            if stored is not None
+            else None
+        )
+        yield Principal(row.user_id, grants)
         return
     user_id = await s.scalar(
         select(OAuthClient.user_id).where(OAuthClient.client_id == access_token.client_id)
     )
     if user_id is None:
         raise PermissionError("Unauthenticated")
-    yield user_id
+    yield Principal(user_id)
 
 
 MCPUserDep = MCPDepends(asynccontextmanager(_current_user_gen))
