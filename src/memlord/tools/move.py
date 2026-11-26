@@ -2,6 +2,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
@@ -25,7 +26,7 @@ async def move_memory(
     to_workspace: str,
     from_workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> StoreResult:
     """Move a memory to a different to_workspace.
 

@@ -1,14 +1,18 @@
 import uuid
 from datetime import timedelta
+from typing import TypeVar
 
 import sqlalchemy as sa
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import Select, delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal, WorkspaceGrant
 from memlord.models.user import User
 from memlord.models.workspace import Workspace, WorkspaceInvite, WorkspaceMember
 from memlord.schemas.workspace import WorkspaceInfo, WorkspaceMemberInfo, WorkspaceRole
 from memlord.utils.dt import utcnow
+
+_Row = TypeVar("_Row", bound=tuple)
 
 _WS_COLS = (
     Workspace.id,
@@ -20,9 +24,31 @@ _WS_COLS = (
 
 
 class WorkspaceDao:
-    def __init__(self, s: AsyncSession, uid: int) -> None:
+    def __init__(self, s: AsyncSession, uid: int | Principal) -> None:
         self._s = s
-        self._uid = uid
+        self._principal = uid if isinstance(uid, Principal) else Principal(uid)
+        self._uid = self._principal.user_id
+
+    def _limit_key(self, query: Select[_Row], *, write: bool = False) -> Select[_Row]:
+        grants = self._principal.grants
+        if grants is None:
+            return query
+        allowed = [
+            workspace for workspace, mode in grants.items()
+            if not write or mode == WorkspaceGrant.write
+        ]
+        return query.where(WorkspaceMember.workspace_id.in_(allowed))
+
+    def _effective_role(self, workspace_id: int, role: WorkspaceRole) -> WorkspaceRole | None:
+        grants = self._principal.grants
+        if grants is None:
+            return WorkspaceRole(role)
+        grant = grants.get(workspace_id)
+        if grant is None:
+            return None
+        if grant == WorkspaceGrant.read or role == WorkspaceRole.viewer:
+            return WorkspaceRole.viewer
+        return WorkspaceRole.editor
 
     async def create(self, name: str, description: str | None = None) -> WorkspaceInfo:
         workspace_id = await self._s.scalar(
@@ -93,11 +119,14 @@ class WorkspaceDao:
         )
         if row is None:
             raise ValueError(f"Personal workspace not found for user {self._uid}")
+        role = await self.get_role(row["id"], self._uid)
+        if role is None:
+            raise ValueError("No access to personal workspace")
         return WorkspaceInfo(
             id=row["id"],
             name=row["name"],
             description=row["description"],
-            role=WorkspaceRole.owner,
+            role=role,
             member_count=1,
             is_personal=True,
         )
@@ -119,7 +148,9 @@ class WorkspaceDao:
                 WorkspaceMember.user_id == user_id,
             )
         )
-        return WorkspaceRole(value) if value is not None else None
+        if value is None:
+            return None
+        return self._effective_role(workspace_id, value) if user_id == self._uid else WorkspaceRole(value)
 
     async def add_member(
         self,
@@ -154,7 +185,7 @@ class WorkspaceDao:
         q = select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == self._uid)
         if write:
             q = q.where(WorkspaceMember.role.in_([WorkspaceRole.owner, WorkspaceRole.editor]))
-        rows = await self._s.scalars(q)
+        rows = await self._s.scalars(self._limit_key(q, write=write))
         return list(rows)
 
     async def list_workspaces(self) -> list[WorkspaceInfo]:
@@ -164,35 +195,31 @@ class WorkspaceDao:
             .correlate(Workspace)
             .scalar_subquery()
         )
-        rows = (
-            (
-                await self._s.execute(
-                    select(
-                        Workspace.id,
-                        Workspace.name,
-                        Workspace.description,
-                        Workspace.is_personal,
-                        WorkspaceMember.role,
-                        member_count_subq.label("member_count"),
-                    )
-                    .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
-                    .where(WorkspaceMember.user_id == self._uid)
-                    .order_by(Workspace.name)
-                )
+        query = (
+            select(
+                Workspace.id,
+                Workspace.name,
+                Workspace.description,
+                Workspace.is_personal,
+                WorkspaceMember.role,
+                member_count_subq.label("member_count"),
             )
-            .mappings()
-            .all()
+            .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+            .where(WorkspaceMember.user_id == self._uid)
+            .order_by(Workspace.name)
         )
+        rows = (await self._s.execute(self._limit_key(query))).mappings().all()
         return [
             WorkspaceInfo(
                 id=row["id"],
                 name=row["name"],
                 description=row["description"],
-                role=row["role"],
+                role=role,
                 member_count=row["member_count"],
                 is_personal=row["is_personal"],
             )
             for row in rows
+            if (role := self._effective_role(row["id"], row["role"])) is not None
         ]
 
     async def get_by_name(self, name: str) -> WorkspaceInfo | None:
@@ -218,10 +245,11 @@ class WorkspaceDao:
                 WorkspaceMember.user_id == self._uid,
             )
         )
-        row = (await self._s.execute(q)).mappings().one_or_none()
+        row = (await self._s.execute(self._limit_key(q))).mappings().one_or_none()
         if row is None:
             return None
-        return WorkspaceInfo(**row)
+        role = self._effective_role(row["id"], row["role"])
+        return WorkspaceInfo(**{**row, "role": role}) if role is not None else None
 
     async def get_by_id_for_user(self, workspace_id: int) -> WorkspaceInfo | None:
         member_count_subq = (
@@ -252,11 +280,14 @@ class WorkspaceDao:
         )
         if row is None:
             return None
+        role = self._effective_role(row["id"], row["role"])
+        if role is None:
+            return None
         return WorkspaceInfo(
             id=row["id"],
             name=row["name"],
             description=row["description"],
-            role=row["role"],
+            role=role,
             member_count=row["member_count"],
             is_personal=row["is_personal"],
         )

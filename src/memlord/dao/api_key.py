@@ -1,6 +1,7 @@
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import WorkspaceGrant
 from memlord.auth import generate_api_key, hash_api_key
 from memlord.models.api_key import ApiKey
 from memlord.schemas.api_key import ApiKeyInfo
@@ -10,7 +11,9 @@ class ApiKeyDao:
     def __init__(self, s: AsyncSession) -> None:
         self._s = s
 
-    async def create(self, user_id: int, name: str) -> str:
+    async def create(
+        self, user_id: int, name: str, grants: dict[int, WorkspaceGrant] | None = None
+    ) -> str:
         """Create a key for the user and return the raw token (shown once).
 
         Metadata (id, prefix, timestamps) is available via `list_for_user`.
@@ -22,6 +25,7 @@ class ApiKeyDao:
                 name=name.strip(),
                 token_hash=hash_api_key(raw),
                 prefix=raw[:11],
+                workspace_grants=grants,
             )
         )
         return raw
@@ -34,6 +38,7 @@ class ApiKeyDao:
                 ApiKey.prefix,
                 ApiKey.created_at,
                 ApiKey.last_used_at,
+                ApiKey.workspace_grants,
             )
             .where(ApiKey.user_id == user_id)
             .order_by(ApiKey.created_at.desc())
@@ -55,12 +60,23 @@ class ApiKeyDao:
         )
         return result is not None
 
-    async def resolve_user(self, raw: str) -> int | None:
-        """Validate a raw key and return its owner, bumping last_used_at. None if unknown."""
-        user_id = await self._s.scalar(
+    async def set_grants(
+        self, user_id: int, key_id: int, grants: dict[int, WorkspaceGrant] | None
+    ) -> bool:
+        result = await self._s.scalar(
+            update(ApiKey)
+            .where(ApiKey.id == key_id, ApiKey.user_id == user_id)
+            .values(workspace_grants=grants)
+            .returning(ApiKey.id)
+        )
+        return result is not None
+
+    async def resolve_key(self, raw: str) -> int | None:
+        """Validate a raw key and return its ID, bumping last_used_at."""
+        key_id = await self._s.scalar(
             update(ApiKey)
             .where(ApiKey.token_hash == hash_api_key(raw))
             .values(last_used_at=func.now())
-            .returning(ApiKey.user_id)
+            .returning(ApiKey.id)
         )
-        return user_id
+        return key_id

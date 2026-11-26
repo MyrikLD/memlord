@@ -3,6 +3,7 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.config import settings
 from memlord.dao import MemoryDao
@@ -31,7 +32,7 @@ async def retrieve_memory(
     memory_type: MemoryType | None = None,
     workspace: str | None = None,
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> list[MemoryResult]:
     """Hybrid semantic + full-text search. Returns names + metadata only.
 

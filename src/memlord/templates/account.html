@@ -93,13 +93,40 @@
 
     <div class="alert alert-error" x-show="error" x-text="error" style="display:none;"></div>
 
+    {% macro key_scope_fields(key=None) %}
+    {% set grants = key.workspace_grants if key else {} %}
+    <div x-data="{ restricted: {{ 'true' if grants is not none else 'false' }} }">
+        <label class="form-label">Access
+            <select class="form-input" name="scope_mode" @change="restricted = $event.target.value === 'restricted'">
+                <option value="restricted" {% if grants is not none %}selected{% endif %}>Selected workspaces</option>
+                <option value="account" {% if grants is none %}selected{% endif %}>All account workspaces</option>
+            </select>
+        </label>
+        <div x-show="restricted">
+            {% for ws in key_workspaces %}
+            {% set permission = grants.get(ws.id) if grants is not none else none %}
+            <label class="form-label">{{ 'Personal' if ws.is_personal else ws.name }}
+                <select class="form-input" name="grants" :disabled="!restricted">
+                    <option value="">No access</option>
+                    <option value="{{ ws.id }}:read" {% if permission == 'read' %}selected{% endif %}>Read only</option>
+                    {% if ws.role in ('owner', 'editor') %}
+                    <option value="{{ ws.id }}:write" {% if permission == 'write' %}selected{% endif %}>Read and write</option>
+                    {% endif %}
+                </select>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+    {% endmacro %}
+
     <form @submit.prevent="create($event.target)"
-          style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:1rem;">
+          style="display:grid;gap:.5rem;margin-bottom:1rem;">
         <div class="form-group" style="flex:1;margin-bottom:0;">
             <label class="form-label" for="key_name">New key name</label>
             <input class="form-input" id="key_name" name="name" type="text"
                    placeholder="e.g. laptop, ci" required>
         </div>
+        {{ key_scope_fields() }}
         <div class="form-actions" style="margin:0;">
             <button type="submit" class="btn btn-primary" :disabled="busy"
                     x-text="busy ? 'Creating…' : 'Create key'">Create key</button>
@@ -121,9 +148,16 @@
                 {% endif %}
             </div>
         </div>
+        <details style="margin-left:1rem;">
+            <summary>{{ 'All account workspaces' if key.workspace_grants is none
+                        else (key.workspace_grants|length ~ ' workspace grants') }}</summary>
+            <form @submit.prevent="updateScope($event.target, {{ key.id }})">
+                {{ key_scope_fields(key) }}
+                <button type="submit" class="btn btn-primary" :disabled="busy">Save access</button>
+            </form>
+        </details>
         <button type="button" class="btn btn-ghost"
-                onclick="fetch('/api/api-keys/{{ key.id }}', {method: 'DELETE'})
-                         .then(function () { location.href = '/ui/account?key_deleted=1'; })">
+                @click="revoke({{ key.id }})" :disabled="busy">
             Delete
         </button>
     </div>
@@ -176,12 +210,55 @@ function apiKeysCard() {
         newKey: "",
         newKeyName: "",
 
+        scopeForm(form) {
+            const body = new FormData(form);
+            if (body.get("scope_mode") === "account") body.delete("grants");
+            return body;
+        },
+
+        async revoke(id) {
+            if (this.busy) return;
+            this.busy = true;
+            this.error = "";
+            try {
+                const r = await fetch(`/api/api-keys/${id}`, { method: "DELETE" });
+                if (r.status === 204) {
+                    window.location.href = "/ui/account?key_deleted=1";
+                    return;
+                }
+                const data = await r.json().catch(() => ({}));
+                this.error = data.detail || "Failed to revoke key.";
+            } catch {
+                this.error = "Network error. Please try again.";
+            } finally {
+                this.busy = false;
+            }
+        },
+
+        async updateScope(form, id) {
+            if (this.busy) return;
+            this.busy = true;
+            this.error = "";
+            try {
+                const r = await fetch(`/api/api-keys/${id}/scope`, {
+                    method: "PATCH", body: this.scopeForm(form),
+                });
+                if (r.ok) { window.location.href = "/ui/account"; return; }
+                const data = await r.json().catch(() => ({}));
+                this.error = data.detail || "Failed to save access.";
+            } catch {
+                this.error = "Network error. Please try again.";
+            } finally {
+                this.busy = false;
+            }
+        },
+
         async create(form) {
             if (this.busy) return;
             this.busy = true;
             this.error = "";
             // The name is read from the form — the server doesn't echo it back.
-            const body = new FormData(form);
+            const body = this.scopeForm(form);
             const name = (body.get("name") || "").toString().trim();
             try {
                 const r = await fetch("/api/api-keys", { method: "POST", body });

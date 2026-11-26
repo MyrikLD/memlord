@@ -4,6 +4,7 @@ from pydantic import Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
@@ -41,7 +42,7 @@ async def list_memories(
     memory_type: MemoryType | None = None,
     tag: str | None = Field(None, description="Case-insensitive exact match on a single tag name"),
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
     """
     Browse all memories ordered by creation date (newest first).

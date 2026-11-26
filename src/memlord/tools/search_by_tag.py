@@ -5,6 +5,7 @@ from mcp.types import ToolAnnotations
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from memlord.access import Principal
 from memlord.auth import MCPUserDep
 from memlord.dao import MemoryDao
 from memlord.dao.workspace import WorkspaceDao
@@ -39,7 +40,7 @@ async def search_by_tag(
     tags: set[str],
     operation: Literal["AND", "OR"] = "AND",
     s: AsyncSession = MCPSessionDep,  # type: ignore[assignment]
-    uid: int = MCPUserDep,  # type: ignore[assignment]
+    uid: Principal = MCPUserDep,  # type: ignore[assignment]
 ) -> MemoryPage:
     """Find memories by exact tag match. Returns all results (no pagination).
 
